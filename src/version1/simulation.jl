@@ -3,6 +3,7 @@ using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots
 
 ############################### FUNCTIONS AND CONSTRUCTORS #######################################
 
+
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
     name::String
@@ -30,6 +31,7 @@ mutable struct Game
         new(name, payoff_matrix, strategies, Agent(), Agent())
     end
 end
+
 
 
 #memory state initialization
@@ -130,9 +132,7 @@ function playGame(game::Game, memory_length::Int, probability::Float64)
 end
 
 
-
-
-
+end
 
 
 ############################### SIMULATION SETUP BELOW #######################################
