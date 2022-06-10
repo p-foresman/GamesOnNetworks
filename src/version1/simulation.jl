@@ -132,8 +132,6 @@ function playGame(game::Game, memory_length::Int, probability::Float64)
 end
 
 
-end
-
 
 ############################### SIMULATION SETUP BELOW #######################################
 
