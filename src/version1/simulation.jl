@@ -3,7 +3,6 @@ using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots
 
 ############################### FUNCTIONS AND CONSTRUCTORS #######################################
 
-
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
     name::String
@@ -33,9 +32,8 @@ mutable struct Game
 end
 
 
-
 #memory state initialization
-function memoryInit(agent::Agent, game::Game, memory_length, init::String)
+function memory_init(agent::Agent, game::Game, memory_length, init::String)
     if init == ""
         return
     elseif init == "fractious"
@@ -132,6 +130,33 @@ function playGame(game::Game, memory_length::Int, probability::Float64)
 end
 
 
+#remove all nodes that have degree zero (solved below??? can delete if so)
+function removeHermits(graph)
+    edge_list = edges(graph)
+    print(collect(edge_list))
+    return SimpleGraphFromIterator(edge_list)
+end
+
+#ensure all nodes have at least a degree of one
+function ensureOneDegree(params) #make params a dictionary????
+    graph = nothing
+    good_graph = false
+    while good_graph == false
+        graph = erdos_renyi(params, 0.1) #params = number agents here
+        zero_degree_counter = 0
+        for vertex in degree(graph)
+            if vertex == 0
+                zero_degree_counter += 1
+            end
+        end
+        if zero_degree_counter == 0
+            good_graph = true
+        end
+    end
+    println("good graph!")
+    return graph
+end
+
 
 ############################### SIMULATION SETUP BELOW #######################################
 
@@ -166,23 +191,11 @@ function main()
             #setup new graph to ensure no artifacts from last game
             #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
 
-            graph = complete_graph(number_agents)
+            graph = erdos_renyi(number_agents, 0.2)
+            println(degree(graph))
+            #graph = ensureOneDegree(number_agents)
 
-            #ensure that each node has at least 1 edge (comment out for complete graph)
-            # good_graph = false
-            # while good_graph == false
-            #     graph = erdos_renyi(number_agents, 0.1)
-            #     zero_degree_counter = 0
-            #     for vertex in degree(graph)
-            #         if vertex == 0
-            #             zero_degree_counter += 1
-            #         end
-            #     end
-            #     if zero_degree_counter == 0
-            #         good_graph = true
-            #     end
-            # end
-            # println("good graph!")
+            
 
             meta_graph = MetaGraph(graph)
             graph_vertices = vertices(meta_graph) #iterator of vertices in graph (use collect() for array)
@@ -223,7 +236,7 @@ function main()
                     agent.tag = tag2
                 end
 
-                #memoryInit(agent, game, m, m_init) #set memory initialization
+                #memory_init(agent, game, m, m_init) #set memory initialization
                 #initialize in strict fractious state for now
                 if vertex % 2 == 0
                     recollection = game.strategies[1]
@@ -271,14 +284,19 @@ function main()
                 
                 #check whether transition has occured
                 number_transitioned = 0
+                number_hermits = 0 #ensure that hermit agents are not considered in transition determination
                 for vertex in graph_vertices
+                    if degree(graph, vertex) == 0
+                        number_hermits += 1
+                        continue
+                    end
                     agent = get_prop(meta_graph, vertex, :agent)
                     count_M = count(i->(i[2] == game.strategies[2]), agent.memory)
                     if count_M >= sufficient_equity
                         number_transitioned += 1
                     end
                 end
-                if number_transitioned == number_agents
+                if number_transitioned == number_agents - number_hermits
                     push!(run_results, periods_elapsed)
                     transition = true
                 end
