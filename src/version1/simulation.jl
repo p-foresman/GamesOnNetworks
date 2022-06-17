@@ -31,6 +31,19 @@ mutable struct Game
     end
 end
 
+mutable struct SimParams
+    number_agents::Int64
+    memory_length::Int64
+    error::Float64
+    matches_per_period::Int64
+    tag_proportion::Float64
+    sufficient_equity::Float64
+    tag1::AbstractString
+    tag2::AbstractString
+    m_init::AbstractString
+end
+
+
 
 #memory state initialization
 function memory_init(agent::Agent, game::Game, memory_length, init::String)
@@ -61,7 +74,14 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoice(game::Game, player::Agent, opponent::Agent, player_number::Int)
+function makeChoice(game::Game; player_number::Int)
+    if player_number == 1
+        player = game.player1
+        opponent = game.player2
+    elseif player_number == 2
+        player = game.player2
+        opponent = game.player1
+    end
     memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
     #print("memory length: ")
     #println(memory_length)
@@ -97,36 +117,36 @@ function makeChoice(game::Game, player::Agent, opponent::Agent, player_number::I
 end
 
 #update agent's memory vector
-function updateMemory(player::Agent, opponent::Agent, opponent_choice::Int, memory_length::Int)
+function updateMemory(player::Agent, opponent::Agent, opponent_choice::Int, params::SimParams)
     to_push = (opponent.tag, opponent_choice)
-    if length(player.memory) == memory_length
+    if length(player.memory) == params.memory_length
         popfirst!(player.memory)
     end
     push!(player.memory, to_push)
 end
 
 #play the defined game
-function playGame(game::Game, memory_length::Int, probability::Float64)
+function playGame(game::Game, params::SimParams)
     player1_memory_length = count(i->(i[1] == game.player2.tag), game.player1.memory)  #tag specific! (these should both
     player2_memory_length = count(i->(i[1] == game.player1.tag), game.player2.memory)  #work fine without tags too)
-    if player1_memory_length == 0 || rand() <= probability
+    if player1_memory_length == 0 || rand() <= params.error
         player1_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player1_choice = makeChoice(game, game.player1, game.player2, 1)
+        player1_choice = makeChoice(game; player_number = 1)
         #println(player1_choice)
     end
-    if player2_memory_length == 0 || rand() <= probability
+    if player2_memory_length == 0 || rand() <= params.error
         player2_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player2_choice = makeChoice(game, game.player2, game.player1, 2)
+        player2_choice = makeChoice(game; player_number = 2)
         #println(player2_choice)
     end
     outcome = game.payoff_matrix[player1_choice, player2_choice]
     #println(outcome)
     game.player1.wealth += outcome[1]
     game.player2.wealth += outcome[2]
-    updateMemory(game.player1, game.player2, player2_choice, memory_length)
-    updateMemory(game.player2, game.player1, player1_choice, memory_length)
+    updateMemory(game.player1, game.player2, player2_choice, params)
+    updateMemory(game.player2, game.player1, player1_choice, params)
 end
 
 
@@ -158,6 +178,31 @@ function ensureOneDegree(params) #make params a dictionary????
 end
 
 
+#check whether transition has occured
+function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParams)
+    number_agents = length(collect(vertices(meta_graph)))
+    number_transitioned = 0
+    number_hermits = 0 #ensure that hermit agents are not considered in transition determination
+    graph_vertices = vertices(meta_graph)
+    for vertex in graph_vertices
+        if degree(meta_graph, vertex) == 0
+            number_hermits += 1
+            continue
+        end
+        agent = get_prop(meta_graph, vertex, :agent)
+        count_M = count(i->(i[2] == game.strategies[2]), agent.memory)
+        if count_M >= params.sufficient_equity
+            number_transitioned += 1
+        end
+    end
+    if number_transitioned == number_agents - number_hermits
+        return true
+    else
+        return false
+    end
+end
+
+
 ############################### SIMULATION SETUP BELOW #######################################
 
 function simInit()
@@ -171,7 +216,7 @@ end
 ############################### EXECUTE TRANSITION TIME SIMULATION BELOW #######################################
 
 
-function main()
+function mainSim(game::Game, params::SimParams)
     transition_times = Vector{AbstractFloat}([]) #vector to be updated
     iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
     #For loop here
@@ -179,22 +224,17 @@ function main()
         println(i)
         run_results = Vector{Integer}([])
         averager = 2 #how many runs to average out
+        println(params.memory_length)
         for run in 1:averager
-            #these initializations may be varied
-            number_agents = 10
-            matches_per_period = floor(number_agents / 2)
-            m = i
-            e = 0.10
-            tag_proportion = 1.0 #1.0 for effectively "no tags" (all agents get tag1)
-
-
+            print("here: ")
+            params.memory_length = i
+            print(params.memory_length)
             #setup new graph to ensure no artifacts from last game
             #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
 
-            graph = erdos_renyi(number_agents, 0.2)
+            graph = erdos_renyi(params.number_agents, 0.9)
             println(degree(graph))
             #graph = ensureOneDegree(number_agents)
-
             
 
             meta_graph = MetaGraph(graph)
@@ -205,35 +245,23 @@ function main()
 
 
 
-            #simulation specs
-
-            #number_periods = 80
-            tag1 = "red"
-            tag2 = "blue"
-            m_init = "fractious" #specifies initialization state
-
-            #set up game payoff matrix 
-            payoff_matrix = [(0, 0) (0, 0) (70, 30);
-                            (0, 0) (50, 50) (50, 30);
-                            (30, 70) (30, 50) (30, 30)]
-            strategies = [1, 2, 3] #corresponds to [High, Medium, Low]
-
-            #create bargaining game object (players will be slotted in)
-            game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
+
+
+            println(params.tag_proportion)
 
             #set metadata properties for all vertices
             for vertex in graph_vertices
                 agent = Agent("Agent $vertex", "")
-                if rand() <= tag_proportion
+                if rand() <= params.tag_proportion
                     try
-                        agent.tag = tag1
+                        agent.tag = params.tag1
                     catch
                         #do nothing. leave agent tag as "" if no tag1 is defined (for more modular use)
                     end
                 else
-                    agent.tag = tag2
+                    agent.tag = params.tag2
                 end
 
                 #memory_init(agent, game, m, m_init) #set memory initialization
@@ -244,10 +272,10 @@ function main()
                     recollection = game.strategies[3]
                 end
                 to_push = (agent.tag, recollection)
-                for i in 1:m
+                for i in 1:params.memory_length
                     push!(agent.memory, to_push)
                 end
-                #println(agent.memory)
+                println(agent.memory)
 
                 set_prop!(meta_graph, vertex, :agent, agent)
                 #println(props(meta_graph, vertex))
@@ -255,14 +283,12 @@ function main()
             end
 
 
-
             #play game until transition occurs (sufficient equity is reached)
-            sufficient_equity = (1 - e) * m 
             periods_elapsed = 0
             transition = false
             while transition == false
                 #play a period worth of games
-                for match in 1:matches_per_period
+                for match in 1:params.matches_per_period
                     edge = rand(graph_edges)
                     vertex_list = [edge.src, edge.dst]
                     rand_index = rand(1:2)     #must do this randomization process because src and dst 
@@ -276,27 +302,13 @@ function main()
                     game.player1 = get_prop(meta_graph, vertex1, :agent)
                     game.player2 = get_prop(meta_graph, vertex2, :agent)
                     #println(game.player1.name * " playing game with " * game.player2.name)
-                    playGame(game, m, e)
+                    playGame(game, params)
                 end
 
                 #increment period count
                 periods_elapsed += 1
                 
-                #check whether transition has occured
-                number_transitioned = 0
-                number_hermits = 0 #ensure that hermit agents are not considered in transition determination
-                for vertex in graph_vertices
-                    if degree(graph, vertex) == 0
-                        number_hermits += 1
-                        continue
-                    end
-                    agent = get_prop(meta_graph, vertex, :agent)
-                    count_M = count(i->(i[2] == game.strategies[2]), agent.memory)
-                    if count_M >= sufficient_equity
-                        number_transitioned += 1
-                    end
-                end
-                if number_transitioned == number_agents - number_hermits
+                if checkTransition(meta_graph, game, params)
                     push!(run_results, periods_elapsed)
                     transition = true
                 end
@@ -322,7 +334,33 @@ function main()
     plot!(iterator, transition_times,
         seriestype = :scatter,
         markercolor = :black,
-        label = :none) #for line under scatter
+        label = :none
+        ) #for line under scatter
 end
 
-main()
+
+#these initializations may be varied
+number_agents = 10
+matches_per_period = floor(number_agents / 2)
+memory_length = 10
+error = 0.10
+tag_proportion = 1.0 #1.0 for effectively "no tags" (all agents get tag1)
+sufficient_equity = (1 - error) * memory_length
+#number_periods = 80
+tag1 = "red"
+tag2 = "blue"
+m_init = "fractious" #specifies initialization state
+
+params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init)
+
+
+#set up game payoff matrix 
+payoff_matrix = [(0, 0) (0, 0) (70, 30);
+                (0, 0) (50, 50) (50, 30);
+                (30, 70) (30, 50) (30, 30)]
+strategies = [1, 2, 3] #corresponds to [High, Medium, Low]
+
+#create bargaining game object (players will be slotted in)
+game = Game("Bargaining Game", payoff_matrix, strategies)
+
+mainSim(game, params)
