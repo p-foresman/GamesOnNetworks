@@ -78,18 +78,18 @@ function makeChoice(game::Game; player_number::Int)
     if player_number == 1
         player = game.player1
         opponent = game.player2
-    elseif player_number == 2
+    else
         player = game.player2
         opponent = game.player1
     end
-    memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
+    player_memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
     #print("memory length: ")
     #println(memory_length)
     player_recollection = [count(i->(i[1]==opponent.tag && i[2]==strategy), player.memory) for strategy in game.strategies]
     #println("decision process here...")
     #print("recollection: ")
     #println(player_recollection)
-    opponent_probs = [i / memory_length for i in player_recollection]
+    opponent_probs = [i / player_memory_length for i in player_recollection]
     #print("probs: ")
     #println(opponent_probs)
     
@@ -180,7 +180,6 @@ end
 
 #check whether transition has occured
 function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParams)
-    number_agents = length(collect(vertices(meta_graph)))
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
     graph_vertices = vertices(meta_graph)
@@ -191,11 +190,15 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
         end
         agent = get_prop(meta_graph, vertex, :agent)
         count_M = count(i->(i[2] == game.strategies[2]), agent.memory)
+        # println("here!")
+        # println(sufficient_equity)
+        # println(count_M)
         if count_M >= params.sufficient_equity
             number_transitioned += 1
         end
+        # println(number_transitioned)
     end
-    if number_transitioned == number_agents - number_hermits
+    if number_transitioned >= params.number_agents - number_hermits
         return true
     else
         return false
@@ -224,16 +227,14 @@ function mainSim(game::Game, params::SimParams)
         println(i)
         run_results = Vector{Integer}([])
         averager = 2 #how many runs to average out
-        println(params.memory_length)
         for run in 1:averager
-            print("here: ")
             params.memory_length = i
-            print(params.memory_length)
+            params.sufficient_equity = (1 - params.error) * params.memory_length
+            println(params.sufficient_equity )
             #setup new graph to ensure no artifacts from last game
             #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-
-            graph = erdos_renyi(params.number_agents, 0.9)
-            println(degree(graph))
+            graph = complete_graph(params.number_agents)
+            #graph = erdos_renyi(params.number_agents, 0.9)
             #graph = ensureOneDegree(number_agents)
             
 
@@ -249,7 +250,6 @@ function mainSim(game::Game, params::SimParams)
 
 
 
-            println(params.tag_proportion)
 
             #set metadata properties for all vertices
             for vertex in graph_vertices
@@ -275,13 +275,11 @@ function mainSim(game::Game, params::SimParams)
                 for i in 1:params.memory_length
                     push!(agent.memory, to_push)
                 end
-                println(agent.memory)
 
                 set_prop!(meta_graph, vertex, :agent, agent)
                 #println(props(meta_graph, vertex))
                 #println(get_prop(meta_graph, vertex, :agent).name)
             end
-
 
             #play game until transition occurs (sufficient equity is reached)
             periods_elapsed = 0
@@ -345,7 +343,7 @@ matches_per_period = floor(number_agents / 2)
 memory_length = 10
 error = 0.10
 tag_proportion = 1.0 #1.0 for effectively "no tags" (all agents get tag1)
-sufficient_equity = (1 - error) * memory_length
+sufficient_equity = (1 - error) * memory_length #can you instantiate this with struct function?
 #number_periods = 80
 tag1 = "red"
 tag2 = "blue"
