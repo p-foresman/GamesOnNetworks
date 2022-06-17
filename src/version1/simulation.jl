@@ -172,9 +172,11 @@ function ensureOneDegree(params) #make params a dictionary????
 end
 
 
-function initGraph(graph_type::Symbol, graph_params::Dict, game::Game, params::SimParams)
-    if graph_type == :complete
+function initGraph(graph_params::Dict, game::Game, params::SimParams)
+    if graph_params[:type] == "complete"
         graph = complete_graph(graph_params[:population])
+    elseif graph_params[:type] == "er"
+        graph = erdos_renyi(graph_params[:population], graph_params[:prob])
     end
     meta_graph = setGraphMetaData!(graph, game, params)
     return meta_graph
@@ -256,14 +258,13 @@ end
 
 
 function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
-    transition_times = Vector{AbstractFloat}([]) #vector to be updated
     iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
-    #For loop here
     for graph_key in keys(graph_sim_dict)
+        transition_times = Vector{AbstractFloat}([]) #vector to be updated
         for i in iterator
             println("Iterator: $i")
             run_results = Vector{Integer}([])
-            averager = 20 #how many runs to average out
+            averager = 2 #how many runs to average out
             for run in 1:averager
                 println("Run $run of $averager")
                 params.memory_length = i
@@ -272,7 +273,7 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                 
                 #setup new graph to ensure no artifacts from last game
                 #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-                meta_graph = initGraph(graph_key, graph_sim_dict[graph_key], game, params)
+                meta_graph = initGraph(graph_sim_dict[graph_key], game, params)
                 #println(graph.fadjlist)
                 #println(adjacency_matrix(graph)[1, 2])
 
@@ -314,25 +315,26 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
         end
         println(transition_times)
 
-                
 
+        graph_sim_dict[graph_key][:plot] = plot!(iterator, transition_times,
+                                                label = "e=0.10",
+                                                color = :red,
+                                                xlabel = "Memory Length",
+                                                xlims = (5,20),
+                                                xticks = 5:1:20,
+                                                ylabel = "Transition Time",
+                                                yscale = :log10
+                                                )
+
+        graph_sim_dict[graph_key][:plot] = plot!(iterator, transition_times,
+                                                seriestype = :scatter,
+                                                markercolor = :black,
+                                                label = :none
+                                                ) #for line under scatter 
+        
+        display(graph_sim_dict[graph_key][:plot])
 
     end
-    plot(iterator, transition_times,
-    label = "e=0.10",
-    color = :red,
-    xlabel = "Memory Length",
-    xlims = (5,20),
-    xticks = 5:1:20,
-    ylabel = "Transition Time",
-    yscale = :log10
-    )
-
-    plot!(iterator, transition_times,
-        seriestype = :scatter,
-        markercolor = :black,
-        label = :none
-        ) #for line under scatter
 end
 
 #these initializations may be varied
@@ -349,7 +351,6 @@ m_init = "fractious" #specifies initialization state
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init)
 
-
 #set up game payoff matrix 
 payoff_matrix = [(0, 0) (0, 0) (70, 30);
                 (0, 0) (50, 50) (50, 30);
@@ -361,7 +362,8 @@ game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
 graph_sim_dict = Dict(
-     :complete => Dict(:population => params.number_agents),
+     :complete => Dict(:type => "complete", :population => params.number_agents, :plot => plot(title = "Complete Graph", reuse=false)),
+     :er1 => Dict(:type => "er", :population => params.number_agents, :prob => 0.5, :plot => plot(title = "Erdos-Renyi Graph", reuse=false))
      )
 
 mainSim(game, params, graph_sim_dict)
