@@ -117,7 +117,7 @@ function makeChoice(game::Game; player_number::Int)
 end
 
 #update agent's memory vector
-function updateMemory(player::Agent, opponent::Agent, opponent_choice::Int, params::SimParams)
+function updateMemory!(player::Agent, opponent::Agent, opponent_choice::Int, params::SimParams)
     to_push = (opponent.tag, opponent_choice)
     if length(player.memory) == params.memory_length
         popfirst!(player.memory)
@@ -126,7 +126,7 @@ function updateMemory(player::Agent, opponent::Agent, opponent_choice::Int, para
 end
 
 #play the defined game
-function playGame(game::Game, params::SimParams)
+function playGame!(game::Game, params::SimParams)
     player1_memory_length = count(i->(i[1] == game.player2.tag), game.player1.memory)  #tag specific! (these should both
     player2_memory_length = count(i->(i[1] == game.player1.tag), game.player2.memory)  #work fine without tags too)
     if player1_memory_length == 0 || rand() <= params.error
@@ -145,19 +145,13 @@ function playGame(game::Game, params::SimParams)
     #println(outcome)
     game.player1.wealth += outcome[1]
     game.player2.wealth += outcome[2]
-    updateMemory(game.player1, game.player2, player2_choice, params)
-    updateMemory(game.player2, game.player1, player1_choice, params)
+    updateMemory!(game.player1, game.player2, player2_choice, params)
+    updateMemory!(game.player2, game.player1, player1_choice, params)
 end
 
 
-#remove all nodes that have degree zero (solved below??? can delete if so)
-function removeHermits(graph)
-    edge_list = edges(graph)
-    print(collect(edge_list))
-    return SimpleGraphFromIterator(edge_list)
-end
 
-#ensure all nodes have at least a degree of one
+#ensure all nodes have at least a degree of one (not used)
 function ensureOneDegree(params) #make params a dictionary????
     graph = nothing
     good_graph = false
@@ -178,12 +172,54 @@ function ensureOneDegree(params) #make params a dictionary????
 end
 
 
+function initGraph(graph_type::Symbol, graph_params::Dict, game::Game, params::SimParams)
+    if graph_type == :complete
+        graph = complete_graph(graph_params[:population])
+    end
+    meta_graph = setGraphMetaData!(graph, game, params)
+    return meta_graph
+end
+
+
+#set metadata properties for all vertices
+function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
+    meta_graph = MetaGraph(graph)
+    for vertex in vertices(meta_graph)
+        agent = Agent("Agent $vertex", "")
+        if rand() <= params.tag_proportion
+            try
+                agent.tag = params.tag1
+            catch
+                #do nothing. leave agent tag as "" if no tag1 is defined (for more modular use)
+            end
+        else
+            agent.tag = params.tag2
+        end
+
+        #memory_init(agent, game, m, m_init) #set memory initialization
+        #initialize in strict fractious state for now
+        if vertex % 2 == 0
+            recollection = game.strategies[1]
+        else
+            recollection = game.strategies[3]
+        end
+        to_push = (agent.tag, recollection)
+        for i in 1:params.memory_length
+            push!(agent.memory, to_push)
+        end
+        set_prop!(meta_graph, vertex, :agent, agent)
+        #println(props(meta_graph, vertex))
+        #println(get_prop(meta_graph, vertex, :agent).name)
+    end
+    return meta_graph
+end
+
+
 #check whether transition has occured
 function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParams)
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
-    graph_vertices = vertices(meta_graph)
-    for vertex in graph_vertices
+    for vertex in vertices(meta_graph)
         if degree(meta_graph, vertex) == 0
             number_hermits += 1
             continue
@@ -219,115 +255,78 @@ end
 ############################### EXECUTE TRANSITION TIME SIMULATION BELOW #######################################
 
 
-function mainSim(game::Game, params::SimParams)
+function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
     transition_times = Vector{AbstractFloat}([]) #vector to be updated
     iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
     #For loop here
-    for i in iterator
-        println(i)
-        run_results = Vector{Integer}([])
-        averager = 2 #how many runs to average out
-        for run in 1:averager
-            params.memory_length = i
-            params.sufficient_equity = (1 - params.error) * params.memory_length
-            println(params.sufficient_equity )
-            #setup new graph to ensure no artifacts from last game
-            #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-            graph = complete_graph(params.number_agents)
-            #graph = erdos_renyi(params.number_agents, 0.9)
-            #graph = ensureOneDegree(number_agents)
-            
+    for graph_key in keys(graph_sim_dict)
+        for i in iterator
+            println("Iterator: $i")
+            run_results = Vector{Integer}([])
+            averager = 20 #how many runs to average out
+            for run in 1:averager
+                println("Run $run of $averager")
+                params.memory_length = i
+                params.sufficient_equity = (1 - params.error) * params.memory_length
 
-            meta_graph = MetaGraph(graph)
-            graph_vertices = vertices(meta_graph) #iterator of vertices in graph (use collect() for array)
-            graph_edges = collect(edges(meta_graph)) #array of all edges in graph
+                
+                #setup new graph to ensure no artifacts from last game
+                #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+                meta_graph = initGraph(graph_key, graph_sim_dict[graph_key], game, params)
                 #println(graph.fadjlist)
                 #println(adjacency_matrix(graph)[1, 2])
 
-
-
-
-
-
-
-
-            #set metadata properties for all vertices
-            for vertex in graph_vertices
-                agent = Agent("Agent $vertex", "")
-                if rand() <= params.tag_proportion
-                    try
-                        agent.tag = params.tag1
-                    catch
-                        #do nothing. leave agent tag as "" if no tag1 is defined (for more modular use)
-                    end
-                else
-                    agent.tag = params.tag2
-                end
-
-                #memory_init(agent, game, m, m_init) #set memory initialization
-                #initialize in strict fractious state for now
-                if vertex % 2 == 0
-                    recollection = game.strategies[1]
-                else
-                    recollection = game.strategies[3]
-                end
-                to_push = (agent.tag, recollection)
-                for i in 1:params.memory_length
-                    push!(agent.memory, to_push)
-                end
-
-                set_prop!(meta_graph, vertex, :agent, agent)
-                #println(props(meta_graph, vertex))
-                #println(get_prop(meta_graph, vertex, :agent).name)
-            end
-
-            #play game until transition occurs (sufficient equity is reached)
-            periods_elapsed = 0
-            transition = false
-            while transition == false
-                #play a period worth of games
-                for match in 1:params.matches_per_period
-                    edge = rand(graph_edges)
-                    vertex_list = [edge.src, edge.dst]
-                    rand_index = rand(1:2)     #must do this randomization process because src and dst 
-                    if rand_index == 1         #always make a lower to higher pair of vertices, meaning player1
-                        other_index = 2        #tends to be in lower 50% of vertices and vica versa. This means
-                    else                       #that these two halves of vertices are more likely to play
-                        other_index = 1        #against each other... not good.
-                    end
-                    vertex1 = vertex_list[rand_index]
-                    vertex2 = vertex_list[other_index]
-                    game.player1 = get_prop(meta_graph, vertex1, :agent)
-                    game.player2 = get_prop(meta_graph, vertex2, :agent)
-                    #println(game.player1.name * " playing game with " * game.player2.name)
-                    playGame(game, params)
-                end
-
-                #increment period count
-                periods_elapsed += 1
                 
-                if checkTransition(meta_graph, game, params)
-                    push!(run_results, periods_elapsed)
-                    transition = true
+
+                #play game until transition occurs (sufficient equity is reached)
+                periods_elapsed = 0
+                transition = false
+                while transition == false
+                    #play a period worth of games
+                    for match in 1:params.matches_per_period
+                        edge = rand(collect(edges(meta_graph)))
+                        vertex_list = [edge.src, edge.dst]
+                        rand_index = rand(1:2)     #must do this randomization process because src and dst 
+                        if rand_index == 1         #always make a lower to higher pair of vertices, meaning player1
+                            other_index = 2        #tends to be in lower 50% of vertices and vica versa. This means
+                        else                       #that these two halves of vertices are more likely to play
+                            other_index = 1        #against each other... not good.
+                        end
+                        vertex1 = vertex_list[rand_index]
+                        vertex2 = vertex_list[other_index]
+                        game.player1 = get_prop(meta_graph, vertex1, :agent)
+                        game.player2 = get_prop(meta_graph, vertex2, :agent)
+                        #println(game.player1.name * " playing game with " * game.player2.name)
+                        playGame!(game, params)
+                    end
+
+                    #increment period count
+                    periods_elapsed += 1
+                    
+                    if checkTransition(meta_graph, game, params)
+                        push!(run_results, periods_elapsed)
+                        transition = true
+                    end
                 end
             end
+            average_transition_time = sum(run_results) / averager
+            push!(transition_times, average_transition_time)
         end
-        average_transition_time = sum(run_results) / averager
-        push!(transition_times, average_transition_time)
+        println(transition_times)
+
+                
+
+
     end
-    println(transition_times)
-
-            
-
     plot(iterator, transition_times,
-        label = "e=0.10",
-        color = :red,
-        xlabel = "Memory Length",
-        xlims = (5,20),
-        xticks = 5:1:20,
-        ylabel = "Transition Time",
-        yscale = :log10
-        )
+    label = "e=0.10",
+    color = :red,
+    xlabel = "Memory Length",
+    xlims = (5,20),
+    xticks = 5:1:20,
+    ylabel = "Transition Time",
+    yscale = :log10
+    )
 
     plot!(iterator, transition_times,
         seriestype = :scatter,
@@ -335,7 +334,6 @@ function mainSim(game::Game, params::SimParams)
         label = :none
         ) #for line under scatter
 end
-
 
 #these initializations may be varied
 number_agents = 10
@@ -361,4 +359,14 @@ strategies = [1, 2, 3] #corresponds to [High, Medium, Low]
 #create bargaining game object (players will be slotted in)
 game = Game("Bargaining Game", payoff_matrix, strategies)
 
-mainSim(game, params)
+
+graph_sim_dict = Dict(
+     :complete => Dict(:population => params.number_agents),
+     )
+
+mainSim(game, params, graph_sim_dict)
+
+
+
+    #  :er1 => Dict(:population => params.number_agents, :lambda => 0.8)
+    #  :er2 => Dict(:population => params.number_agents, :lambda => 0.8)
