@@ -41,6 +41,10 @@ mutable struct SimParams
     tag1::AbstractString
     tag2::AbstractString
     m_init::AbstractString
+    iterationParam::Symbol
+    iterator::StepRange
+    error_list::Vector{Float64}
+    averager::Int32
 end
 
 
@@ -174,9 +178,10 @@ end
 
 function initGraph(graph_params::Dict, game::Game, params::SimParams)
     if graph_params[:type] == "complete"
-        graph = complete_graph(graph_params[:population])
+        graph = complete_graph(params.number_agents)
     elseif graph_params[:type] == "er"
-        graph = erdos_renyi(graph_params[:population], graph_params[:prob])
+        probability = graph_params[:lambda] / params.number_agents
+        graph = erdos_renyi(params.number_agents, probability)
     end
     meta_graph = setGraphMetaData!(graph, game, params)
     return meta_graph
@@ -258,82 +263,107 @@ end
 
 
 function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
-    iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+    if params.iterationParam == :memorylength
+        x_label = "Memory Length"
+        x_lims = (5,20)
+        x_ticks = 5:1:20
+    elseif params.iterationParam == :numberagents
+        x_label = "Number of Agents"
+        x_lims = (0,110)
+        x_ticks = 0:10:100
+    end
+    sim_plot = plot(xlabel = x_label,
+                    xlims = x_lims,
+                    xticks = x_ticks,
+                    ylabel = "Transition Time",
+                    yscale = :log10,
+                    legend_position = :topleft)
     for graph_key in keys(graph_sim_dict)
-        transition_times = Vector{AbstractFloat}([]) #vector to be updated
-        for i in iterator
-            println("Iterator: $i")
-            run_results = Vector{Integer}([])
-            averager = 2 #how many runs to average out
-            for run in 1:averager
-                println("Run $run of $averager")
-                params.memory_length = i
+        println(graph_key)
+        for error in params.error_list
+            params.error = error
+            println("Error: $error")
+            transition_times = Vector{AbstractFloat}([]) #vector to be updated
+            for i in params.iterator
+                println("Iterator: $i")
+                if params.iterationParam == :memorylength
+                    params.memory_length = i
+                elseif params.iterationParam == :numberagents
+                    params.number_agents = i
+                end
                 params.sufficient_equity = (1 - params.error) * params.memory_length
-
-                
-                #setup new graph to ensure no artifacts from last game
-                #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-                meta_graph = initGraph(graph_sim_dict[graph_key], game, params)
-                #println(graph.fadjlist)
-                #println(adjacency_matrix(graph)[1, 2])
-
-                
-
-                #play game until transition occurs (sufficient equity is reached)
-                periods_elapsed = 0
-                transition = false
-                while transition == false
-                    #play a period worth of games
-                    for match in 1:params.matches_per_period
-                        edge = rand(collect(edges(meta_graph)))
-                        vertex_list = [edge.src, edge.dst]
-                        rand_index = rand(1:2)     #must do this randomization process because src and dst 
-                        if rand_index == 1         #always make a lower to higher pair of vertices, meaning player1
-                            other_index = 2        #tends to be in lower 50% of vertices and vica versa. This means
-                        else                       #that these two halves of vertices are more likely to play
-                            other_index = 1        #against each other... not good.
-                        end
-                        vertex1 = vertex_list[rand_index]
-                        vertex2 = vertex_list[other_index]
-                        game.player1 = get_prop(meta_graph, vertex1, :agent)
-                        game.player2 = get_prop(meta_graph, vertex2, :agent)
-                        #println(game.player1.name * " playing game with " * game.player2.name)
-                        playGame!(game, params)
-                    end
-
-                    #increment period count
-                    periods_elapsed += 1
+                run_results = Vector{Integer}([])
+                for run in 1:params.averager
+                    println("Run $run of $averager")
                     
-                    if checkTransition(meta_graph, game, params)
-                        push!(run_results, periods_elapsed)
-                        transition = true
+
+                    
+                    #setup new graph to ensure no artifacts from last game
+                    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+                    meta_graph = initGraph(graph_sim_dict[graph_key], game, params)
+                    #println(graph.fadjlist)
+                    #println(adjacency_matrix(graph)[1, 2])
+
+                    
+
+                    #play game until transition occurs (sufficient equity is reached)
+                    periods_elapsed = 0
+                    transition = false
+                    while transition == false
+                        #play a period worth of games
+                        for match in 1:params.matches_per_period
+                            edge = rand(collect(edges(meta_graph)))
+                            vertex_list = [edge.src, edge.dst]
+                            rand_index = rand(1:2)     #must do this randomization process because src and dst 
+                            if rand_index == 1         #always make a lower to higher pair of vertices, meaning player1
+                                other_index = 2        #tends to be in lower 50% of vertices and vica versa. This means
+                            else                       #that these two halves of vertices are more likely to play
+                                other_index = 1        #against each other... not good.
+                            end
+                            vertex1 = vertex_list[rand_index]
+                            vertex2 = vertex_list[other_index]
+                            game.player1 = get_prop(meta_graph, vertex1, :agent)
+                            game.player2 = get_prop(meta_graph, vertex2, :agent)
+                            #println(game.player1.name * " playing game with " * game.player2.name)
+                            playGame!(game, params)
+                        end
+
+                        #increment period count
+                        periods_elapsed += 1
+                        
+                        if checkTransition(meta_graph, game, params)
+                            push!(run_results, periods_elapsed)
+                            transition = true
+                        end
                     end
                 end
+                average_transition_time = sum(run_results) / averager
+                push!(transition_times, average_transition_time)
             end
-            average_transition_time = sum(run_results) / averager
-            push!(transition_times, average_transition_time)
+            println(transition_times)
+
+            if params.error == 0.1
+                line_style = :solid
+            else
+                line_style = :dash
+            end
+
+            plot_label = graph_sim_dict[graph_key][:plot_label] * ", e=$error"
+
+            sim_plot = plot!(params.iterator, transition_times,
+                                                    label = plot_label,
+                                                    color = graph_sim_dict[graph_key][:line_color],
+                                                    linestyle = line_style
+                                                    )
+
+            sim_plot = plot!(params.iterator, transition_times,
+                                                    seriestype = :scatter,
+                                                    markercolor = :black,
+                                                    label = :none
+                                                    ) #for line under scatter 
+            
+            display(sim_plot)
         end
-        println(transition_times)
-
-
-        graph_sim_dict[graph_key][:plot] = plot!(iterator, transition_times,
-                                                label = "e=0.10",
-                                                color = :red,
-                                                xlabel = "Memory Length",
-                                                xlims = (5,20),
-                                                xticks = 5:1:20,
-                                                ylabel = "Transition Time",
-                                                yscale = :log10
-                                                )
-
-        graph_sim_dict[graph_key][:plot] = plot!(iterator, transition_times,
-                                                seriestype = :scatter,
-                                                markercolor = :black,
-                                                label = :none
-                                                ) #for line under scatter 
-        
-        display(graph_sim_dict[graph_key][:plot])
-
     end
 end
 
@@ -348,8 +378,12 @@ sufficient_equity = (1 - error) * memory_length #can you instantiate this with s
 tag1 = "red"
 tag2 = "blue"
 m_init = "fractious" #specifies initialization state
+iterationParam = :memorylength #can be :memorylength or :numberagents
+iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+error_list = [0.10, 0.2]
+averager = 10
 
-params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init)
+params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
 
 #set up game payoff matrix 
 payoff_matrix = [(0, 0) (0, 0) (70, 30);
@@ -362,9 +396,10 @@ game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
 graph_sim_dict = Dict(
-     :complete => Dict(:type => "complete", :population => params.number_agents, :plot => plot(title = "Complete Graph", reuse=false)),
-     :er1 => Dict(:type => "er", :population => params.number_agents, :prob => 0.5, :plot => plot(title = "Erdos-Renyi Graph", reuse=false))
-     )
+     :complete => Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
+     :er1 => Dict(:type => "er", :lambda => 4, :plot_label => "ER λ=8", :line_color => :blue)
+     ) #number_agents already defined
+
 
 mainSim(game, params, graph_sim_dict)
 
