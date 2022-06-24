@@ -181,7 +181,12 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
         graph = complete_graph(params.number_agents)
     elseif graph_params[:type] == "er"
         probability = graph_params[:lambda] / params.number_agents
-        graph = erdos_renyi(params.number_agents, probability)
+        while true
+            graph = erdos_renyi(params.number_agents, probability)
+            if length(collect(edges(graph))) >= 1 #simulation will break if graph has no edges
+                break
+            end
+        end
     end
     meta_graph = setGraphMetaData!(graph, game, params)
     return meta_graph
@@ -265,19 +270,19 @@ end
 function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
     if params.iterationParam == :memorylength
         x_label = "Memory Length"
-        x_lims = (5,20)
-        x_ticks = 5:1:20
+        x_lims = (8,20)
+        x_ticks = 8:1:20
     elseif params.iterationParam == :numberagents
         x_label = "Number of Agents"
         x_lims = (0,110)
         x_ticks = 0:10:100
     end
-    sim_plot = plot(xlabel = x_label,
-                    xlims = x_lims,
-                    xticks = x_ticks,
-                    ylabel = "Transition Time",
-                    yscale = :log10,
-                    legend_position = :topleft)
+    # sim_plot = plot(xlabel = x_label,
+    #                 xlims = x_lims,
+    #                 xticks = x_ticks,
+    #                 ylabel = "Transition Time (periods)",
+    #                 yscale = :log10,
+    #                 legend_position = :topleft)
     for graph_key in keys(graph_sim_dict)
         println(graph_key)
         for error in params.error_list
@@ -296,8 +301,6 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                 for run in 1:params.averager
                     println("Run $run of $averager")
                     
-
-                    
                     #setup new graph to ensure no artifacts from last game
                     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
                     meta_graph = initGraph(graph_sim_dict[graph_key], game, params)
@@ -305,7 +308,6 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                     #println(adjacency_matrix(graph)[1, 2])
 
                     
-
                     #play game until transition occurs (sufficient equity is reached)
                     periods_elapsed = 0
                     transition = false
@@ -338,6 +340,7 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                     end
                 end
                 average_transition_time = sum(run_results) / averager
+                #standard_deviation = 
                 push!(transition_times, average_transition_time)
             end
             println(transition_times)
@@ -379,8 +382,8 @@ tag1 = "red"
 tag2 = "blue"
 m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
-iterator = 7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
-error_list = [0.10, 0.2]
+iterator = 10:3:16 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+error_list = [0.05]
 averager = 10
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
@@ -396,14 +399,14 @@ game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
 graph_sim_dict = Dict(
-     :complete => Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
-     :er1 => Dict(:type => "er", :lambda => 4, :plot_label => "ER λ=8", :line_color => :blue)
+     :er2 => Dict(:type => "er", :lambda => 1, :plot_label => "ER λ=1", :line_color => :green)
      ) #number_agents already defined
 
 
 mainSim(game, params, graph_sim_dict)
 
-
+# :complete => Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
+# :er1 => Dict(:type => "er", :lambda => 5, :plot_label => "ER λ=5", :line_color => :blue),
 
     #  :er1 => Dict(:population => params.number_agents, :lambda => 0.8)
     #  :er2 => Dict(:population => params.number_agents, :lambda => 0.8)
