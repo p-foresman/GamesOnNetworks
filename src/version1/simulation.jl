@@ -181,7 +181,12 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
         graph = complete_graph(params.number_agents)
     elseif graph_params[:type] == "er"
         probability = graph_params[:lambda] / params.number_agents
-        graph = erdos_renyi(params.number_agents, probability)
+        while true
+            graph = erdos_renyi(params.number_agents, probability)
+            if length(collect(edges(graph))) >= 1 #simulation will break if graph has no edges
+                break
+            end
+        end
     end
     meta_graph = setGraphMetaData!(graph, game, params)
     return meta_graph
