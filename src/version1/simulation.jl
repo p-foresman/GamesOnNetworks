@@ -208,7 +208,7 @@ function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
             agent.tag = params.tag2
         end
 
-        #memory_init(agent, game, m, m_init) #set memory initialization
+        #set memory initialization
         #initialize in strict fractious state for now
         if vertex % 2 == 0
             recollection = game.strategies[1]
@@ -224,6 +224,26 @@ function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
         #println(get_prop(meta_graph, vertex, :agent).name)
     end
     return meta_graph
+end
+
+
+function initPlot(params::SimParams)
+    if params.iterationParam == :memorylength
+        x_label = "Memory Length"
+        x_lims = (8,20)
+        x_ticks = 8:1:20
+    elseif params.iterationParam == :numberagents
+        x_label = "Number of Agents"
+        x_lims = (0,110)
+        x_ticks = 0:10:100
+    end
+    sim_plot = plot(xlabel = x_label,
+                    xlims = x_lims,
+                    xticks = x_ticks,
+                    ylabel = "Transition Time",
+                    yscale = :log10,
+                    legend_position = :topleft)
+    return sim_plot
 end
 
 
@@ -268,21 +288,7 @@ end
 
 
 function mainSim(game::Game, params::SimParams, graph_simulations_list::AbstractVector{Dict{Symbol, Any}})
-    if params.iterationParam == :memorylength
-        x_label = "Memory Length"
-        x_lims = (8,20)
-        x_ticks = 8:1:20
-    elseif params.iterationParam == :numberagents
-        x_label = "Number of Agents"
-        x_lims = (0,110)
-        x_ticks = 0:10:100
-    end
-    sim_plot = plot(xlabel = x_label,
-                    xlims = x_lims,
-                    xticks = x_ticks,
-                    ylabel = "Transition Time",
-                    yscale = :log10,
-                    legend_position = :topleft)
+    sim_plot = initPlot(params)
     for graph_params_dict in graph_simulations_list
         println(graph_params_dict[:plot_label])
         for error in params.error_list
@@ -383,7 +389,7 @@ tag2 = "blue"
 m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
 iterator = 10:3:16 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
-error_list = [0.05]
+error_list = [0.1]
 averager = 10
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
@@ -400,7 +406,7 @@ game = Game("Bargaining Game", payoff_matrix, strategies)
 
 graph_simulations_list = [
         Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
-        Dict(:type => "er", :lambda => 4, :plot_label => "ER λ=8", :line_color => :blue)
+        Dict(:type => "er", :lambda => 8, :plot_label => "ER λ=8", :line_color => :blue)
         ] #number_agents already defined
 
 
