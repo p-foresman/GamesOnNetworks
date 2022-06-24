@@ -267,7 +267,7 @@ end
 ############################### EXECUTE TRANSITION TIME SIMULATION BELOW #######################################
 
 
-function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
+function mainSim(game::Game, params::SimParams, graph_simulations_list::AbstractVector{Dict{Symbol, Any}})
     if params.iterationParam == :memorylength
         x_label = "Memory Length"
         x_lims = (8,20)
@@ -277,14 +277,14 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
         x_lims = (0,110)
         x_ticks = 0:10:100
     end
-    # sim_plot = plot(xlabel = x_label,
-    #                 xlims = x_lims,
-    #                 xticks = x_ticks,
-    #                 ylabel = "Transition Time (periods)",
-    #                 yscale = :log10,
-    #                 legend_position = :topleft)
-    for graph_key in keys(graph_sim_dict)
-        println(graph_key)
+    sim_plot = plot(xlabel = x_label,
+                    xlims = x_lims,
+                    xticks = x_ticks,
+                    ylabel = "Transition Time",
+                    yscale = :log10,
+                    legend_position = :topleft)
+    for graph_params_dict in graph_simulations_list
+        println(graph_params_dict[:plot_label])
         for error in params.error_list
             params.error = error
             println("Error: $error")
@@ -303,7 +303,7 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                     
                     #setup new graph to ensure no artifacts from last game
                     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-                    meta_graph = initGraph(graph_sim_dict[graph_key], game, params)
+                    meta_graph = initGraph(graph_params_dict, game, params)
                     #println(graph.fadjlist)
                     #println(adjacency_matrix(graph)[1, 2])
 
@@ -351,11 +351,11 @@ function mainSim(game::Game, params::SimParams, graph_sim_dict::Dict)
                 line_style = :dash
             end
 
-            plot_label = graph_sim_dict[graph_key][:plot_label] * ", e=$error"
+            plot_label = graph_params_dict[:plot_label] * ", e=$error"
 
             sim_plot = plot!(params.iterator, transition_times,
                                                     label = plot_label,
-                                                    color = graph_sim_dict[graph_key][:line_color],
+                                                    color = graph_params_dict[:line_color],
                                                     linestyle = line_style
                                                     )
 
@@ -398,12 +398,13 @@ strategies = [1, 2, 3] #corresponds to [High, Medium, Low]
 game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
-graph_sim_dict = Dict(
-     :er2 => Dict(:type => "er", :lambda => 1, :plot_label => "ER λ=1", :line_color => :green)
-     ) #number_agents already defined
+graph_simulations_list = [
+        Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
+        Dict(:type => "er", :lambda => 4, :plot_label => "ER λ=8", :line_color => :blue)
+        ] #number_agents already defined
 
 
-mainSim(game, params, graph_sim_dict)
+mainSim(game, params, graph_simulations_list)
 
 # :complete => Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
 # :er1 => Dict(:type => "er", :lambda => 5, :plot_label => "ER λ=5", :line_color => :blue),
