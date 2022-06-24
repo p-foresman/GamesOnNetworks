@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics
 
 
 ############################### FUNCTIONS AND CONSTRUCTORS #######################################
@@ -177,9 +177,10 @@ end
 
 
 function initGraph(graph_params::Dict, game::Game, params::SimParams)
-    if graph_params[:type] == "complete"
+    graph_type = graph_params[:type]
+    if graph_type == "complete"
         graph = complete_graph(params.number_agents)
-    elseif graph_params[:type] == "er"
+    elseif graph_type == "er"
         probability = graph_params[:lambda] / params.number_agents
         while true
             graph = erdos_renyi(params.number_agents, probability)
@@ -187,7 +188,25 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
                 break
             end
         end
+    elseif graph_type == "sw"
+        graph = watts_strogatz(params.number_agents, graph_params[:k], graph_params[:beta])
+    elseif graph_type == "sf"
+        m_count = Int64(floor(params.number_agents ^ 1.5))
+        graph = static_scale_free(params.number_agents, m_count, graph_params[:alpha])
+    elseif graph_type == "sbm"
+        community_size = Int64(params.number_agents / graph_params[:communities])
+        println(community_size)
+        internalp = Vector{Float64}([])
+        sizes = Vector{Int64}([])
+        for community in 1:graph_params[:communities]
+            push!(internalp, graph_params[:internalp])
+            push!(sizes, community_size)
+        end
+        externalp = graph_params[:externalp]
+        affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internalp, externalp, sizes)
+        graph = stochastic_block_model(affinity_matrix, sizes)
     end
+
     meta_graph = setGraphMetaData!(graph, game, params)
     return meta_graph
 end
@@ -227,7 +246,7 @@ function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
 end
 
 
-function initPlot(params::SimParams)
+function initLinePlot(params::SimParams)
     if params.iterationParam == :memorylength
         x_label = "Memory Length"
         x_lims = (8,20)
@@ -243,6 +262,11 @@ function initPlot(params::SimParams)
                     ylabel = "Transition Time",
                     yscale = :log10,
                     legend_position = :topleft)
+    return sim_plot
+end
+
+function initBoxPlot(params::SimParams, number_bars)
+    sim_plot = plot(1:number_bars, seriestype = :bar, group = [1:1, 2:3, 4:4, 5:7, 8:8], legend_position = :topleft)
     return sim_plot
 end
 
@@ -288,13 +312,18 @@ end
 
 
 function mainSim(game::Game, params::SimParams, graph_simulations_list::AbstractVector{Dict{Symbol, Any}})
-    sim_plot = initPlot(params)
+    #sim_plot = initLinePlot(params)
+    sim_plot = initBoxPlot(params, length(graph_simulations_list))
+    transition_times = Vector{AbstractFloat}([]) #vector to be updated
+    standard_errors = Vector{AbstractFloat}([])
+    index = 1
     for graph_params_dict in graph_simulations_list
         println(graph_params_dict[:plot_label])
         for error in params.error_list
             params.error = error
             println("Error: $error")
-            transition_times = Vector{AbstractFloat}([]) #vector to be updated
+            # transition_times = Vector{AbstractFloat}([]) #vector to be updated
+            # standard_errors = Vector{AbstractFloat}([])
             for i in params.iterator
                 println("Iterator: $i")
                 if params.iterationParam == :memorylength
@@ -346,8 +375,10 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                     end
                 end
                 average_transition_time = sum(run_results) / averager
-                #standard_deviation = 
+                standard_deviation = std(run_results)
+                standard_error = standard_deviation / sqrt(params.number_agents)
                 push!(transition_times, average_transition_time)
+                push!(standard_errors, standard_error)
             end
             println(transition_times)
 
@@ -359,25 +390,31 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
 
             plot_label = graph_params_dict[:plot_label] * ", e=$error"
 
-            sim_plot = plot!(params.iterator, transition_times,
-                                                    label = plot_label,
-                                                    color = graph_params_dict[:line_color],
-                                                    linestyle = line_style
-                                                    )
+            # sim_plot = plot!(params.iterator, transition_times,
+            #                                         label = plot_label,
+            #                                         color = graph_params_dict[:line_color],
+            #                                         linestyle = line_style
+            #                                         )
 
-            sim_plot = plot!(params.iterator, transition_times,
-                                                    seriestype = :scatter,
-                                                    markercolor = :black,
-                                                    label = :none
-                                                    ) #for line under scatter 
+            # sim_plot = plot!(params.iterator, transition_times,
+            #                                         seriestype = :scatter,
+            #                                         markercolor = :black,
+            #                                         label = :none
+            #                                         ) #for line under scatter 
             
+            println(transition_times[index])
+            println(standard_errors[index])
+            sim_plot = plot!([index], [transition_times[index]],
+                            seriestype= :bar,
+                            yerror = [standard_errors[index]])
             display(sim_plot)
         end
+        index += 1
     end
 end
 
 #these initializations may be varied
-number_agents = 10
+number_agents = 30
 matches_per_period = floor(number_agents / 2)
 memory_length = 10
 error = 0.10
@@ -388,7 +425,7 @@ tag1 = "red"
 tag2 = "blue"
 m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
-iterator = 10:3:16 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+iterator = 10:1:10 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
 error_list = [0.1]
 averager = 10
 
@@ -405,15 +442,15 @@ game = Game("Bargaining Game", payoff_matrix, strategies)
 
 
 graph_simulations_list = [
-        Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
-        Dict(:type => "er", :lambda => 8, :plot_label => "ER λ=8", :line_color => :blue)
+    Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
+    Dict(:type => "er", :lambda => 1, :plot_label => "ER λ=1", :line_color => :blue),
+    Dict(:type => "er", :lambda => 5, :plot_label => "ER λ=5", :line_color => :blue),
+    Dict(:type => "sw", :k => 4, :beta => 0.6, :plot_label => "SF k=1", :line_color => :red),
+    Dict(:type => "sf", :alpha => 2, :plot_label => "SF α=2", :line_color => :red),
+    Dict(:type => "sf", :alpha => 4, :plot_label => "SF α=3", :line_color => :blue),
+    Dict(:type => "sf", :alpha => 8, :plot_label => "SF α=4", :line_color => :green),
+    Dict(:type => "sbm", :communities => 2, :internalp => 0.4, :externalp => 0.1, :plot_label => "SBM", :line_color => :green),
         ] #number_agents already defined
 
 
 mainSim(game, params, graph_simulations_list)
-
-# :complete => Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
-# :er1 => Dict(:type => "er", :lambda => 5, :plot_label => "ER λ=5", :line_color => :blue),
-
-    #  :er1 => Dict(:population => params.number_agents, :lambda => 0.8)
-    #  :er2 => Dict(:population => params.number_agents, :lambda => 0.8)
