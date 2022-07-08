@@ -195,7 +195,7 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
         graph = static_scale_free(params.number_agents, m_count, graph_params[:alpha])
     elseif graph_type == "sbm"
         community_size = Int64(params.number_agents / graph_params[:communities])
-        println(community_size)
+        # println(community_size)
         internalp = Vector{Float64}([])
         sizes = Vector{Int64}([])
         for community in 1:graph_params[:communities]
@@ -205,6 +205,7 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
         externalp = graph_params[:externalp]
         affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internalp, externalp, sizes)
         graph = stochastic_block_model(affinity_matrix, sizes)
+        println(fieldnames(typeof(graph)))
     end
 
     meta_graph = setGraphMetaData!(graph, game, params)
@@ -265,15 +266,6 @@ function initLinePlot(params::SimParams)
     return sim_plot
 end
 
-function initBoxPlot(params::SimParams, number_bars)
-    grouping = [["Complete"], ["ER λ=1", "ER λ=5"], ["SW"], ["SF α=2", "SF α=4", "SF α=8"], ["SBM"]]
-    sim_plot = groupedbar(1:number_bars,
-                    seriestype = :bar,
-                    group = grouping,
-                    legend_position = :topleft)
-    return sim_plot
-end
-
 
 #check whether transition has occured
 function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParams)
@@ -302,13 +294,6 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
 end
 
 
-############################### SIMULATION SETUP BELOW #######################################
-
-function simInit()
-    return
-end
-
-
 
 
 
@@ -327,7 +312,7 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
         for error in params.error_list
             params.error = error
             println("Error: $error")
-            transition_times = Vector{AbstractFloat}([]) #vector to be updated
+            #transition_times = Vector{AbstractFloat}([]) #vector to be updated
             # standard_errors = Vector{AbstractFloat}([])
             for i in params.iterator
                 println("Iterator: $i")
@@ -379,7 +364,6 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                         end
                     end
                 end
-                println(graph_params_dict[:plot_label])
                 println(run_results)
                 transition_times_matrix[:, index] = run_results
                 #average_transition_time = sum(run_results) / averager
@@ -390,13 +374,13 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
             end
             #println(transition_times)
 
-            if params.error == 0.1
-                line_style = :solid
-            else
-                line_style = :dash
-            end
+            # if params.error == 0.1
+            #     line_style = :solid
+            # else
+            #     line_style = :dash
+            # end
 
-            plot_label = graph_params_dict[:plot_label] * ", e=$error"
+            # plot_label = graph_params_dict[:plot_label] * ", e=$error"
 
             # sim_plot = plot!(params.iterator, transition_times,
             #                                         label = plot_label,
@@ -410,38 +394,11 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
             #                                         label = :none
             #                                         ) #for line under scatter 
             
-            #println(transition_times[index])
-            #println(standard_errors[index])
-            # sim_plot = groupedbar!([index], [transition_times[index]],
-            #                 seriestype= :bar,
-            #                 yerror = [standard_errors[index]])
-            # display(sim_plot)
         end
         index += 1
     end
-    # sim_plot = groupedbar!([[1],[2,3],[4],[5,6,7],[8]], transition_times,
-    #                         seriestype= :bar,
-    #                         yerror = standard_errors)
 
-
-
-    grouping = ["Complete", "ER", "SW", "SF", "SBM"]
-
-    # y_vals = [[transition_times[1]],
-    #            [transition_times[2], transition_times[3]],
-    #            [transition_times[4]],
-    #            [transition_times[5], transition_times[6], transition_times[7]],
-    #            [transition_times[8]]]
-    # println(y_vals)
-    # println(typeof(y_vals))
-    # sim_plot = groupedbar(["Complete", "ER", "SW", "SF", "SBM"], y_vals,
-
-    #                         bar_width = 0.67,
-    #                         bar_position = :dodge,
-    #                         yscale = :log10,
-    #                         )
-    #                         #legend_position = :topleft
-
+    #Plotting for box plot (all network classes)
     colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]
     x_vals = ["Complete" "ER λ=1" "ER λ=5" "SW" "SF α=2" "SF α=4" "SF α=8" "SBM"]
     sim_plot = boxplot(x_vals,
@@ -451,14 +408,14 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                     xlabel = "Network",
                     ylabel = "Transtition Time (periods)",
                     fillcolor = colors)
-``````
-    display(sim_plot)
+
+    return sim_plot
 end
 
 #these initializations may be varied
-number_agents = 200
+number_agents = 100
 matches_per_period = floor(number_agents / 2)
-memory_length = 13
+memory_length = 10
 error = 0.10
 tag_proportion = 1.0 #1.0 for effectively "no tags" (all agents get tag1)
 sufficient_equity = (1 - error) * memory_length #can you instantiate this with struct function?
@@ -467,9 +424,9 @@ tag1 = "red"
 tag2 = "blue"
 m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
-iterator = 13:1:13 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+iterator = 11:1:11 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
 error_list = [0.1]
-averager = 100
+averager = 5
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
 
@@ -492,7 +449,7 @@ graph_simulations_list = [
     Dict(:type => "sf", :alpha => 4, :plot_label => "SF α=4", :line_color => :blue),
     Dict(:type => "sf", :alpha => 8, :plot_label => "SF α=8", :line_color => :green),
     Dict(:type => "sbm", :communities => 2, :internalp => 0.2, :externalp => 0.01, :plot_label => "SBM", :line_color => :green),
-        ] #number_agents already defined
+    ] #number_agents already defined
 
 
-mainSim(game, params, graph_simulations_list)
+display(mainSim(game, params, graph_simulations_list))
