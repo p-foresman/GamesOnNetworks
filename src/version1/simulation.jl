@@ -196,16 +196,17 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
     elseif graph_type == "sbm"
         community_size = Int64(params.number_agents / graph_params[:communities])
         # println(community_size)
-        internalp = Vector{Float64}([])
-        sizes = Vector{Int64}([])
+        internal_probability = graph_params[:internal_lambda] / community_size
+        internal_probability_vector = Vector{Float64}([])
+        sizes_vector = Vector{Int64}([])
         for community in 1:graph_params[:communities]
-            push!(internalp, graph_params[:internalp])
-            push!(sizes, community_size)
+            push!(internal_probability_vector, internal_probability)
+            push!(sizes_vector, community_size)
         end
-        externalp = graph_params[:externalp]
-        affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internalp, externalp, sizes)
-        graph = stochastic_block_model(affinity_matrix, sizes)
-        println(fieldnames(typeof(graph)))
+        external_probability = graph_params[:external_lambda] / params.number_agents
+        affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_probability_vector, external_probability, sizes_vector)
+        println(affinity_matrix)
+        graph = stochastic_block_model(affinity_matrix, sizes_vector)
     end
 
     meta_graph = setGraphMetaData!(graph, game, params)
@@ -426,7 +427,7 @@ m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
 iterator = 11:1:11 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
 error_list = [0.1]
-averager = 5
+averager = 20
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
 
@@ -448,7 +449,7 @@ graph_simulations_list = [
     Dict(:type => "sf", :alpha => 2, :plot_label => "SF α=2", :line_color => :red),
     Dict(:type => "sf", :alpha => 4, :plot_label => "SF α=4", :line_color => :blue),
     Dict(:type => "sf", :alpha => 8, :plot_label => "SF α=8", :line_color => :green),
-    Dict(:type => "sbm", :communities => 2, :internalp => 0.2, :externalp => 0.01, :plot_label => "SBM", :line_color => :green),
+    Dict(:type => "sbm", :communities => 2, :internal_lambda => 5, :external_lambda => 0.5, :plot_label => "SBM", :line_color => :green),
     ] #number_agents already defined
 
 
