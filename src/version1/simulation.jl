@@ -340,18 +340,17 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                     while transition == false
                         #play a period worth of games
                         for match in 1:params.matches_per_period
-                            edge = rand(collect(edges(meta_graph)))
-                            vertex_list = [edge.src, edge.dst]
-                            rand_index = rand(1:2)     #must do this randomization process because src and dst 
-                            if rand_index == 1         #always make a lower to higher pair of vertices, meaning player1
-                                other_index = 2        #tends to be in lower 50% of vertices and vica versa. This means
-                            else                       #that these two halves of vertices are more likely to play
-                                other_index = 1        #against each other... not good.
-                            end
-                            vertex1 = vertex_list[rand_index]
-                            vertex2 = vertex_list[other_index]
-                            game.player1 = get_prop(meta_graph, vertex1, :agent)
-                            game.player2 = get_prop(meta_graph, vertex2, :agent)
+                            edge = rand(collect(edges(meta_graph))) #get random edge
+                            vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
+                            ```
+                            must do shuffle this vector because src and dst 
+                            always make a lower to higher pair of vertices, meaning player1
+                            tends to be in lower 50% of vertices and vica versa. This means
+                            that these two halves of vertices are more likely to play
+                            against each other... not good.
+                            ```
+                            game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
+                            game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
                             #println(game.player1.name * " playing game with " * game.player2.name)
                             playGame!(game, params)
                         end
@@ -414,7 +413,7 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
 end
 
 #these initializations may be varied
-number_agents = 100
+number_agents = 10
 matches_per_period = floor(number_agents / 2)
 memory_length = 10
 error = 0.10
@@ -425,9 +424,9 @@ tag1 = "red"
 tag2 = "blue"
 m_init = "fractious" #specifies initialization state
 iterationParam = :memorylength #can be :memorylength or :numberagents
-iterator = 11:1:11 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
+iterator = 10:1:10 #7:3:19 #determines the values of the indepent variable (right now set for one iteration (memory lenght 10))
 error_list = [0.1]
-averager = 20
+averager = 5
 
 params = SimParams(number_agents, memory_length, error, matches_per_period, tag_proportion, sufficient_equity, tag1, tag2, m_init, iterationParam, iterator, error_list, averager)
 
