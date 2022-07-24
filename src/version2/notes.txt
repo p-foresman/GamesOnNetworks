@@ -1,0 +1,4 @@
+To Do:
+
+Notes:
+-look into static_scale_free vs barabasi_albert scale free networks. Which should i be using?
