@@ -173,15 +173,10 @@ end
 function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
     meta_graph = MetaGraph(graph)
     for vertex in vertices(meta_graph)
-        agent = Agent("Agent $vertex", "")
-        if rand() <= params.tag_proportion
-            try
-                agent.tag = params.tag1
-            catch
-                #do nothing. leave agent tag as "" if no tag1 is defined (for more modular use)
-            end
+        if rand() <= params.tag1_proportion
+            agent = Agent("Agent $vertex", params.tag1)
         else
-            agent.tag = params.tag2
+            agent = Agent("Agent $vertex", params.tag2)
         end
 
         #set memory initialization
@@ -204,11 +199,11 @@ end
 
 
 function initLinePlot(params::SimParams)
-    if params.iterationParam == :memorylength
+    if params.iteration_param == :memorylength
         x_label = "Memory Length"
         x_lims = (8,20)
         x_ticks = 8:1:20
-    elseif params.iterationParam == :numberagents
+    elseif params.iteration_param == :numberagents
         x_label = "Number of Agents"
         x_lims = (0,110)
         x_ticks = 0:10:100
@@ -262,64 +257,66 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
     #standard_errors = Vector{AbstractFloat}([])
     transition_times_matrix = rand(params.averager, length(graph_simulations_list))
-    index = 1
+    matrix_index = 1
     for graph_params_dict in graph_simulations_list
         println(graph_params_dict[:plot_label])
         for error in params.error_list
-            params.error = error
             println("Error: $error")
+            params.error = error
             #transition_times = Vector{AbstractFloat}([]) #vector to be updated
             # standard_errors = Vector{AbstractFloat}([])
-            for i in params.iterator
-                println("Iterator: $i")
-                if params.iterationParam == :memorylength
-                    params.memory_length = i
-                elseif params.iterationParam == :numberagents
-                    params.number_agents = i
-                end
-                params.sufficient_equity = (1 - params.error) * params.memory_length
-                run_results = Vector{Integer}([])
-                for run in 1:params.averager
-                    println("Run $run of $averager")
-                    
-                    #setup new graph to ensure no artifacts from last game
-                    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-                    meta_graph = initGraph(graph_params_dict, game, params)
-                    #println(graph.fadjlist)
-                    #println(adjacency_matrix(graph)[1, 2])
+            for number_agents in params.number_agents_iterator
+                println("Number of agents: $number_agents")
+                params.number_agents = number_agents
+                params.matches_per_period = floor(number_agents / 2)
+                for memory_length in params.memory_length_iterator
+                    println("Memory length: $memory_length")
+                    params.memory_length = memory_length
+                    params.sufficient_equity = (1 - error) * memory_length
 
-                    
-                    #play game until transition occurs (sufficient equity is reached)
-                    periods_elapsed = 0
-                    while !checkTransition(meta_graph, game, params)
-                        #play a period worth of games
-                        for match in 1:params.matches_per_period
-                            edge = rand(collect(edges(meta_graph))) #get random edge
-                            vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-                            #=
-                            must do shuffle this vector because src and dst 
-                            always make a lower to higher pair of vertices, meaning player1
-                            tends to be in lower 50% of vertices and vica versa. This means
-                            that these two halves of vertices are more likely to play
-                            against each other... not good.
-                            =#
-                            game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
-                            game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
-                            #println(game.player1.name * " playing game with " * game.player2.name)
-                            playGame!(game, params)
+                    run_results = Vector{Integer}([])
+                    for run in 1:params.averager
+                        println("Run $run of $(params.averager)")
+                        
+                        #setup new graph to ensure no artifacts from last game
+                        #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+                        meta_graph = initGraph(graph_params_dict, game, params)
+                        #println(graph.fadjlist)
+                        #println(adjacency_matrix(graph)[1, 2])
+
+                        
+                        #play game until transition occurs (sufficient equity is reached)
+                        periods_elapsed = 0
+                        while !checkTransition(meta_graph, game, params)
+                            #play a period worth of games
+                            for match in 1:params.matches_per_period
+                                edge = rand(collect(edges(meta_graph))) #get random edge
+                                vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
+                                #=
+                                must do shuffle this vector because src and dst 
+                                always make a lower to higher pair of vertices, meaning player1
+                                tends to be in lower 50% of vertices and vica versa. This means
+                                that these two halves of vertices are more likely to play
+                                against each other... not good.
+                                =#
+                                game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
+                                game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
+                                #println(game.player1.name * " playing game with " * game.player2.name)
+                                playGame!(game, params)
+                            end
+                            #increment period count
+                            periods_elapsed += 1
                         end
-                        #increment period count
-                        periods_elapsed += 1
+                        push!(run_results, periods_elapsed)
                     end
-                    push!(run_results, periods_elapsed)
+                    println(run_results)
+                    transition_times_matrix[:, matrix_index] = run_results
+                    #average_transition_time = sum(run_results) / averager
+                    #standard_deviation = std(run_results)
+                    #standard_error = standard_deviation / sqrt(params.number_agents)
+                    #push!(transition_times, average_transition_time)
+                    #push!(standard_errors, standard_error)
                 end
-                println(run_results)
-                transition_times_matrix[:, index] = run_results
-                #average_transition_time = sum(run_results) / averager
-                #standard_deviation = std(run_results)
-                #standard_error = standard_deviation / sqrt(params.number_agents)
-                #push!(transition_times, average_transition_time)
-                #push!(standard_errors, standard_error)
             end
             #println(transition_times)
 
@@ -344,7 +341,7 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
             #                                         ) #for line under scatter 
             
         end
-        index += 1
+        matrix_index += 1
     end
 
     #Plotting for box plot (all network classes)

@@ -336,8 +336,7 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                     
                     #play game until transition occurs (sufficient equity is reached)
                     periods_elapsed = 0
-                    transition = false
-                    while transition == false
+                    while !checkTransition(meta_graph, game, params)
                         #play a period worth of games
                         for match in 1:params.matches_per_period
                             edge = rand(collect(edges(meta_graph))) #get random edge
@@ -354,15 +353,10 @@ function mainSim(game::Game, params::SimParams, graph_simulations_list::Abstract
                             #println(game.player1.name * " playing game with " * game.player2.name)
                             playGame!(game, params)
                         end
-
                         #increment period count
                         periods_elapsed += 1
-                        
-                        if checkTransition(meta_graph, game, params)
-                            push!(run_results, periods_elapsed)
-                            transition = true
-                        end
                     end
+                    push!(run_results, periods_elapsed)
                 end
                 println(run_results)
                 transition_times_matrix[:, index] = run_results
