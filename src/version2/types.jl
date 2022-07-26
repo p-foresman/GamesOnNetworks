@@ -4,7 +4,7 @@
 mutable struct Agent
     name::String
     tag::String
-    wealth::Int
+    wealth::Int #is this necessary?
     memory::Vector{Tuple{String, Int}}
 
     function Agent(name, tag)

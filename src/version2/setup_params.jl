@@ -58,12 +58,12 @@ Graph types available with relevant parameters:
 =#
 
 graph_simulations_list = [
-    Dict(:type => "complete", :plot_label => "Complete", :line_color => :red),
-    Dict(:type => "er", :λ => 1, :plot_label => "ER λ=1", :line_color => :blue),
-    Dict(:type => "er", :λ => 5, :plot_label => "ER λ=5", :line_color => :blue),
-    Dict(:type => "sw", :k => 4, :β => 0.6, :plot_label => "SW k=4", :line_color => :red),
-    Dict(:type => "sf", :α => 2, :plot_label => "SF α=2", :line_color => :red),
-    Dict(:type => "sf", :α => 4, :plot_label => "SF α=4", :line_color => :blue),
-    Dict(:type => "sf", :α => 8, :plot_label => "SF α=8", :line_color => :green),
-    Dict(:type => "sbm", :communities => 2, :internal_λ => 5, :external_λ => 0.5, :plot_label => "SBM", :line_color => :green),
+    Dict(:type => :complete, :plot_label => "Complete", :line_color => :red),
+    Dict(:type => :er, :λ => 1, :plot_label => "ER λ=1", :line_color => :blue),
+    Dict(:type => :er, :λ => 5, :plot_label => "ER λ=5", :line_color => :blue),
+    Dict(:type => :sw, :k => 4, :β => 0.6, :plot_label => "SW k=4", :line_color => :red),
+    Dict(:type => :sf, :α => 2, :plot_label => "SF α=2", :line_color => :red),
+    Dict(:type => :sf, :α => 4, :plot_label => "SF α=4", :line_color => :blue),
+    Dict(:type => :sf, :α => 8, :plot_label => "SF α=8", :line_color => :green),
+    Dict(:type => :sbm, :communities => 2, :internal_λ => 5, :external_λ => 0.5, :plot_label => "SBM", :line_color => :green),
     ] #number_agents already defined

@@ -101,10 +101,9 @@ function playGame!(game::Game, params::SimParams)
         player2_choice = makeChoice(game; player_number = 2)
         #println(player2_choice)
     end
-    outcome = game.payoff_matrix[player1_choice, player2_choice]
-    #println(outcome)
-    game.player1.wealth += outcome[1]
-    game.player2.wealth += outcome[2]
+    #outcome = game.payoff_matrix[player1_choice, player2_choice] #don't need this right now (wealth is not being analyzed)
+    #game.player1.wealth += outcome[1]
+    #game.player2.wealth += outcome[2]
     updateMemory!(game.player1, game.player2, player2_choice, params)
     updateMemory!(game.player2, game.player1, player1_choice, params)
 end
@@ -134,9 +133,9 @@ end
 
 function initGraph(graph_params::Dict, game::Game, params::SimParams)
     graph_type = graph_params[:type]
-    if graph_type == "complete"
+    if graph_type == :complete
         graph = complete_graph(params.number_agents)
-    elseif graph_type == "er"
+    elseif graph_type == :er
         probability = graph_params[:λ] / params.number_agents
         while true
             graph = erdos_renyi(params.number_agents, probability)
@@ -144,12 +143,12 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
                 break
             end
         end
-    elseif graph_type == "sw"
+    elseif graph_type == :sw
         graph = watts_strogatz(params.number_agents, graph_params[:k], graph_params[:β])
-    elseif graph_type == "sf"
+    elseif graph_type == :sf
         m_count = Int64(floor(params.number_agents ^ 1.5)) #this could be better defined
         graph = static_scale_free(params.number_agents, m_count, graph_params[:α])
-    elseif graph_type == "sbm"
+    elseif graph_type == :sbm
         community_size = Int64(params.number_agents / graph_params[:communities])
         # println(community_size)
         internal_probability = graph_params[:internal_λ] / community_size
