@@ -18,12 +18,13 @@ end
 #constructor for specific game to be played (mutable to update object later)
 mutable struct Game
     name::AbstractString
-    payoff_matrix::Matrix{Tuple{Int64, Int64}}
-    strategies::Vector{Int64}
+    payoff_matrix::Matrix{Tuple{Int64, Int64}} #Could make this Int8?
+    strategies::Tuple{Int8, Int8, Int8}
     player1::Agent
     player2::Agent
 
-    function Game(name::AbstractString, payoff_matrix::Matrix{Tuple{Int64, Int64}}, strategies::Vector{Int64})
+    function Game(name::AbstractString, payoff_matrix::Matrix{Tuple{Int64, Int64}})
+        strategies = Tuple(Int8(n) for n in 1:size(payoff_matrix, 1)) #create integer strategies that correspond to row/column indices of payoff_matrix
         new(name, payoff_matrix, strategies, Agent(), Agent())
     end
 end

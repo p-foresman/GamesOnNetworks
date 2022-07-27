@@ -20,13 +20,13 @@ params = SimParams(
 
 
 ################### Define Game Payoff Matrix and Strategies #######################
+
 payoff_matrix = [(0, 0) (0, 0) (70, 30);
                 (0, 0) (50, 50) (50, 30);
                 (30, 70) (30, 50) (30, 30)]
-strategies = [1, 2, 3] #corresponds to [High, Medium, Low]
 
 #create bargaining game type (players will be slotted in)
-game = Game("Bargaining Game", payoff_matrix, strategies)
+game = Game("Bargaining Game", payoff_matrix)
 
 
 

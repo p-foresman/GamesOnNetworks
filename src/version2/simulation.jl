@@ -34,7 +34,7 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoice(game::Game; player_number::Int)
+function makeChoice(game::Game; player_number::Int8)
     if player_number == 1
         player = game.player1
         opponent = game.player2
@@ -77,7 +77,7 @@ function makeChoice(game::Game; player_number::Int)
 end
 
 #update agent's memory vector
-function updateMemory!(player::Agent, opponent::Agent, opponent_choice::Int, params::SimParams)
+function updateMemory!(player::Agent, opponent::Agent, opponent_choice::Int8, params::SimParams)
     to_push = (opponent.tag, opponent_choice)
     if length(player.memory) == params.memory_length
         popfirst!(player.memory)
@@ -92,13 +92,13 @@ function playGame!(game::Game, params::SimParams)
     if player1_memory_length == 0 || rand() <= params.error
         player1_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player1_choice = makeChoice(game; player_number = 1)
+        player1_choice = makeChoice(game; player_number = Int8(1))
         #println(player1_choice)
     end
     if player2_memory_length == 0 || rand() <= params.error
         player2_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player2_choice = makeChoice(game; player_number = 2)
+        player2_choice = makeChoice(game; player_number = Int8(2))
         #println(player2_choice)
     end
     #outcome = game.payoff_matrix[player1_choice, player2_choice] #don't need this right now (wealth is not being analyzed)
@@ -160,7 +160,6 @@ function initGraph(graph_params::Dict, game::Game, params::SimParams)
         end
         external_probability = graph_params[:external_λ] / params.number_agents
         affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_probability_vector, external_probability, sizes_vector)
-        println(affinity_matrix)
         graph = stochastic_block_model(affinity_matrix, sizes_vector)
     end
 
