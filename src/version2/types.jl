@@ -42,7 +42,7 @@ mutable struct SimParams
     random_seed::Int16
 
     #all keyword arguments
-    function SimParams(;number_agents::Int :, memory_length::Int, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
+    function SimParams(;number_agents::Int , memory_length::Int, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
         matches_per_period = floor(number_agents / 2)
         sufficient_equity = (1 - error) * memory_length
         new(Int16(number_agents), Int16(memory_length), memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, Int16(random_seed))
