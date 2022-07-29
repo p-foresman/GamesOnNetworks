@@ -1,34 +1,24 @@
 ################### Simulation Parameters #######################
 
-
-
-function constructParamsList(;number_agents_start::Int, number_agents_end::Int, number_agents_step::Int, memory_length_start::Int, memory_length_end::Int, memory_length_step::Int, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
-    params_list = Vector{SimParams}([])
-    for number_agents in number_agents_start:number_agents_step:number_agents_end
-        for memory_length in memory_length_start:memory_length_step:memory_length_end
-            for error in error_list
-                new_params_set = SimParams(number_agents=number_agents, memory_length=memory_length, memory_init_state=memory_init_state, error=error, tag1=tag1, tag2=tag2, tag1_proportion=tag1_proportion, random_seed=random_seed)
-                push!(params_list, new_params_set)
-            end
-        end
-    end
-    return params_list
-end
-
-params_list = constructParamsList(
+params = SimParams(
                 number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 12,
-                number_agents_step = 2,
+                number_agents_end = 10,
+                number_agents_step = 1,
                 memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 12,
-                memory_length_step = 2,
+                memory_length_end = 10,
+                memory_length_step = 1,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
                 error_list = [0.1], #iterated over for multi-loop simulation
                 tag1 = :red,
                 tag2 = :blue,
                 tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
+                averager = 5, #determines how many runs to average over for each parameter iteration
                 random_seed = 1234 #sets random number generator
                 )
+
+
+
+
 
                 
 

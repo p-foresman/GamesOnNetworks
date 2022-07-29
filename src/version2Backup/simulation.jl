@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, BenchmarkTools
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots
 
 include("types.jl")
 include("setup_params.jl")
@@ -250,81 +250,73 @@ end
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
 
-
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; seed::Bool)
-    if seed == true
-        Random.seed!(params.random_seed)
-    end
-    #setup new graph to ensure no artifacts from last game
-    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-    meta_graph = initGraph(graph_params_dict, game, params)
-    #println(graph.fadjlist)
-    #println(adjacency_matrix(graph)[1, 2])
-
-    
-    #play game until transition occurs (sufficient equity is reached)
-    periods_elapsed = 0
-    while !checkTransition(meta_graph, game, params)
-        #play a period worth of games
-        for match in 1:params.matches_per_period
-            edge = rand(collect(edges(meta_graph))) #get random edge
-            vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-            #=
-            must do shuffle this vector because src and dst 
-            always make a lower to higher pair of vertices, meaning player1
-            tends to be in lower 50% of vertices and vica versa. This means
-            that these two halves of vertices are more likely to play
-            against each other... not good.
-            =#
-            game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
-            game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
-            #println(game.player1.name * " playing game with " * game.player2.name)
-            playGame!(game, params)
-        end
-        #increment period count
-        periods_elapsed += 1
-    end
-    return periods_elapsed
-end
-
-
-
-function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int, seed::Bool)
+function mainSim(game::Game, params::SimParams, graph_simulations_list::AbstractVector{Dict{Symbol, Any}})
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
     #standard_errors = Vector{AbstractFloat}([])
-    transition_times_matrix = rand(averager, length(graph_simulations_list))
+    transition_times_matrix = rand(params.averager, length(graph_simulations_list))
     matrix_index = 1
     for graph_params_dict in graph_simulations_list
-        println("\n\n")
         println(graph_params_dict[:plot_label])
-        for params in params_list
+        for error in params.error_list
+            println("Error: $error")
+            params.error = error
             #transition_times = Vector{AbstractFloat}([]) #vector to be updated
             # standard_errors = Vector{AbstractFloat}([])
-            
-            print("Number of agents: $(params.number_agents), ")
-            print("Memory length: $(params.memory_length), ")
-            println("Error: $(params.error)")
+            for number_agents in params.number_agents_iterator
+                println("Number of agents: $number_agents")
+                params.number_agents = number_agents
+                params.matches_per_period = floor(number_agents / 2)
+                for memory_length in params.memory_length_iterator
+                    println("Memory length: $memory_length")
+                    params.memory_length = memory_length
+                    params.sufficient_equity = (1 - error) * memory_length
 
+                    run_results = Vector{Integer}([])
+                    for run in 1:params.averager
+                        println("Run $run of $(params.averager)")
+                        
+                        #setup new graph to ensure no artifacts from last game
+                        #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+                        meta_graph = initGraph(graph_params_dict, game, params)
+                        #println(graph.fadjlist)
+                        #println(adjacency_matrix(graph)[1, 2])
 
-            run_results = Vector{Integer}([])
-            for run in 1:averager
-                println("Run $run of $averager")
-
-                periods_elapsed = simulate(game, params, graph_params_dict, seed=seed)
-                push!(run_results, periods_elapsed)
+                        
+                        #play game until transition occurs (sufficient equity is reached)
+                        periods_elapsed = 0
+                        while !checkTransition(meta_graph, game, params)
+                            #play a period worth of games
+                            for match in 1:params.matches_per_period
+                                edge = rand(collect(edges(meta_graph))) #get random edge
+                                vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
+                                #=
+                                must do shuffle this vector because src and dst 
+                                always make a lower to higher pair of vertices, meaning player1
+                                tends to be in lower 50% of vertices and vica versa. This means
+                                that these two halves of vertices are more likely to play
+                                against each other... not good.
+                                =#
+                                game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
+                                game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
+                                #println(game.player1.name * " playing game with " * game.player2.name)
+                                playGame!(game, params)
+                            end
+                            #increment period count
+                            periods_elapsed += 1
+                        end
+                        push!(run_results, periods_elapsed)
+                    end
+                    println(run_results)
+                    transition_times_matrix[:, matrix_index] = run_results
+                    #average_transition_time = sum(run_results) / averager
+                    #standard_deviation = std(run_results)
+                    #standard_error = standard_deviation / sqrt(params.number_agents)
+                    #push!(transition_times, average_transition_time)
+                    #push!(standard_errors, standard_error)
+                end
             end
-            println(run_results)
-            transition_times_matrix[:, matrix_index] = run_results
-            
-            #average_transition_time = sum(run_results) / averager
-            #standard_deviation = std(run_results)
-            #standard_error = standard_deviation / sqrt(params.number_agents)
-            #push!(transition_times, average_transition_time)
-            #push!(standard_errors, standard_error)
-            
-           
             #println(transition_times)
 
             # if params.error == 0.1
@@ -352,7 +344,7 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
     end
 
     #Plotting for box plot (all network classes)
-    #= colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]
+    colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]
     x_vals = ["Complete" "ER λ=1" "ER λ=5" "SW" "SF α=2" "SF α=4" "SF α=8" "SBM"]
     sim_plot = boxplot(x_vals,
                    transition_times_matrix,
@@ -360,7 +352,7 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
                     yscale = :log10,
                     xlabel = "Network",
                     ylabel = "Transtition Time (periods)",
-                    fillcolor = colors) =#
+                    fillcolor = colors)
 
-    #return sim_plot
+    return sim_plot
 end

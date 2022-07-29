@@ -30,21 +30,25 @@ mutable struct Game
 end
 
 mutable struct SimParams
-    number_agents::Int16
-    memory_length::Int16
+    number_agents::Int16 #will be initialized at 0 and updated based on number_agents_iterator value
+    number_agents_iterator::StepRange
+    memory_length::Int16 #will be initialized at 0 and updated based on memory_length_iterator value
+    memory_length_iterator::StepRange
     memory_init_state::Symbol
     error::Float64 #will be initialized at 0.0 and updated based on error_list value (list iterated over)
+    error_list::Vector{Float64}
     matches_per_period::Int32 #will be initialized at 0 and updated based on floor(number_agents/2) value in simulation
     sufficient_equity::Float64 #will be initialized at 0.0 and updated based on (1-error)*memory_length value in simulation
     tag1::Symbol #could make tags a vararg to have any given number of tags
     tag2::Symbol
     tag1_proportion::Float64
+    averager::Int16
     random_seed::Int16
 
     #all keyword arguments
-    function SimParams(;number_agents::Int :, memory_length::Int, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
-        matches_per_period = floor(number_agents / 2)
-        sufficient_equity = (1 - error) * memory_length
-        new(Int16(number_agents), Int16(memory_length), memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, Int16(random_seed))
+    function SimParams(;number_agents_start, number_agents_end, number_agents_step, memory_length_start, memory_length_end, memory_length_step, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, averager, random_seed)
+        number_agents_iterator = number_agents_start:number_agents_step:number_agents_end
+        memory_length_iterator = memory_length_start:memory_length_step:memory_length_end
+        new(0, number_agents_iterator, 0, memory_length_iterator, memory_init_state, 0.0, error_list, 0, 0.0,  tag1, tag2, tag1_proportion, averager, random_seed)
     end
 end

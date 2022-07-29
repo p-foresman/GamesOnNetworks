@@ -5,3 +5,38 @@ To Do:
 
 Notes:
 -look into static_scale_free vs barabasi_albert scale free networks. Which should i be using?
+
+
+For DB/DF:
+DataFrames:
+    -memory state, each row is an agent, each column is a single memory index for the given agent.
+    -corresponding memory state tags dataframe?
+    
+-Second dataframe for 
+-In database, columns include:
+    -grouping ID (to find all simulation instances from a cohort of simulations)
+    -random number generator state
+    -simulation parameters (JSON?)
+        -must be a simplified version to describe a single simulation case (no iterators)****
+    -graph parameters (JSON?)
+    -graph adjacency matrix (in DataFrame -> CSV)
+    -agent JSON list?
+
+    
+
+For saving and restoring random number generator state:
+
+julia> rand()
+0.09028876420540066
+
+julia> state = copy(Random.default_rng())
+MersenneTwister(0xacbf17e36353b3a3a75764abc1e03e06, (0, 1002, 0, 2))
+
+julia> rand()
+0.5688115492566419
+
+julia> copy!(Random.default_rng(), state)
+MersenneTwister(0xacbf17e36353b3a3a75764abc1e03e06, (0, 1002, 0, 2))
+
+julia> rand()
+0.5688115492566419
