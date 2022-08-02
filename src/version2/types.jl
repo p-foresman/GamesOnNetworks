@@ -1,4 +1,4 @@
-
+using StructTypes
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
@@ -7,6 +7,9 @@ mutable struct Agent
     wealth::Int #is this necessary?
     memory::Vector{Tuple{Symbol, Int}}
 
+    function Agent(name::AbstractString, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int}})
+        return new(name, tag, wealth, memory)
+    end
     function Agent(name::AbstractString, tag::Symbol)
         return new(name, tag, 0, Vector{Int}([]))
     end
@@ -14,6 +17,7 @@ mutable struct Agent
         return new("", Symbol(), 0, Vector{Int}([]))
     end
 end
+StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
 
 #constructor for specific game to be played (mutable to update object later)
 mutable struct Game

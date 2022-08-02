@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, BenchmarkTools
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, BenchmarkTools
 
 include("types.jl")
 include("setup_params.jl")
@@ -243,7 +243,19 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
     end
 end
 
+function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph)
+    agent_dataframe = DataFrame(agents=String[])
+    for vertex in vertices(graph)
+        agent = get_prop(graph, vertex, :agent)
+        agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
+        push!(agent_dataframe, [agent_json_str])
+    end
+    return agent_dataframe
+end
 
+function getFromDatabase(grouping)
+    return
+end
 
 
 
@@ -251,7 +263,7 @@ end
 
 
 
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; seed::Bool)
+function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; seed::Bool, db_store::Bool)
     if seed == true
         Random.seed!(params.random_seed)
     end
@@ -284,6 +296,10 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         #increment period count
         periods_elapsed += 1
     end
+    if db_store == true
+        agent_df = sendToDatabase(game, params, graph_params_dict, meta_graph)
+        return agent_df
+    end
     return periods_elapsed
 end
 
@@ -312,7 +328,7 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
             for run in 1:averager
                 println("Run $run of $averager")
 
-                periods_elapsed = simulate(game, params, graph_params_dict, seed=seed)
+                periods_elapsed = simulate(game, params, graph_params_dict, seed=seed, db_store=false) #false for now
                 push!(run_results, periods_elapsed)
             end
             println(run_results)
