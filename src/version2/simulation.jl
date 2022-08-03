@@ -243,14 +243,33 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
     end
 end
 
-function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph)
+function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
+    #create a JSON string from the SimParams object. This will be stored in SQLite as a String typed column
+    params_json_str = JSON3.write(params)
+
+    #create JSON string from Game object.
+    #replace current players with general agent types to store only "shell of game"
+    game.player1 = Agent()
+    game.player2 = Agent()
+    game_json_str = JSON3.write(game)
+
+    #create an nx1 dataframe with a single column consisting of a JSON string representation of each agent objecct.
+    #This will be converted into a CSV file and stored in SQLite in a BLOB typed column? Could make a separate table for agents
     agent_dataframe = DataFrame(agents=String[])
     for vertex in vertices(graph)
         agent = get_prop(graph, vertex, :agent)
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agent_dataframe, [agent_json_str])
     end
-    return agent_dataframe
+
+    #create JSON string from graph parameter dictionary.
+    graph_params_json_str = JSON3.write(graph_params_dict)
+
+    #extract the graph adjacency matrix to store the graph structure, then convert to dataframe => CSV (can I convert straight to CSV?)
+    adj_matrix_dataframe = DataFrame(adjacency_matrix(graph), :auto) #should i just put the whole MetaGraph object in a json string?
+    
+    
+    return params_json_str, game_json_str, agent_dataframe, graph_params_json_str, adj_matrix_dataframe
 end
 
 function getFromDatabase(grouping)
@@ -297,7 +316,7 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         periods_elapsed += 1
     end
     if db_store == true
-        agent_df = sendToDatabase(game, params, graph_params_dict, meta_graph)
+        agent_df = sendToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed)
         return agent_df
     end
     return periods_elapsed

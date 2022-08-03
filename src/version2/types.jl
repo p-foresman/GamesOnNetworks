@@ -14,7 +14,7 @@ mutable struct Agent
         return new(name, tag, 0, Vector{Int}([]))
     end
     function Agent()
-        return new("", Symbol(), 0, Vector{Int}([]))
+        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int}}([]))
     end
 end
 StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
@@ -31,7 +31,9 @@ mutable struct Game
         strategies = Tuple(Int8(n) for n in 1:size(payoff_matrix, 1)) #create integer strategies that correspond to row/column indices of payoff_matrix
         new(name, payoff_matrix, strategies, Agent(), Agent())
     end
+    Game() = new()
 end
+StructTypes.StructType(::Type{Game}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
 
 mutable struct SimParams
     number_agents::Int16
@@ -51,4 +53,6 @@ mutable struct SimParams
         sufficient_equity = (1 - error) * memory_length
         new(Int16(number_agents), Int16(memory_length), memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, Int16(random_seed))
     end
+    SimParams() = new()
 end
+StructTypes.StructType(::Type{SimParams}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
