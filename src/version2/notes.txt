@@ -40,3 +40,11 @@ MersenneTwister(0xacbf17e36353b3a3a75764abc1e03e06, (0, 1002, 0, 2))
 
 julia> rand()
 0.5688115492566419
+
+
+
+Sampling distribution:
+-The sampling distribution of the random variable "transition time" will be different for a sample size of
+    1 agent, 10 agents (or some cluster), and the total population (say 100 agents).
+    Could construct histograms/sampling distributions for each of these emergent layers (with many replications)
+    and compare the results.
