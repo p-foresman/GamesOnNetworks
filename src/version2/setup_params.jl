@@ -2,7 +2,7 @@
 
 
 
-function constructParamsList(;number_agents_start::Int, number_agents_end::Int, number_agents_step::Int, memory_length_start::Int, memory_length_end::Int, memory_length_step::Int, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
+function constructParamsList(;number_agents_start::Int64, number_agents_end::Int64, number_agents_step::Int64, memory_length_start::Int64, memory_length_end::Int64, memory_length_step::Int64, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
     params_list = Vector{SimParams}([])
     for number_agents in number_agents_start:number_agents_step:number_agents_end
         for memory_length in memory_length_start:memory_length_step:memory_length_end
@@ -34,9 +34,9 @@ params_list = constructParamsList(
 
 ################### Define Game Payoff Matrix and Strategies #######################
 
-payoff_matrix = [(0, 0) (0, 0) (70, 30);
-                (0, 0) (50, 50) (50, 30);
-                (30, 70) (30, 50) (30, 30)]
+payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
+                                        (0, 0) (50, 50) (50, 30);
+                                        (30, 70) (30, 50) (30, 30)])
 
 #create bargaining game type (players will be slotted in)
 game = Game("Bargaining Game", payoff_matrix)

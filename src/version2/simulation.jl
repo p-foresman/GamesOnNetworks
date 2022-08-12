@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, BenchmarkTools
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, SQLite, BenchmarkTools
 
 include("types.jl")
 include("setup_params.jl")
@@ -170,6 +170,7 @@ end
 
 #set metadata properties for all vertices
 function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
+    print(graph)
     meta_graph = MetaGraph(graph)
     for vertex in vertices(meta_graph)
         if rand() <= params.tag1_proportion
@@ -246,30 +247,60 @@ end
 function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
     #create a JSON string from the SimParams object. This will be stored in SQLite as a String typed column
     params_json_str = JSON3.write(params)
-
     #create JSON string from Game object.
     #replace current players with general agent types to store only "shell of game"
     game.player1 = Agent()
     game.player2 = Agent()
-    game_json_str = JSON3.write(game)
+    game_json_str = JSON3.write(game) #do i need to save this?
 
     #create an nx1 dataframe with a single column consisting of a JSON string representation of each agent objecct.
     #This will be converted into a CSV file and stored in SQLite in a BLOB typed column? Could make a separate table for agents
-    agent_dataframe = DataFrame(agents=String[])
+    agents_dataframe = DataFrame(agents=String[])
     for vertex in vertices(graph)
         agent = get_prop(graph, vertex, :agent)
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
-        push!(agent_dataframe, [agent_json_str])
+        push!(agents_dataframe, [agent_json_str])
     end
+    agents_CSV = CSV.write("agents.csv", agents_dataframe)
 
     #create JSON string from graph parameter dictionary.
     graph_params_json_str = JSON3.write(graph_params_dict)
 
     #extract the graph adjacency matrix to store the graph structure, then convert to dataframe => CSV (can I convert straight to CSV?)
     adj_matrix_dataframe = DataFrame(adjacency_matrix(graph), :auto) #should i just put the whole MetaGraph object in a json string?
-    
-    
-    return params_json_str, game_json_str, agent_dataframe, graph_params_json_str, adj_matrix_dataframe
+    adj_matrix_CSV = CSV.write("adj_matrix.csv", adj_matrix_dataframe)
+
+    db = SQLite.DB("SimulationSaves.sqlite")
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS saves
+                        (
+                            'id' PRIMARY KEY,
+                            'sim_params' TEXT,
+                            'game' TEXT,
+                            'agents' BLOB,
+                            'graph_params' TEXT,
+                            'adj_matrix' BLOB,
+                            'periods_elapsed' INTEGER
+                        );")
+    SQLite.execute(db, "INSERT INTO saves
+                        (
+                            'sim_params',
+                            'game',
+                            'agents',
+                            'graph_params',
+                            'adj_matrix',
+                            'periods_elapsed'
+                        )
+                        VALUES
+                        (
+                            '$params_json_str',
+                            '$game_json_str',
+                            $agents_CSV,
+                            '$graph_params_json_str',
+                            $adj_matrix_CSV,
+                            $periods_elapsed
+                        );")
+
+    return agent_dataframe
 end
 
 function getFromDatabase(grouping)
@@ -324,7 +355,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int, seed::Bool)
+function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64, seed::Bool)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated

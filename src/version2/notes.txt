@@ -1,7 +1,5 @@
 To Do:
--set up random seed
--store result data in dataframe, then plot based on the dataframe
--set up database to store dataframe "snapshots" of simulations
+-convert csv files to BLOBs in order to insert into database
 
 Notes:
 -look into static_scale_free vs barabasi_albert scale free networks. Which should i be using?
