@@ -244,7 +244,7 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
     end
 end
 
-function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
+function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
     #create a JSON string from the SimParams object. This will be stored in SQLite as a String typed column
     params_json_str = JSON3.write(params)
     #create JSON string from Game object.
@@ -262,6 +262,7 @@ function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
         push!(agents_dataframe, [agent_json_str])
     end
     agents_CSV = CSV.write("agents.csv", agents_dataframe)
+    #agents_CSV = CSV.write("files/agents.csv", agents_dataframe)
 
     #create JSON string from graph parameter dictionary.
     graph_params_json_str = JSON3.write(graph_params_dict)
@@ -270,17 +271,57 @@ function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     adj_matrix_dataframe = DataFrame(adjacency_matrix(graph), :auto) #should i just put the whole MetaGraph object in a json string?
     adj_matrix_CSV = CSV.write("adj_matrix.csv", adj_matrix_dataframe)
 
+    #create or connect to database
     db = SQLite.DB("SimulationSaves.sqlite")
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS saves
+
+    #create 'games' table (currently only the "bargaining game" exists)
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS games
                         (
-                            'id' PRIMARY KEY,
-                            'sim_params' TEXT,
-                            'game' TEXT,
-                            'agents' BLOB,
-                            'graph_params' TEXT,
-                            'adj_matrix' BLOB,
-                            'periods_elapsed' INTEGER
+                            'game_id' INTEGER PRIMARY KEY,
+                            'name' TEXT NOT NULL UNIQUE,
+                            'adj_matrix' TEXT,
                         );")
+
+    #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS graphs
+                        (
+                            'graph_id' INTEGER PRIMARY KEY,
+                            'name' TEXT NOT NULL,
+                            'λ' REAL DEFAULT NULL,
+                            'k' REAL DEFAULT NULL,
+                            'β' REAL DEFAULT NULL,
+                            'α' REAL DEFAULT NULL,
+                            'communities' INTEGER DEFAULT NULL,
+                            'internal_λ' REAL DEFAULT NULL,
+                            'external_λ' REAL DEFAULT NULL
+                        );")
+
+    #create simulations table which contains information specific to each simulation
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS simulations
+                        (
+                            'simulation_id' INTEGER PRIMARY KEY,
+                            'description' TEXT NOT NULL,
+                            'sim_params' TEXT NOT NULL,
+                            'game_id' INTEGER NOT NULL,
+                            'graph_id' INTEGER NOT NULL,
+                            'graph_adj_matrix' TEXT NOT NULL,
+                            'periods_elapsed' INTEGER NOT NULL,
+                            FOREIGN KEY (game_id)
+                                REFERENCES games (game_id),
+                            FOREGN KEY (graph_id)
+                                REFERENCES graphs (graph_id)
+                        );")
+
+    #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS simulations
+                        (
+                            'agent_id' INTEGER PRIMARY KEY,
+                            'simulation_id' INTEGER NOT NULL,
+                            'agent' TEXT NOT NULL,
+                            FOREIGN KEY (simulation_id)
+                                REFERENCES simulations (simulation_id)
+                        );")
+
     SQLite.execute(db, "INSERT INTO saves
                         (
                             'sim_params',
@@ -294,16 +335,16 @@ function sendToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
                         (
                             '$params_json_str',
                             '$game_json_str',
-                            $agents_CSV,
+                            '$agents_CSV',
                             '$graph_params_json_str',
-                            $adj_matrix_CSV,
+                            '$adj_matrix_CSV',
                             $periods_elapsed
                         );")
 
-    return agent_dataframe
+    return agents_dataframe
 end
 
-function getFromDatabase(grouping)
+function pullFromDatabase(grouping)
     return
 end
 
@@ -347,7 +388,7 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         periods_elapsed += 1
     end
     if db_store == true
-        agent_df = sendToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed)
+        agent_df = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed)
         return agent_df
     end
     return periods_elapsed

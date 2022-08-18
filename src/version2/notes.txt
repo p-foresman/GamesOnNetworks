@@ -3,13 +3,21 @@ To Do:
 
 Notes:
 -look into static_scale_free vs barabasi_albert scale free networks. Which should i be using?
+-should i be generating a new graph every iteration? or should each run in an averager use the same graph? (this way, the only randomness would come from the agents' choices)
 
 
 For DB/DF:
 DataFrames:
     -memory state, each row is an agent, each column is a single memory index for the given agent.
     -corresponding memory state tags dataframe?
-    
+
+    alternatively:
+    -DB tables:
+        -game types (always bargaining game for now): id, name, payoff_matrix (could just rebuild this based on name?), strategies (this is implicit in matrix)
+        -graph types: id, type, (params? might want to have graph params here? could have params in a lower level table of graphs which points to graph types table?)
+        -graphs: id, graph type, params (this table may be unncecessary)
+        -simulations (sim specific things): id, game type (FK), graph type/graph (FK), params json, graph fadlist, 
+        -agents: id, simulation (FK), agent json
 -Second dataframe for 
 -In database, columns include:
     -grouping ID (to find all simulation instances from a cohort of simulations)
