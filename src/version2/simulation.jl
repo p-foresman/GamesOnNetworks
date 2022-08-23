@@ -279,7 +279,7 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
                         (
                             'game_id' INTEGER PRIMARY KEY,
                             'name' TEXT NOT NULL UNIQUE,
-                            'adj_matrix' TEXT,
+                            'payoff_matrix' TEXT,
                         );")
 
     #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
@@ -300,7 +300,7 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     SQLite.execute(db, "CREATE TABLE IF NOT EXISTS simulations
                         (
                             'simulation_id' INTEGER PRIMARY KEY,
-                            'description' TEXT NOT NULL,
+                            'description' TEXT NOT NULL UNIQUE,
                             'sim_params' TEXT NOT NULL,
                             'game_id' INTEGER NOT NULL,
                             'graph_id' INTEGER NOT NULL,
@@ -313,7 +313,7 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
                         );")
 
     #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS simulations
+    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS agents
                         (
                             'agent_id' INTEGER PRIMARY KEY,
                             'simulation_id' INTEGER NOT NULL,
@@ -346,6 +346,20 @@ end
 
 function pullFromDatabase(grouping)
     return
+end
+
+#parse an adjacency matrix encoded in a string that's pulled from the DB into a matrix to rebuild a graph
+function matrixStringParser(db_matrix_string)
+    string = chop(db_matrix_string, head=1, tail=1)
+    new_vector = Vector{Int64}([])
+    for i in string
+        if i != ' ' && i != ';'
+            push!(new_vector, parse(Int64, i))
+        end
+    end
+    size = Int64(sqrt(length(new_vector))) #will always be a perfect square due to matrix being adjacency matrix
+    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix
+    return new_matrix
 end
 
 
