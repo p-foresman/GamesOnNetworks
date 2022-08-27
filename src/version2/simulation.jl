@@ -1,7 +1,8 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, SQLite, BenchmarkTools
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, BenchmarkTools
 
 include("types.jl")
 include("setup_params.jl")
+include("sql.jl")
 
 ############################### FUNCTIONS #######################################
 
@@ -244,18 +245,57 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
     end
 end
 
-function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
-    #create a JSON string from the SimParams object. This will be stored in SQLite as a String typed column
-    params_json_str = JSON3.write(params)
-    #create JSON string from Game object.
-    #replace current players with general agent types to store only "shell of game"
-    game.player1 = Agent()
-    game.player2 = Agent()
-    game_json_str = JSON3.write(game) #do i need to save this?
 
-    #create an nx1 dataframe with a single column consisting of a JSON string representation of each agent objecct.
-    #This will be converted into a CSV file and stored in SQLite in a BLOB typed column? Could make a separate table for agents
-    agents_dataframe = DataFrame(agents=String[])
+
+function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
+
+    initSQL()
+
+    #prepare and instert data for "games" table. No duplicate rows.
+    game_name = game.name
+    payoff_matrix_string = JSON3.write(game.payoff_matrix)
+    insertGameSQL(game_name, payoff_matrix_string)
+
+    #prepare and insert data for "graphs" table. No duplicate rows.
+    graph_type = String(graph_params_dict[:type])
+    graph_params_string = JSON3.write(graph_params_dict)
+    db_params_dict = Dict("lambda" => 1.1)
+    lambda = nothing
+    k = nothing
+    beta = nothing
+    alpha = nothing
+    communities = nothing
+    internal_lambda = nothing
+    external_lambda = nothing
+    if hashkey(graph_params_dict, :λ)
+        lambda = graph_params_dict[:λ]
+    if hashkey(graph_params_dict, :k)
+        k = graph_params_dict[:k]
+    if hashkey(graph_params_dict, :β)
+        beta = graph_params_dict[:β]
+    if hashkey(graph_params_dict, :α)
+        alpha = graph_params_dict[:α]
+    if hashkey(graph_params_dict, :communities)
+        communities = graph_params_dict[:communities]
+    if hashkey(graph_params_dict, :internal_λ)
+        internal_lambda = graph_params_dict[:internal_λ]
+    if hashkey(graph_params_dict, :external_λ)
+        external_lambda = graph_params_dict[:external_λ]
+    insertGraphSQL(graph_type, graph_params_string, db_params_dict)
+    
+
+    
+    #prepare and insert data for "simulations" table. Duplicate rows necessary.
+    description = 
+    params_json_str = JSON3.write(params)
+    adj_matrix_json = JSON3.write(Matrix(adjacency_matrix(graph)))
+    insertSimulationSQL(description, params_json_str, adj_matrix_str, periods_elapsed)
+
+
+    
+   
+
+    #convert agents to a json string and insert each into "agents" db table
     for vertex in vertices(graph)
         agent = get_prop(graph, vertex, :agent)
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
@@ -264,80 +304,24 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     agents_CSV = CSV.write("agents.csv", agents_dataframe)
     #agents_CSV = CSV.write("files/agents.csv", agents_dataframe)
 
-    #create JSON string from graph parameter dictionary.
-    graph_params_json_str = JSON3.write(graph_params_dict)
+    
 
-    #extract the graph adjacency matrix to store the graph structure, then convert to dataframe => CSV (can I convert straight to CSV?)
-    adj_matrix_dataframe = DataFrame(adjacency_matrix(graph), :auto) #should i just put the whole MetaGraph object in a json string?
-    adj_matrix_CSV = CSV.write("adj_matrix.csv", adj_matrix_dataframe)
-
-    #create or connect to database
-    db = SQLite.DB("SimulationSaves.sqlite")
-
-    #create 'games' table (currently only the "bargaining game" exists)
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS games
+    SQLite.execute(db, "INSERT INTO simulations
                         (
-                            'game_id' INTEGER PRIMARY KEY,
-                            'name' TEXT NOT NULL UNIQUE,
-                            'payoff_matrix' TEXT,
-                        );")
-
-    #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS graphs
-                        (
-                            'graph_id' INTEGER PRIMARY KEY,
-                            'name' TEXT NOT NULL,
-                            'λ' REAL DEFAULT NULL,
-                            'k' REAL DEFAULT NULL,
-                            'β' REAL DEFAULT NULL,
-                            'α' REAL DEFAULT NULL,
-                            'communities' INTEGER DEFAULT NULL,
-                            'internal_λ' REAL DEFAULT NULL,
-                            'external_λ' REAL DEFAULT NULL
-                        );")
-
-    #create simulations table which contains information specific to each simulation
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS simulations
-                        (
-                            'simulation_id' INTEGER PRIMARY KEY,
-                            'description' TEXT NOT NULL UNIQUE,
-                            'sim_params' TEXT NOT NULL,
-                            'game_id' INTEGER NOT NULL,
-                            'graph_id' INTEGER NOT NULL,
-                            'graph_adj_matrix' TEXT NOT NULL,
-                            'periods_elapsed' INTEGER NOT NULL,
-                            FOREIGN KEY (game_id)
-                                REFERENCES games (game_id),
-                            FOREGN KEY (graph_id)
-                                REFERENCES graphs (graph_id)
-                        );")
-
-    #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
-    SQLite.execute(db, "CREATE TABLE IF NOT EXISTS agents
-                        (
-                            'agent_id' INTEGER PRIMARY KEY,
-                            'simulation_id' INTEGER NOT NULL,
-                            'agent' TEXT NOT NULL,
-                            FOREIGN KEY (simulation_id)
-                                REFERENCES simulations (simulation_id)
-                        );")
-
-    SQLite.execute(db, "INSERT INTO saves
-                        (
+                            'description',
                             'sim_params',
-                            'game',
-                            'agents',
-                            'graph_params',
-                            'adj_matrix',
+                            'game_id',
+                            'graph_id',
+                            'graph_adj_matrix',
                             'periods_elapsed'
                         )
                         VALUES
                         (
+                            '$description',
                             '$params_json_str',
-                            '$game_json_str',
-                            '$agents_CSV',
-                            '$graph_params_json_str',
-                            '$adj_matrix_CSV',
+                            $game_id_query,
+                            $graph_id_query,
+                            '$adj_matrix_json',
                             $periods_elapsed
                         );")
 
@@ -348,17 +332,24 @@ function pullFromDatabase(grouping)
     return
 end
 
-#parse an adjacency matrix encoded in a string that's pulled from the DB into a matrix to rebuild a graph
-function matrixStringParser(db_matrix_string)
-    string = chop(db_matrix_string, head=1, tail=1)
-    new_vector = Vector{Int64}([])
-    for i in string
-        if i != ' ' && i != ';'
-            push!(new_vector, parse(Int64, i))
-        end
-    end
+#parse an adjacency matrix encoded in a string that's pulled from the DB into a matrix to rebuild graph instance
+function adjMatrixStringParser(db_matrix_string::String)
+    new_vector = JSON3.read(db_matrix_string)
     size = Int64(sqrt(length(new_vector))) #will always be a perfect square due to matrix being adjacency matrix
-    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix
+    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix (this result can be fed into the SimpleGraph() function)
+    return new_matrix
+end
+
+#parse a payoff matrix encoded in a string that's pulled from the DB into a Matrix{Tuple{Int8, Int8}} to rebuild game instance
+function payoffMatrixStringParser(db_matrix_string)
+    new_vector = JSON3.read(db_matrix_string)
+    tuple_vector = Vector{Tuple{Int8, Int8}}([])
+    for index in new_vector
+        new_tuple = Tuple{Int8, Int8}([index[1], index[2]])
+        push!(tuple_vector, new_tuple)
+    end
+    size = Int64(sqrt(length(tuple_vector)))
+    new_matrix = reshape(tuple_vector, (size, size))
     return new_matrix
 end
 
