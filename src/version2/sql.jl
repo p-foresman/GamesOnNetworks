@@ -61,9 +61,45 @@ function insertGraphSQL(type::String, graph_params_dict::String, db_params_dict:
 end
 
 function insertSimulationSQL(description::String, sim_params::String, graph_adj_matrix::String, periods_elapsed::Integer)
+    game_id_query = "query"
+    graph_id_query = "query"
+    
+    SQLite.execute(db, "INSERT INTO simulations
+                        (
+                            'description',
+                            'sim_params',
+                            'game_id',
+                            'graph_id',
+                            'graph_adj_matrix',
+                            'periods_elapsed'
+                        )
+                        VALUES
+                        (
+                            '$description',
+                            '$sim_params_str',
+                            $game_id_query,
+                            $graph_id_query,
+                            '$graph_adj_matrix',
+                            $periods_elapsed
+                        );")
 end
 
-function insertAgentSQL(agent::String)
+function insertAgentsSQL(agent_list::Vector)
+    query_simulation_id = ""
+    SQLite.execute(db, "INSERT INTO agents
+                        (
+                            'simulation_id',
+                            'agent'
+                        )
+                        VALUES
+                        (
+                            '$description',
+                            '$sim_params_str',
+                            $game_id_query,
+                            $graph_id_query,
+                            '$graph_adj_matrix',
+                            $periods_elapsed
+                        );")
 end
 
 function queryGameSQL()
