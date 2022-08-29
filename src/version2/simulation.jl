@@ -259,28 +259,12 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     #prepare and insert data for "graphs" table. No duplicate rows.
     graph_type = String(graph_params_dict[:type])
     graph_params_string = JSON3.write(graph_params_dict)
-    db_params_dict = Dict("lambda" => 1.1)
-    lambda = nothing
-    k = nothing
-    beta = nothing
-    alpha = nothing
-    communities = nothing
-    internal_lambda = nothing
-    external_lambda = nothing
-    if hashkey(graph_params_dict, :λ)
-        lambda = graph_params_dict[:λ]
-    if hashkey(graph_params_dict, :k)
-        k = graph_params_dict[:k]
-    if hashkey(graph_params_dict, :β)
-        beta = graph_params_dict[:β]
-    if hashkey(graph_params_dict, :α)
-        alpha = graph_params_dict[:α]
-    if hashkey(graph_params_dict, :communities)
-        communities = graph_params_dict[:communities]
-    if hashkey(graph_params_dict, :internal_λ)
-        internal_lambda = graph_params_dict[:internal_λ]
-    if hashkey(graph_params_dict, :external_λ)
-        external_lambda = graph_params_dict[:external_λ]
+    db_params_dict = Dict(:λ => nothing, :k => nothing, :β => nothing, :α => nothing, :communities => nothing, internal_λ => nothing, external_λ => nothing)
+    for key in keys(db_params_dict)
+        if hashkey(graph_params_dict, key)
+            db_params_dict[key] = graph_params_dict[key]
+        end
+    end
     insertGraphSQL(graph_type, graph_params_string, db_params_dict)
     
 
@@ -303,29 +287,6 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     end
     agents_CSV = CSV.write("agents.csv", agents_dataframe)
     #agents_CSV = CSV.write("files/agents.csv", agents_dataframe)
-
-    
-
-    SQLite.execute(db, "INSERT INTO simulations
-                        (
-                            'description',
-                            'sim_params',
-                            'game_id',
-                            'graph_id',
-                            'graph_adj_matrix',
-                            'periods_elapsed'
-                        )
-                        VALUES
-                        (
-                            '$description',
-                            '$params_json_str',
-                            $game_id_query,
-                            $graph_id_query,
-                            '$adj_matrix_json',
-                            $periods_elapsed
-                        );")
-
-    return agents_dataframe
 end
 
 function pullFromDatabase(grouping)
@@ -348,7 +309,7 @@ function payoffMatrixStringParser(db_matrix_string)
         new_tuple = Tuple{Int8, Int8}([index[1], index[2]])
         push!(tuple_vector, new_tuple)
     end
-    size = Int64(sqrt(length(tuple_vector)))
+    size = Int64(sqrt(length(tuple_vector))) #NEED TO MAKE THIS SOMEHOW FIND DIMENSIONS SINCE PAYOFF MATRICES DONT HAVE TO BE SQUARE
     new_matrix = reshape(tuple_vector, (size, size))
     return new_matrix
 end
