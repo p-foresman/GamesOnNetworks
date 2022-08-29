@@ -7,4 +7,4 @@ BenchmarkTools.DEFAULT_PARAMETERS.samples = 5
 
 params = SimParams(number_agents=10, memory_length=10, memory_init_state=:fractious, error=0.1, tag1=:red, tag2=:blue, tag1_proportion=1.0, random_seed=1234)
 graph = Dict(:type => :complete, :plot_label => "Complete", :line_color => :red)
-results = simulate(game, params, graph, seed=true, db_store=false)
+results = simulate(game, params, graph, seed=true, db_store=true)

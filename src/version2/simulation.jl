@@ -171,7 +171,6 @@ end
 
 #set metadata properties for all vertices
 function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
-    print(graph)
     meta_graph = MetaGraph(graph)
     for vertex in vertices(meta_graph)
         if rand() <= params.tag1_proportion
@@ -254,39 +253,35 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     payoff_matrix_string = JSON3.write(game.payoff_matrix)
-    insertGameSQL(game_name, payoff_matrix_string)
+    game_status = insertGameSQL(game_name, payoff_matrix_string)
 
     #prepare and insert data for "graphs" table. No duplicate rows.
     graph_type = String(graph_params_dict[:type])
     graph_params_string = JSON3.write(graph_params_dict)
-    db_params_dict = Dict(:λ => nothing, :k => nothing, :β => nothing, :α => nothing, :communities => nothing, internal_λ => nothing, external_λ => nothing)
-    for key in keys(db_params_dict)
-        if hashkey(graph_params_dict, key)
-            db_params_dict[key] = graph_params_dict[key]
+    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :k => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
+    for param in keys(db_params_dict)
+        if haskey(graph_params_dict, param)
+            db_params_dict[param] = graph_params_dict[param]
         end
     end
-    insertGraphSQL(graph_type, graph_params_string, db_params_dict)
-    
-
+    graph_status = insertGraphSQL(graph_type, graph_params_string, db_params_dict)
     
     #prepare and insert data for "simulations" table. Duplicate rows necessary.
     description = 
     params_json_str = JSON3.write(params)
-    adj_matrix_json = JSON3.write(Matrix(adjacency_matrix(graph)))
-    insertSimulationSQL(description, params_json_str, adj_matrix_str, periods_elapsed)
+    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
+    simulation_status = insertSimulationSQL(description, params_json_str, adj_matrix_json_str, periods_elapsed)
 
-
-    
-   
-
-    #convert agents to a json string and insert each into "agents" db table
+    #create agents list to insert all agents into "agents" table at once
+    agents_list = Vector{String}([])
     for vertex in vertices(graph)
         agent = get_prop(graph, vertex, :agent)
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
-        push!(agents_dataframe, [agent_json_str])
+        push!(agents_list, agent_json_str)
     end
-    agents_CSV = CSV.write("agents.csv", agents_dataframe)
-    #agents_CSV = CSV.write("files/agents.csv", agents_dataframe)
+    agents_status = insertAgentsSQL(agents_list)
+
+    return game_status, graph_status, simulation_status, agents_status
 end
 
 function pullFromDatabase(grouping)
