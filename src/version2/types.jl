@@ -32,14 +32,15 @@ mutable struct Game
         new(name, payoff_matrix, strategies, Agent(), Agent())
     end
     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix
-        size = length(payoff_matrix) #this could be length()? no need to check size of each dimension bc payoff matrices don't have to be perfect squares
-        strategies = Tuple(Int8(n) for n in 1:size)
+        matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
+        strategies = Tuple(Int8(n) for n in 1:matrix_size[1])
         indices = CartesianIndices(payoff_matrix)
-        new_payoff_matrix = Matrix{Tuple{Int8, Int8}}(undef, size, size)
+        tuple_vector = Vector{Tuple{Int8, Int8}}([])
         for i in indices
-            new_payoff_matrix[i[1], i[2]][1] = payoff_matrix[i[1], i[2]]
-            new_payoff_matrix[i[1], i[2]][2] = -payoff_matrix[i[1], i[2]]
+            new_tuple = Tuple{Int8, Int8}([payoff_matrix[i[1], i[2]], -payoff_matrix[i[1], i[2]]])
+            push!(tuple_vector, new_tuple)
         end
+        new_payoff_matrix = reshape(tuple_vector, matrix_size)
         return new(name, new_payoff_matrix, strategies, Agent(), Agent())
     end
     Game() = new()
