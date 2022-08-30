@@ -22,14 +22,25 @@ StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() #global declaratio
 #constructor for specific game to be played (mutable to update object later)
 mutable struct Game
     name::AbstractString
-    payoff_matrix::Matrix{Tuple{Int8, Int8}} #Could make this Int8?
+    payoff_matrix::Matrix{Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used)
     strategies::Tuple{Int8, Int8, Int8}
     player1::Agent
     player2::Agent
 
-    function Game(name::AbstractString, payoff_matrix::Matrix{Tuple{Int8, Int8}})
+    function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
         strategies = Tuple(Int8(n) for n in 1:size(payoff_matrix, 1)) #create integer strategies that correspond to row/column indices of payoff_matrix
         new(name, payoff_matrix, strategies, Agent(), Agent())
+    end
+    function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix
+        size = length(payoff_matrix) #this could be length()? no need to check size of each dimension bc payoff matrices don't have to be perfect squares
+        strategies = Tuple(Int8(n) for n in 1:size)
+        indices = CartesianIndices(payoff_matrix)
+        new_payoff_matrix = Matrix{Tuple{Int8, Int8}}(undef, size, size)
+        for i in indices
+            new_payoff_matrix[i[1], i[2]][1] = payoff_matrix[i[1], i[2]]
+            new_payoff_matrix[i[1], i[2]][2] = -payoff_matrix[i[1], i[2]]
+        end
+        return new(name, new_payoff_matrix, strategies, Agent(), Agent())
     end
     Game() = new()
 end
