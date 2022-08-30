@@ -56,7 +56,7 @@ end
 
 function insertGameSQL(name::String, payoff_matrix_str::String)
     db = SQLite.DB("SimulationSaves.sqlite")
-    status = SQLite.execute(db, "INSERT INTO games
+    result = DBInterface.execute(db, "INSERT INTO games
                                 (
                                     'name',
                                     'payoff_matrix'
@@ -66,6 +66,8 @@ function insertGameSQL(name::String, payoff_matrix_str::String)
                                     '$name',
                                     '$payoff_matrix_str'
                                 );")
+    status = result.status.x
+    row_id = result.stmt.id
     return "SQLite [SimulationSaves: games] insert status: $status"
 end
 
@@ -83,7 +85,7 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
     insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
     insert_string_values = rstrip(insert_string_values, [' ', ','])
 
-    status = SQLite.execute(db, "INSERT INTO graphs
+    result = DBInterface.execute(db, "INSERT INTO graphs
                                 (
                                     $insert_string_columns
                                 )
@@ -91,6 +93,8 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
                                 (
                                     $insert_string_values
                                 );")
+    status = result.status.x
+    row_id = result.stmt.id
     return "SQLite [SimulationSaves: graphs] insert status: $status"
 end
 
@@ -100,7 +104,7 @@ function insertSimulationSQL(description::String, sim_params_str::String, graph_
     game_id_query = 1
     graph_id_query = 1
     
-    status = SQLite.execute(db, "INSERT INTO simulations
+    result = DBInterface.execute(db, "INSERT INTO simulations
                                 (
                                     'description',
                                     'sim_params',
@@ -118,6 +122,8 @@ function insertSimulationSQL(description::String, sim_params_str::String, graph_
                                     '$graph_adj_matrix_str',
                                     $periods_elapsed
                                 );")
+    status = result.status.x
+    row_id = result.stmt.id
     return "SQLite [SimulationSaves: simulations] insert status: $status"
 end
 
