@@ -66,9 +66,8 @@ function insertGameSQL(name::String, payoff_matrix_str::String)
                                     '$name',
                                     '$payoff_matrix_str'
                                 );")
-    status = result.status.x
-    row_id = result.stmt.id
-    return "SQLite [SimulationSaves: games] insert status: $status"
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: games] insert status: $(result.status.x)", insert_row_id = result.stmt.id)
+    return tuple_to_return
 end
 
 function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
@@ -93,16 +92,12 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
                                 (
                                     $insert_string_values
                                 );")
-    status = result.status.x
-    row_id = result.stmt.id
-    return "SQLite [SimulationSaves: graphs] insert status: $status"
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs] insert status: $(result.status.x)", insert_row_id = result.stmt.id)
+    return tuple_to_return
 end
 
-function insertSimulationSQL(description::String, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer)
+function insertSimulationSQL(description::String, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
-    game_id_query = 1
-    graph_id_query = 1
     
     result = DBInterface.execute(db, "INSERT INTO simulations
                                 (
@@ -117,23 +112,21 @@ function insertSimulationSQL(description::String, sim_params_str::String, graph_
                                 (
                                     '$description',
                                     '$sim_params_str',
-                                    $game_id_query,
-                                    $graph_id_query,
+                                    $game_id,
+                                    $graph_id,
                                     '$graph_adj_matrix_str',
                                     $periods_elapsed
                                 );")
-    status = result.status.x
-    row_id = result.stmt.id
-    return "SQLite [SimulationSaves: simulations] insert status: $status"
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations] insert status: $(result.status.x)", insert_row_id = result.stmt.id)
+    return tuple_to_return
 end
 
-function insertAgentsSQL(agent_list::Vector{String})
+function insertAgentsSQL(agent_list::Vector{String}, simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-    query_simulation_id = 1
 
     values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
-        values_string *= "($query_simulation_id, '$agent'), "
+        values_string *= "($simulation_id, '$agent'), "
     end
     values_string = rstrip(values_string, [' ', ','])
     println(values_string)

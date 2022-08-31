@@ -253,7 +253,9 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     payoff_matrix_string = JSON3.write(game.payoff_matrix)
-    game_status = insertGameSQL(game_name, payoff_matrix_string)
+    game_insert_result = insertGameSQL(game_name, payoff_matrix_string)
+    game_status = game_insert_result.status_message
+    game_row_id = game_insert_result.insert_row_id
 
     #prepare and insert data for "graphs" table. No duplicate rows.
     graph_type = String(graph_params_dict[:type])
@@ -264,13 +266,17 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
             db_params_dict[param] = graph_params_dict[param]
         end
     end
-    graph_status = insertGraphSQL(graph_type, graph_params_string, db_params_dict)
-    
+    graph_insert_result = insertGraphSQL(graph_type, graph_params_string, db_params_dict)
+    graph_status = graph_insert_result.status_message
+    graph_row_id = graph_insert_result.insert_row_id
+
     #prepare and insert data for "simulations" table. Duplicate rows necessary.
-    description = 
+    description = "test description"
     params_json_str = JSON3.write(params)
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
-    simulation_status = insertSimulationSQL(description, params_json_str, adj_matrix_json_str, periods_elapsed)
+    simulation_insert_result = insertSimulationSQL(description, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id)
+    simulation_status = simulation_insert_result.status_message
+    simulation_row_id = simulation_insert_result.insert_row_id
 
     #create agents list to insert all agents into "agents" table at once
     agents_list = Vector{String}([])
@@ -279,7 +285,7 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
-    agents_status = insertAgentsSQL(agents_list)
+    agents_status = insertAgentsSQL(agents_list, simulation_row_id)
 
     return game_status, graph_status, simulation_status, agents_status
 end
