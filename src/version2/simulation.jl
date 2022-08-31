@@ -271,10 +271,10 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     graph_row_id = graph_insert_result.insert_row_id
 
     #prepare and insert data for "simulations" table. Duplicate rows necessary.
-    description = "test description"
+    #description = "test description" Might want a description eventually. removed for now.
     params_json_str = JSON3.write(params)
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
-    simulation_insert_result = insertSimulationSQL(description, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id)
+    simulation_insert_result = insertSimulationSQL(params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id)
     simulation_status = simulation_insert_result.status_message
     simulation_row_id = simulation_insert_result.insert_row_id
 
