@@ -1,4 +1,4 @@
-using StructTypes
+using StructTypes, Random
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
@@ -68,3 +68,5 @@ mutable struct SimParams
     SimParams() = new()
 end
 StructTypes.StructType(::Type{SimParams}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
+
+StructTypes.StructType(::Type{Random.Xoshiro}) = StructTypes.Mutable() #needed to read and write the state of the Xoshiro RNG with JSON3 package

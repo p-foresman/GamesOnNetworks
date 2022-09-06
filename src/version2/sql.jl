@@ -38,15 +38,21 @@ function initSQL()
                             CREATE TABLE IF NOT EXISTS simulations
                             (
                                 'simulation_id' INTEGER PRIMARY KEY,
+                                'number_agents' INTEGER NOT NULL,
+                                'memory_length' INTEGER NOT NULL,
+                                'error' REAL NOT NULL,
                                 'sim_params' TEXT NOT NULL,
                                 'game_id' INTEGER NOT NULL,
                                 'graph_id' INTEGER NOT NULL,
                                 'graph_adj_matrix' TEXT NOT NULL,
+                                'use_seed' BOOLEAN NOT NULL,
+                                'rng_state' TEXT NOT NULL,
                                 'periods_elapsed' INTEGER NOT NULL,
                                 FOREIGN KEY (game_id)
                                     REFERENCES games (game_id),
                                 FOREIGN KEY (graph_id)
                                     REFERENCES graphs (graph_id)
+                                CHECK (use_seed in (0, 1))
                             );
                     ")
                         #'description' TEXT NOT NULL UNIQUE, for description if needed later (2nd column)
@@ -129,25 +135,35 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
     return tuple_to_return
 end
 
-function insertSimulationSQL(sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer)
+function insertSimulationSQL(params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
     db = SQLite.DB("SimulationSaves.sqlite")
     
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
+                                        'number_agents',
+                                        'memory_length',
+                                        'error',
                                         'sim_params',
                                         'game_id',
                                         'graph_id',
                                         'graph_adj_matrix',
-                                        'periods_elapsed'
+                                        'periods_elapsed',
+                                        'use_seed',
+                                        'rng_state'
                                     )
                                     VALUES
                                     (
+                                        $(params.number_agents),
+                                        $(params.memory_length),
+                                        $(params.error),
                                         '$sim_params_str',
                                         $game_id,
                                         $graph_id,
                                         '$graph_adj_matrix_str',
-                                        $periods_elapsed
+                                        $periods_elapsed,
+                                        $seed_bool,
+                                        '$rng_state'
                                 );
                             ")
     insert_row = SQLite.last_insert_rowid(db)
@@ -180,22 +196,104 @@ function insertAgentsSQL(agent_list::Vector{String}, simulation_id::Integer)
     return "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]"
 end
 
-function queryGameSQL()
+function queryGameSQL(game_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
+
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM games
+                                        WHERE game_id = $game_id;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
     SQLite.close(db)
+    return table
 end
 
-function queryGraphSQL()
+function queryGraphSQL(graph_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
+
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM graphs
+                                        WHERE graph_id = $graph_id;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
     SQLite.close(db)
+    return table
 end
 
-function querySimulationSQL()
+function querySimulationSQL(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
+
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM simulations
+                                        WHERE simulation_id = $simulation_id;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
     SQLite.close(db)
+    return table
 end
 
-function queryAgentsSQL()
+function queryAgentsSQL(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
+
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM agents
+                                        WHERE simulation_id = $simulation_id
+                                        ORDER BY agent_id ASC;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
     SQLite.close(db)
+    return table
+end
+
+function queryFullSimulation(simulation_id::Integer)
+    db = SQLite.DB("SimulationSaves.sqlite")
+
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM simulations
+                                        INNER JOIN agents USING(simulation_id)
+                                        INNER JOIN games USING(game_id)
+                                        INNER JOIN graphs USING(graph_id)
+                                        WHERE simulation_id = $simulation_id;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
+    SQLite.close(db)
+    return table
+end
+
+function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
+    db = SQLite.DB("SimulationSaves.sqlite")
+
+    where_params_string = ""
+    for (param, value) in graph_params
+        where_params_string *= "graphs.$param = $value AND "
+    end
+    where_params_string = rstrip(where_params_string, [' ', 'A', 'N', 'D'])
+
+    query = DBInterface.execute(db, "
+                                        SELECT
+                                            simulations.simulation_id,
+                                            simulations.graph_adj_matrix,
+                                            simulations.use_seed,
+                                            simulations.rng_state,
+                                            games.name,
+                                            games.payoff_matrix,
+                                            graphs.type,
+                                            graphs.graph_params_dict
+                                        FROM simulations
+                                        INNER JOIN games USING(game_id)
+                                        INNER JOIN graphs USING(graph_id)
+                                        WHERE games.name = '$game_name'
+                                        AND $where_params_string
+                                        AND simulations.number_agents = $number_agents
+                                        AND simulations.memory_length = $memory_length
+                                        AND simulations.error = $error;
+                                ")
+    table = Table(query) #must create a TypedTable to access query values
+    SQLite.close(db)
+    return table
 end

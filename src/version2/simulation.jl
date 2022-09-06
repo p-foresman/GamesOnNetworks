@@ -246,7 +246,7 @@ end
 
 
 
-function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer)
+function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
 
     initSQL()
 
@@ -274,7 +274,15 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     #description = "test description" Might want a description eventually. removed for now.
     params_json_str = JSON3.write(params)
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
-    simulation_insert_result = insertSimulationSQL(params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id)
+    if use_seed == true
+        seed_bool = 1
+    else
+        seed_bool = 0
+    end
+    rng_state = copy(Random.default_rng())
+    rng_state_json = JSON3.write(rng_state)
+
+    simulation_insert_result = insertSimulationSQL(params, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id, seed_bool, rng_state_json)
     simulation_status = simulation_insert_result.status_message
     simulation_row_id = simulation_insert_result.insert_row_id
 
@@ -290,8 +298,14 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     return game_status, graph_status, simulation_status, agents_status
 end
 
-function pullFromDatabase(grouping)
-    return
+function pullFromDatabase(simulation_id)
+    simulation_table = querySimulationSQL(simulation_id)
+    game_id = simulation_table[1].game_id
+    graph_id = simulation_table[1].graph_id
+    game_table = queryGameSQL(game_id)
+    graph_table = queryGraphSQL(graph_id)
+    agents_table = queryAgentsSQL(simulation_id)
+    return agents_table
 end
 
 #parse an adjacency matrix encoded in a string that's pulled from the DB into a matrix to rebuild graph instance
@@ -321,8 +335,8 @@ end
 
 
 
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; seed::Bool, db_store::Bool)
-    if seed == true
+function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool, db_store::Bool)
+    if use_seed == true
         Random.seed!(params.random_seed)
     end
     #setup new graph to ensure no artifacts from last game
@@ -355,7 +369,7 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         periods_elapsed += 1
     end
     if db_store == true
-        agent_df = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed)
+        agent_df = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
         return agent_df
     end
     return periods_elapsed
@@ -363,7 +377,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64, seed::Bool)
+function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64, use_seed::Bool)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
@@ -386,7 +400,7 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
             for run in 1:averager
                 println("Run $run of $averager")
 
-                periods_elapsed = simulate(game, params, graph_params_dict, seed=seed, db_store=false) #false for now
+                periods_elapsed = simulate(game, params, graph_params_dict, use_seed=use_seed, db_store=false) #false for now
                 push!(run_results, periods_elapsed)
             end
             println(run_results)
