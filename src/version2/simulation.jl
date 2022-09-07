@@ -250,7 +250,7 @@ end
 
 
 
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool, db_store::Bool)
+function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false)
     if use_seed == true
         Random.seed!(params.random_seed)
     end
@@ -292,7 +292,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64, use_seed::Bool)
+function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64 = 1, use_seed::Bool = false, db_store::Bool = false)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated

@@ -8,10 +8,10 @@ function initSQL()
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS games
                             (
-                                'game_id' INTEGER PRIMARY KEY,
-                                'name' TEXT NOT NULL,
-                                'payoff_matrix' TEXT,
-                                UNIQUE('name', 'payoff_matrix')
+                                game_id INTEGER PRIMARY KEY,
+                                game_name TEXT NOT NULL,
+                                payoff_matrix TEXT,
+                                UNIQUE(game_name, payoff_matrix)
                             );
                     ")
 
@@ -19,17 +19,17 @@ function initSQL()
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS graphs
                             (
-                                'graph_id' INTEGER PRIMARY KEY,
-                                'type' TEXT NOT NULL,
-                                'graph_params_dict' TEXT NOT NULL,
-                                'λ' REAL DEFAULT NULL,
-                                'k' REAL DEFAULT NULL,
-                                'β' REAL DEFAULT NULL,
-                                'α' REAL DEFAULT NULL,
-                                'communities' INTEGER DEFAULT NULL,
-                                'internal_λ' REAL DEFAULT NULL,
-                                'external_λ' REAL DEFAULT NULL,
-                                UNIQUE('type', 'graph_params_dict')
+                                graph_id INTEGER PRIMARY KEY,
+                                graph_type TEXT NOT NULL,
+                                graph_params_dict TEXT NOT NULL,
+                                λ REAL DEFAULT NULL,
+                                k REAL DEFAULT NULL,
+                                β REAL DEFAULT NULL,
+                                α REAL DEFAULT NULL,
+                                communities INTEGER DEFAULT NULL,
+                                internal_λ REAL DEFAULT NULL,
+                                external_λ REAL DEFAULT NULL,
+                                UNIQUE(graph_type, graph_params_dict)
                             );
                     ")
 
@@ -37,22 +37,23 @@ function initSQL()
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS simulations
                             (
-                                'simulation_id' INTEGER PRIMARY KEY,
-                                'number_agents' INTEGER NOT NULL,
-                                'memory_length' INTEGER NOT NULL,
-                                'error' REAL NOT NULL,
-                                'sim_params' TEXT NOT NULL,
-                                'game_id' INTEGER NOT NULL,
-                                'graph_id' INTEGER NOT NULL,
-                                'graph_adj_matrix' TEXT NOT NULL,
-                                'use_seed' BOOLEAN NOT NULL,
-                                'rng_state' TEXT NOT NULL,
-                                'periods_elapsed' INTEGER NOT NULL,
+                                simulation_id INTEGER PRIMARY KEY,
+                                number_agents INTEGER NOT NULL,
+                                memory_length INTEGER NOT NULL,
+                                error REAL NOT NULL,
+                                sim_params TEXT NOT NULL,
+                                game_id INTEGER NOT NULL,
+                                graph_id INTEGER NOT NULL,
+                                graph_adj_matrix TEXT NOT NULL,
+                                use_seed BOOLEAN NOT NULL,
+                                rng_state TEXT NOT NULL,
+                                periods_elapsed INTEGER NOT NULL,
                                 FOREIGN KEY (game_id)
                                     REFERENCES games (game_id),
                                 FOREIGN KEY (graph_id)
-                                    REFERENCES graphs (graph_id)
-                                CHECK (use_seed in (0, 1))
+                                    REFERENCES graphs (graph_id),
+                                CHECK (use_seed in (0, 1)),
+                                UNIQUE (number_agents, memory_length, error, sim_params, game_id, graph_id, graph_adj_matrix, use_seed, rng_state, periods_elapsed)
                             );
                     ")
                         #'description' TEXT NOT NULL UNIQUE, for description if needed later (2nd column)
@@ -61,9 +62,9 @@ function initSQL()
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS agents
                             (
-                                'agent_id' INTEGER PRIMARY KEY,
-                                'simulation_id' INTEGER NOT NULL,
-                                'agent' TEXT NOT NULL,
+                                agent_id INTEGER PRIMARY KEY,
+                                simulation_id INTEGER NOT NULL,
+                                agent TEXT NOT NULL,
                                 FOREIGN KEY (simulation_id)
                                     REFERENCES simulations (simulation_id)
                             );
@@ -71,24 +72,24 @@ function initSQL()
     SQLite.close(db)
 end
 
-function insertGameSQL(name::String, payoff_matrix_str::String)
+function insertGameSQL(game_name::String, payoff_matrix_str::String)
     db = SQLite.DB("SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
                                     (
-                                        'name',
-                                        'payoff_matrix'
+                                        game_name,
+                                        payoff_matrix
                                     )
                                     VALUES
                                     (
-                                        '$name',
+                                        '$game_name',
                                         '$payoff_matrix_str'
                                     );
                             ")
     query = DBInterface.execute(db, "
                                         SELECT game_id
                                         FROM games
-                                        WHERE name = '$name'
+                                        WHERE game_name = '$game_name'
                                         AND payoff_matrix = '$payoff_matrix_str';
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
@@ -98,11 +99,11 @@ function insertGameSQL(name::String, payoff_matrix_str::String)
     return tuple_to_return
 end
 
-function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
+function insertGraphSQL(graph_type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
     db = SQLite.DB("SimulationSaves.sqlite")
 
-    insert_string_columns = "'type', 'graph_params_dict', "
-    insert_string_values = "'$type', '$graph_params_dict_str', "
+    insert_string_columns = "graph_type, graph_params_dict, "
+    insert_string_values = "'$graph_type', '$graph_params_dict_str', "
     for (param, value) in db_params_dict
         if value !== nothing
             insert_string_columns *= "'$param', "
@@ -125,7 +126,7 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
     query = DBInterface.execute(db, "
                                         SELECT graph_id
                                         FROM graphs
-                                        WHERE type = '$type'
+                                        WHERE graph_type = '$graph_type'
                                         AND graph_params_dict = '$graph_params_dict_str';
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
@@ -141,16 +142,16 @@ function insertSimulationSQL(params::SimParams, sim_params_str::String, graph_ad
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
-                                        'number_agents',
-                                        'memory_length',
-                                        'error',
-                                        'sim_params',
-                                        'game_id',
-                                        'graph_id',
-                                        'graph_adj_matrix',
-                                        'periods_elapsed',
-                                        'use_seed',
-                                        'rng_state'
+                                        number_agents,
+                                        memory_length,
+                                        error,
+                                        sim_params,
+                                        game_id,
+                                        graph_id,
+                                        graph_adj_matrix,
+                                        periods_elapsed,
+                                        use_seed,
+                                        rng_state
                                     )
                                     VALUES
                                     (
@@ -186,8 +187,8 @@ function insertAgentsSQL(agent_list::Vector{String}, simulation_id::Integer)
     status = SQLite.execute(db, "
                                     INSERT INTO agents
                                     (
-                                        'simulation_id',
-                                        'agent'
+                                        simulation_id,
+                                        agent
                                     )
                                     VALUES
                                         $values_string;
@@ -280,14 +281,14 @@ function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, A
                                             simulations.graph_adj_matrix,
                                             simulations.use_seed,
                                             simulations.rng_state,
-                                            games.name,
+                                            games.game_name,
                                             games.payoff_matrix,
-                                            graphs.type,
+                                            graphs.graph_type,
                                             graphs.graph_params_dict
                                         FROM simulations
                                         INNER JOIN games USING(game_id)
                                         INNER JOIN graphs USING(graph_id)
-                                        WHERE games.name = '$game_name'
+                                        WHERE games.game_name = '$game_name'
                                         AND $where_params_string
                                         AND simulations.number_agents = $number_agents
                                         AND simulations.memory_length = $memory_length

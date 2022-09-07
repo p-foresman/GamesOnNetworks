@@ -60,3 +60,8 @@ Sampling distribution:
 FOR DB QUERIES
 -need to reproduce simulation components from DB
 -need queries for various plotting/data-viewing stuff
+
+-can pull from db and reconstruct one by one for an iteration of simulations, then push back in one by one when finished.
+ - however, likely shouldnt use averager to store to database bc every averaged iteration will be stored. (although this would be good for analysis)
+
+ -for tomorrow: remove agents from Game struct. this way, full struct can be saved to be reproduced (also doesnt have to be mutable)
