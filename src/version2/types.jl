@@ -24,7 +24,7 @@ mutable struct Game
     name::AbstractString
     payoff_matrix::Matrix{Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used)
     strategies::Tuple{Int8, Int8, Int8}
-    player1::Agent
+    player1::Agent #would probably be better to keep the players out of the Game struct. Could then use JSON3 to directly translate Game struct back and forth from json string for DB storage
     player2::Agent
 
     function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
@@ -57,7 +57,7 @@ mutable struct SimParams
     tag1::Symbol #could make tags a vararg to have any given number of tags
     tag2::Symbol
     tag1_proportion::Float64
-    random_seed::Int64
+    random_seed::Int64 #probably don't need a random seed in every SimParams struct
 
     #all keyword arguments
     function SimParams(;number_agents::Int64, memory_length::Int64, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)

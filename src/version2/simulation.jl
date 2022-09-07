@@ -2,7 +2,7 @@ using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistic
 
 include("types.jl")
 include("setup_params.jl")
-include("sql.jl")
+include("database_api.jl")
 
 ############################### FUNCTIONS #######################################
 
@@ -242,91 +242,6 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
     else
         return false
     end
-end
-
-
-
-function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
-
-    initSQL()
-
-    #prepare and instert data for "games" table. No duplicate rows.
-    game_name = game.name
-    payoff_matrix_string = JSON3.write(game.payoff_matrix)
-    game_insert_result = insertGameSQL(game_name, payoff_matrix_string)
-    game_status = game_insert_result.status_message
-    game_row_id = game_insert_result.insert_row_id
-
-    #prepare and insert data for "graphs" table. No duplicate rows.
-    graph_type = String(graph_params_dict[:type])
-    graph_params_string = JSON3.write(graph_params_dict)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :k => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
-    for param in keys(db_params_dict)
-        if haskey(graph_params_dict, param)
-            db_params_dict[param] = graph_params_dict[param]
-        end
-    end
-    graph_insert_result = insertGraphSQL(graph_type, graph_params_string, db_params_dict)
-    graph_status = graph_insert_result.status_message
-    graph_row_id = graph_insert_result.insert_row_id
-
-    #prepare and insert data for "simulations" table. Duplicate rows necessary.
-    #description = "test description" Might want a description eventually. removed for now.
-    params_json_str = JSON3.write(params)
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
-    if use_seed == true
-        seed_bool = 1
-    else
-        seed_bool = 0
-    end
-    rng_state = copy(Random.default_rng())
-    rng_state_json = JSON3.write(rng_state)
-
-    simulation_insert_result = insertSimulationSQL(params, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id, seed_bool, rng_state_json)
-    simulation_status = simulation_insert_result.status_message
-    simulation_row_id = simulation_insert_result.insert_row_id
-
-    #create agents list to insert all agents into "agents" table at once
-    agents_list = Vector{String}([])
-    for vertex in vertices(graph)
-        agent = get_prop(graph, vertex, :agent)
-        agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
-        push!(agents_list, agent_json_str)
-    end
-    agents_status = insertAgentsSQL(agents_list, simulation_row_id)
-
-    return game_status, graph_status, simulation_status, agents_status
-end
-
-function pullFromDatabase(simulation_id)
-    simulation_table = querySimulationSQL(simulation_id)
-    game_id = simulation_table[1].game_id
-    graph_id = simulation_table[1].graph_id
-    game_table = queryGameSQL(game_id)
-    graph_table = queryGraphSQL(graph_id)
-    agents_table = queryAgentsSQL(simulation_id)
-    return agents_table
-end
-
-#parse an adjacency matrix encoded in a string that's pulled from the DB into a matrix to rebuild graph instance
-function adjMatrixStringParser(db_matrix_string::String)
-    new_vector = JSON3.read(db_matrix_string)
-    size = Int64(sqrt(length(new_vector))) #will always be a perfect square due to matrix being adjacency matrix
-    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix (this result can be fed into the SimpleGraph() function)
-    return new_matrix
-end
-
-#parse a payoff matrix encoded in a string that's pulled from the DB into a Matrix{Tuple{Int8, Int8}} to rebuild game instance
-function payoffMatrixStringParser(db_matrix_string)
-    new_vector = JSON3.read(db_matrix_string)
-    tuple_vector = Vector{Tuple{Int8, Int8}}([])
-    for index in new_vector
-        new_tuple = Tuple{Int8, Int8}([index[1], index[2]])
-        push!(tuple_vector, new_tuple)
-    end
-    size = Int64(sqrt(length(tuple_vector))) #NEED TO MAKE THIS SOMEHOW FIND DIMENSIONS SINCE PAYOFF MATRICES DONT HAVE TO BE SQUARE
-    new_matrix = reshape(tuple_vector, (size, size))
-    return new_matrix
 end
 
 

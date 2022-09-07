@@ -1,4 +1,4 @@
-using SQLite, TypedTables
+using SQLite, TypedTables, DataFrames #might be able to get rid of TypedTables (not sure if DataFrames are better or worse)
 
 function initSQL()
     #create or connect to database
@@ -91,8 +91,8 @@ function insertGameSQL(name::String, payoff_matrix_str::String)
                                         WHERE name = '$name'
                                         AND payoff_matrix = '$payoff_matrix_str';
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
-    insert_row = table[1].game_id
+    df = DataFrame(query) #must create a DataFrame to access query values
+    insert_row = df[1, :game_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: games]... INSERT STATUS: [$status] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
     return tuple_to_return
@@ -128,8 +128,8 @@ function insertGraphSQL(type::String, graph_params_dict_str::String, db_params_d
                                         WHERE type = '$type'
                                         AND graph_params_dict = '$graph_params_dict_str';
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
-    insert_row = table[1].graph_id
+    df = DataFrame(query) #must create a DataFrame to access query values
+    insert_row = df[1, :graph_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs]... INSERT STATUS: [$status] GRAPH_ID: [$insert_row]", insert_row_id = insert_row)
     return tuple_to_return
@@ -204,9 +204,9 @@ function queryGameSQL(game_id::Integer)
                                         FROM games
                                         WHERE game_id = $game_id;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end
 
 function queryGraphSQL(graph_id::Integer)
@@ -217,9 +217,9 @@ function queryGraphSQL(graph_id::Integer)
                                         FROM graphs
                                         WHERE graph_id = $graph_id;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end
 
 function querySimulationSQL(simulation_id::Integer)
@@ -230,9 +230,9 @@ function querySimulationSQL(simulation_id::Integer)
                                         FROM simulations
                                         WHERE simulation_id = $simulation_id;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end
 
 function queryAgentsSQL(simulation_id::Integer)
@@ -244,9 +244,9 @@ function queryAgentsSQL(simulation_id::Integer)
                                         WHERE simulation_id = $simulation_id
                                         ORDER BY agent_id ASC;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end
 
 function queryFullSimulation(simulation_id::Integer)
@@ -260,9 +260,9 @@ function queryFullSimulation(simulation_id::Integer)
                                         INNER JOIN graphs USING(graph_id)
                                         WHERE simulation_id = $simulation_id;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end
 
 function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
@@ -276,7 +276,7 @@ function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, A
 
     query = DBInterface.execute(db, "
                                         SELECT
-                                            simulations.simulation_id,
+                                            simulations.sim_params,
                                             simulations.graph_adj_matrix,
                                             simulations.use_seed,
                                             simulations.rng_state,
@@ -293,7 +293,7 @@ function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, A
                                         AND simulations.memory_length = $memory_length
                                         AND simulations.error = $error;
                                 ")
-    table = Table(query) #must create a TypedTable to access query values
+    df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
-    return table
+    return df
 end

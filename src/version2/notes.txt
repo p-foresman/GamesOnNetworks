@@ -54,3 +54,9 @@ Sampling distribution:
     1 agent, 10 agents (or some cluster), and the total population (say 100 agents).
     Could construct histograms/sampling distributions for each of these emergent layers (with many replications)
     and compare the results.
+
+
+
+FOR DB QUERIES
+-need to reproduce simulation components from DB
+-need queries for various plotting/data-viewing stuff
