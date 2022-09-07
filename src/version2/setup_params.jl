@@ -35,8 +35,10 @@ params_list = constructParamsList(
 ################### Define Game Payoff Matrix and Strategies #######################
 
 payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
-                                        (0, 0) (50, 50) (50, 30);
-                                        (30, 70) (30, 50) (30, 30)])
+                                            (0, 0) (50, 50) (50, 30);
+                                            (30, 70) (30, 50) (30, 30)])
+#Check "global_StructTypes.jl" file and ensure that the size of this payoff matrix is listed under the "Game type" section
+
 
 #create bargaining game type (players will be slotted in)
 game = Game("Bargaining Game", payoff_matrix)

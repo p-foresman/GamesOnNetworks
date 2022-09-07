@@ -65,3 +65,7 @@ FOR DB QUERIES
  - however, likely shouldnt use averager to store to database bc every averaged iteration will be stored. (although this would be good for analysis)
 
  -for tomorrow: remove agents from Game struct. this way, full struct can be saved to be reproduced (also doesnt have to be mutable)
+
+
+-Games struct is kind of a mess. Need to somehow store many StructType global definitions for different Game{size, size} sizes for proper JSON3 functionality for each size
+    -Might be able to eliminate StaticArrays now that payoff_matrix_size is in DB anyway?

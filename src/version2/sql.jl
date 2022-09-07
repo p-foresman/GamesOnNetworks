@@ -10,8 +10,9 @@ function initSQL()
                             (
                                 game_id INTEGER PRIMARY KEY,
                                 game_name TEXT NOT NULL,
-                                payoff_matrix TEXT,
-                                UNIQUE(game_name, payoff_matrix)
+                                game TEXT NOT NULL,
+                                payoff_matrix_size TEXT NOT NULL,
+                                UNIQUE(game_name, game)
                             );
                     ")
 
@@ -52,11 +53,10 @@ function initSQL()
                                     REFERENCES games (game_id),
                                 FOREIGN KEY (graph_id)
                                     REFERENCES graphs (graph_id),
-                                CHECK (use_seed in (0, 1)),
-                                UNIQUE (number_agents, memory_length, error, sim_params, game_id, graph_id, graph_adj_matrix, use_seed, rng_state, periods_elapsed)
+                                CHECK (use_seed in (0, 1))
                             );
                     ")
-                        #'description' TEXT NOT NULL UNIQUE, for description if needed later (2nd column)
+                        #UNIQUE (number_agents, memory_length, error, sim_params, game_id, graph_id, graph_adj_matrix, use_seed, rng_state, periods_elapsed) might need to implement this
 
     #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
     SQLite.execute(db, "
@@ -72,25 +72,27 @@ function initSQL()
     SQLite.close(db)
 end
 
-function insertGameSQL(game_name::String, payoff_matrix_str::String)
+function insertGameSQL(game_name::String, game::String, payoff_matrix_size::String)
     db = SQLite.DB("SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
                                     (
                                         game_name,
-                                        payoff_matrix
+                                        game,
+                                        payoff_matrix_size
                                     )
                                     VALUES
                                     (
                                         '$game_name',
-                                        '$payoff_matrix_str'
+                                        '$game',
+                                        '$payoff_matrix_size'
                                     );
                             ")
     query = DBInterface.execute(db, "
                                         SELECT game_id
                                         FROM games
                                         WHERE game_name = '$game_name'
-                                        AND payoff_matrix = '$payoff_matrix_str';
+                                        AND game = '$game';
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
     insert_row = df[1, :game_id]
@@ -281,9 +283,8 @@ function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, A
                                             simulations.graph_adj_matrix,
                                             simulations.use_seed,
                                             simulations.rng_state,
-                                            games.game_name,
-                                            games.payoff_matrix,
-                                            graphs.graph_type,
+                                            games.game,
+                                            games.payoff_matrix_size,
                                             graphs.graph_params_dict
                                         FROM simulations
                                         INNER JOIN games USING(game_id)

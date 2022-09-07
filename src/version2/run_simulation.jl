@@ -9,5 +9,5 @@ BenchmarkTools.DEFAULT_PARAMETERS.samples = 5
 # graph = Dict(:type => :er, :λ => 1, :plot_label => "ER λ=1", :line_color => :blue)
 # results = simulate(game, params, graph, use_seed=true, db_store=true) #seed could be put into SimParams
 #result = pullFromDatabase(1)
-#reproduceFromDatabase("Bargaining Game", Dict{Symbol, Any}(:λ => 1.0), 10, 10, 0.1)
-df = querySimulationSQL(1)
+params, game = restoreFromDatabase("Bargaining Game", Dict{Symbol, Any}(:λ => 1.0), 10, 10, 0.1)
+#df = querySimulationSQL(1)

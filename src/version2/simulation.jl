@@ -1,8 +1,7 @@
 using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, BenchmarkTools
 
-include("types.jl")
-include("setup_params.jl")
 include("database_api.jl")
+include("setup_params.jl")
 
 ############################### FUNCTIONS #######################################
 
@@ -35,13 +34,13 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoice(game::Game; player_number::Int8)
+function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int8)
     if player_number == 1
-        player = game.player1
-        opponent = game.player2
+        player = players[1]
+        opponent = players[2]
     else
-        player = game.player2
-        opponent = game.player1
+        player = players[2]
+        opponent = players[1]
     end
     player_memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
     #print("memory length: ")
@@ -87,26 +86,26 @@ function updateMemory!(player::Agent, opponent::Agent, opponent_choice::Int8, pa
 end
 
 #play the defined game
-function playGame!(game::Game, params::SimParams)
-    player1_memory_length = count(i->(i[1] == game.player2.tag), game.player1.memory)  #tag specific! (these should both
-    player2_memory_length = count(i->(i[1] == game.player1.tag), game.player2.memory)  #work fine without tags too)
+function playGame!(game::Game, params::SimParams, players::Tuple{Agent, Agent})
+    player1_memory_length = count(i->(i[1] == players[2].tag), players[1].memory)  #tag specific! (these should both
+    player2_memory_length = count(i->(i[1] == players[1].tag), players[2].memory)  #work fine without tags too)
     if player1_memory_length == 0 || rand() <= params.error
         player1_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player1_choice = makeChoice(game; player_number = Int8(1))
+        player1_choice = makeChoice(game, players; player_number = Int8(1))
         #println(player1_choice)
     end
     if player2_memory_length == 0 || rand() <= params.error
         player2_choice = game.strategies[rand(1:length(game.strategies))]
     else
-        player2_choice = makeChoice(game; player_number = Int8(2))
+        player2_choice = makeChoice(game, players; player_number = Int8(2))
         #println(player2_choice)
     end
     #outcome = game.payoff_matrix[player1_choice, player2_choice] #don't need this right now (wealth is not being analyzed)
-    #game.player1.wealth += outcome[1]
-    #game.player2.wealth += outcome[2]
-    updateMemory!(game.player1, game.player2, player2_choice, params)
-    updateMemory!(game.player2, game.player1, player1_choice, params)
+    #players[1].wealth += outcome[1]
+    #players[2].wealth += outcome[2]
+    updateMemory!(players[1], players[2], player2_choice, params)
+    updateMemory!(players[2], players[1], player1_choice, params)
 end
 
 
@@ -267,7 +266,7 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         #play a period worth of games
         for match in 1:params.matches_per_period
             edge = rand(collect(edges(meta_graph))) #get random edge
-            vertex_list = shuffle([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
+            vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
             #=
             must do shuffle this vector because src and dst 
             always make a lower to higher pair of vertices, meaning player1
@@ -275,10 +274,9 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
             that these two halves of vertices are more likely to play
             against each other... not good.
             =#
-            game.player1 = get_prop(meta_graph, vertex_list[1], :agent) #get the agents associated with these vertices
-            game.player2 = get_prop(meta_graph, vertex_list[2], :agent)
-            #println(game.player1.name * " playing game with " * game.player2.name)
-            playGame!(game, params)
+            players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[1], :agent), get_prop(meta_graph, vertex_list[2], :agent)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+            #println(players[1].name * " playing game with " * players[2].name)
+            playGame!(game, params, players)
         end
         #increment period count
         periods_elapsed += 1

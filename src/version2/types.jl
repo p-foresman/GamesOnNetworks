@@ -1,4 +1,4 @@
-using StructTypes, Random
+using StructTypes, Random, StaticArrays
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
@@ -17,19 +17,16 @@ mutable struct Agent
         return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]))
     end
 end
-StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
 
-#constructor for specific game to be played (mutable to update object later)
-mutable struct Game
+#= #constructor for specific game to be played (mutable to update object later)
+struct Game
     name::AbstractString
-    payoff_matrix::Matrix{Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used)
-    strategies::Tuple{Int8, Int8, Int8}
-    player1::Agent #would probably be better to keep the players out of the Game struct. Could then use JSON3 to directly translate Game struct back and forth from json string for DB storage
-    player2::Agent
+    payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+    strategies::Tuple{Int8, Int8, Int8}                 #COULD DEFINE A SIZE FIELD THAT CONTAINS A Tuple{Int, Int} WITH DIMENSIONS OF MATRIX TO ALSO BE STORED IN DB
 
-    function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
+    function Game(name::String, payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9})
         strategies = Tuple(Int8(n) for n in 1:size(payoff_matrix, 1)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        new(name, payoff_matrix, strategies, Agent(), Agent())
+        new(name, payoff_matrix, strategies)
     end
     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix
         matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
@@ -41,11 +38,61 @@ mutable struct Game
             push!(tuple_vector, new_tuple)
         end
         new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new(name, new_payoff_matrix, strategies, Agent(), Agent())
+        return new(name, new_payoff_matrix, strategies)
     end
-    Game() = new()
+    function Game(name::String, payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9}, strategies::Tuple{Int8, Int8, Int8})
+        return new(name, payoff_matrix, strategies)
+    end
 end
-StructTypes.StructType(::Type{Game}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
+StructTypes.StructType(::Type{Game}) = StructTypes.Struct() #global declaration needed to read and write with JSON3 package =#
+
+
+
+
+
+#constructor for specific game to be played
+struct Game{S1, S2}
+    name::AbstractString
+    payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+    strategies::Tuple{Int8, Int8, Int8}                 #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
+
+    function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
+        matrix_size = size(payoff_matrix)
+        S1 = matrix_size[1]
+        S2 = matrix_size[2]
+        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
+        strategies = Tuple(Int8(n) for n in 1:S1) #create integer strategies that correspond to row/column indices of payoff_matrix
+        new{S1, S2}(name, static_payoff_matrix, strategies)
+    end
+    function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
+        matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
+        S1 = matrix_size[1]
+        S2 = matrix_size[2]
+        strategies = Tuple(Int8(n) for n in 1:matrix_size[1])
+        indices = CartesianIndices(payoff_matrix)
+        tuple_vector = Vector{Tuple{Int8, Int8}}([])
+        for i in indices
+            new_tuple = Tuple{Int8, Int8}([payoff_matrix[i[1], i[2]], -payoff_matrix[i[1], i[2]]])
+            push!(tuple_vector, new_tuple)
+        end
+        new_payoff_matrix = reshape(tuple_vector, matrix_size)
+        return new{S1, S2}(name, new_payoff_matrix, strategies)
+    end
+    function Game(name::String, payoff_matrix::SMatrix, strategies::Tuple{Int8, Int8, Int8}) #could probably eliminate this method
+        matrix_size = size(payoff_matrix)
+        S1 = matrix_size[1]
+        S2 = matrix_size[2]
+        return new{S1, S2}(name, payoff_matrix, strategies)
+    end
+    function Game{S1, S2}(name::String, payoff_matrix::SMatrix, strategies::Tuple{Int8, Int8, Int8}) where {S1, S2} #this method needed for reconstructing with JSON3
+        return new{S1, S2}(name, payoff_matrix, strategies)
+    end
+end
+
+
+
+
+
 
 mutable struct SimParams
     number_agents::Int64
@@ -67,6 +114,6 @@ mutable struct SimParams
     end
     SimParams() = new()
 end
-StructTypes.StructType(::Type{SimParams}) = StructTypes.Mutable() #global declaration needed to read and write with JSON3 package
 
-StructTypes.StructType(::Type{Random.Xoshiro}) = StructTypes.Mutable() #needed to read and write the state of the Xoshiro RNG with JSON3 package
+#include the global definitions for StructTypes (more global definitions can be added in the file)
+include("settings/global_StructTypes.jl")

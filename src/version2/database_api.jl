@@ -9,8 +9,9 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
 
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
-    payoff_matrix_string = JSON3.write(game.payoff_matrix)
-    game_insert_result = insertGameSQL(game_name, payoff_matrix_string)
+    game_json_str = JSON3.write(game)
+    payoff_matrix_size = JSON3.write(size(game.payoff_matrix))
+    game_insert_result = insertGameSQL(game_name, game_json_str, payoff_matrix_size)
     game_status = game_insert_result.status_message
     game_row_id = game_insert_result.insert_row_id
 
@@ -55,16 +56,16 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     return game_status, graph_status, simulation_status, agents_status
 end
 
-function reproduceFromDatabase(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
+function restoreFromDatabase(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
     simulation_df = queryForSimReproduction(game_name, graph_params, number_agents, memory_length, error) #all returns from queries are DataFrames
     
     #reproduce SimParams object
     reproduced_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
 
     #reproduce Game object
-    game_name = simulation_df[1, :name]
-    payoff_matrix = payoffMatrixStringParser(simulation_df[1, :payoff_matrix]) #could eventually convert straight to Game struct from json string if Agents are removed from struct. THEN WONT NEED PARSER!
-    reproduced_game = Game(game_name, payoff_matrix)
+    payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
+    println(simulation_df[1, :game])
+    reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2]})
 
     #reproduced Graph
 

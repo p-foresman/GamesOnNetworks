@@ -46,4 +46,23 @@ println(new_matrix == payoff_matrix)
 
 
 
+# struct Test{S1, S2, L}
+#     sm::SMatrix{S1, S2, Int, L}
+#     function Test(S1::Int, S2::Int, L::Int,  matrix::SMatrix)
+#     new{S1, S2, L}(matrix)
+#     end
+#     end
+
+struct Test{S1, S2, L}
+    sm::SMatrix{S1, S2, Int, L}
+    function Test(matrix::SMatrix)
+    matrix_size = size(matrix)
+    S1 = matrix_size[1]
+    S2 = matrix_size[2]
+    L = S1 * S2
+    new{S1, S2, L}(matrix)
+    end
+end
+
+
 
