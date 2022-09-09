@@ -170,7 +170,6 @@ function insertSimulationSQL(params::SimParams, sim_params_str::String, graph_ad
                                 );
                             ")
     insert_row = SQLite.last_insert_rowid(db)
-    println(insert_row)
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations]... INSERT STATUS: [$status] SIMULATION_ID: [$insert_row]", insert_row_id = insert_row)
     return tuple_to_return

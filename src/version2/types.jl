@@ -71,8 +71,8 @@ struct Game{S1, S2}
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
         indices = CartesianIndices(payoff_matrix)
         tuple_vector = Vector{Tuple{Int8, Int8}}([])
-        for i in indices
-            new_tuple = Tuple{Int8, Int8}([payoff_matrix[i[1], i[2]], -payoff_matrix[i[1], i[2]]])
+        for index in indices
+            new_tuple = Tuple{Int8, Int8}([payoff_matrix[index], -payoff_matrix[index]])
             push!(tuple_vector, new_tuple)
         end
         new_payoff_matrix = reshape(tuple_vector, matrix_size)

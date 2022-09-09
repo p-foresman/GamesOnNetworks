@@ -69,3 +69,6 @@ FOR DB QUERIES
 
 -Games struct is kind of a mess. Need to somehow store many StructType global definitions for different Game{size, size} sizes for proper JSON3 functionality for each size
     -Might be able to eliminate StaticArrays now that payoff_matrix_size is in DB anyway?
+
+
+-keeping strategies for now. could remove since theyre implicit.

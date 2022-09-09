@@ -34,108 +34,19 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int8) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
-    if player_number == 1
-        player = players[1]
-        player_strategies = game.strategies[1]
-        opponent = players[2]
-        opponent_strategies = game.strategies[2]
-    else
-        player = players[2]
-        player_strategies = game.strategies[2]
-        opponent = players[1]
-        opponent_strategies = game.strategies[1]
-    end
-    player_memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
-    #print("memory length: ")
-    #println(memory_length)
-    player_recollection = [count(i->(i[1]==opponent.tag && i[2]==strategy), player.memory) for strategy in opponent_strategies]
-    #println("decision process here...")
-    #print("recollection: ")
-    #println(player_recollection)
-    opponent_probs = [i / player_memory_length for i in player_recollection]
-    #print("probs: ")
-    #println(opponent_probs)
-    
-    expected_utilities = zeros(Float32, length(player_strategies))
-    for i in 1:length(game.strategies[1]) #row strategies
-        for j in 1:length(game.strategies[2]) #column strategies
-            if player_number == 1
-                expected_utilities[i] += game.payoff_matrix[i, j][player_number] * opponent_probs[j]
-            else
-                expected_utilities[j] += game.payoff_matrix[i, j][player_number] * opponent_probs[i]
-            end
-        end
-    end
-    #println(player_number)
-    #print("utilities: ")
-    #println(expected_utilities)
-    max_value = maximum(expected_utilities)
-    #println(max_value)
-    max_positions = findall(i->(i==max_value), expected_utilities)
-    #println(max_positions)
-    player_choice_index = rand(max_positions)
-    player_choice = player_strategies[player_choice_index]
-    #println(player_choice)
-    return player_choice
-end
-
-#update agent's memory vector
-function updateMemory!(player::Agent, opponent::Agent, opponent_choice::Int8, params::SimParams)
-    to_push = (opponent.tag, opponent_choice)
-    if length(player.memory) == params.memory_length
-        popfirst!(player.memory)
-    end
-    push!(player.memory, to_push)
-end
-
-#play the defined game
-function playGame!(game::Game, params::SimParams, players::Tuple{Agent, Agent})
-    player1_memory_length = count(i->(i[1] == players[2].tag), players[1].memory)  #tag specific! (these should both
-    player2_memory_length = count(i->(i[1] == players[1].tag), players[2].memory)  #work fine without tags too)
-    if player1_memory_length == 0 || rand() <= params.error
-        player1_choice = game.strategies[1][rand(1:length(game.strategies[1]))]
-    else
-        player1_choice = makeChoice(game, players; player_number = Int8(1))
-        #println(player1_choice)
-    end
-    if player2_memory_length == 0 || rand() <= params.error
-        player2_choice = game.strategies[2][rand(1:length(game.strategies[2]))]
-    else
-        player2_choice = makeChoice(game, players; player_number = Int8(2))
-        #println(player2_choice)
-    end
-    #outcome = game.payoff_matrix[player1_choice, player2_choice] #don't need this right now (wealth is not being analyzed)
-    #players[1].wealth += outcome[1]
-    #players[2].wealth += outcome[2]
-    updateMemory!(players[1], players[2], player2_choice, params)
-    updateMemory!(players[2], players[1], player1_choice, params)
-end
-
-
-########################### New game functions below ##############################
-
-#choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
-    number_players = length(players)
-    player_memory_lengths = (count(i->(i[1] == players[2].tag), players[1].memory), count(i->(i[1] == players[1].tag), players[2].memory)) #tag specific! Could iterate through players tuple somehow to obtaain this?
+    players_iterator = eachindex(players)
 
-    #print("memory length: ")
-    #println(memory_length)
-    opponent_strategy_recollections = ([count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]])
+    player_memory_lengths = [count(i->(i[1] == players[2].tag), players[1].memory), count(i->(i[1] == players[1].tag), players[2].memory)] #tag specific! Could iterate through players tuple somehow to obtaain this?
+    
+    opponent_strategy_recollections = [[count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]]]
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
+    
+    opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in players_iterator]
 
-    #println("decision process here...")
-    #print("recollection: ")
-    #println(player_recollection)
-    opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in 1:number_players]
-    println(opponent_strategy_recollections)
-    println(typeof(opponent_strategy_recollections))
-    #print("probs: ")
-    #println(opponent_probs)
-    player_expected_utilities = [zeros(Float32, length(game.strategies[player])) for player in 1:number_players]
+    player_expected_utilities = [zeros(Float32, length(game.strategies[player])) for player in players_iterator]
     # for row in 1:size(game.payoff_matrix, 1) #row strategies
     #     for column in 1:size(game.payoff_matrix, 2) #column strategies
     #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
@@ -145,29 +56,53 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
 
     #this should be equivalent to above. make sure and see which is more efficient
     for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
-        player_expected_utilities[1][index[1]] += game.payoff_matrix[index[1], index[2]][1] * opponent_strategy_probs[1][index[2]]
-        player_expected_utilities[2][index[2]] += game.payoff_matrix[index[1], index[2]][2] * opponent_strategy_probs[2][index[1]]
+        player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
+        player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
     end
 
-    #println(player_number)
-    #print("utilities: ")
-    #println(expected_utilities)
-    player_max_values = (maximum(expected_utilities) for expected_utilities in player_expected_utilities)
-    #println(max_value)
-    player_max_positions = (findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in 1:number_players)
-    #println(max_positions)
-    player_choices = (game.strategies[player][rand(player_max_positions[player])] for player in 1:number_players)
-    #println(player_choice)
-    for player in 1:number_players
+    ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
+    # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
+    # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
+
+    player_max_values = [maximum(expected_utilities) for expected_utilities in player_expected_utilities]
+
+    player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in players_iterator]
+
+    player_choices = [game.strategies[player][rand(player_max_strategies[player])] for player in players_iterator]
+
+    # print("memory length: ")
+    # println(player_memory_lengths)
+    # println("decision process here...")
+    # print("recollection: ")
+    # println(opponent_strategy_recollections)
+    # print("probs: ")
+    # println(opponent_strategy_probs)
+    # print("utilities: ")
+    # println(player_expected_utilities)
+    # print("max strategy values: ")
+    # println(player_max_values)
+    # print("max strategy indices: ")
+    # println(player_max_strategies)
+    # print("player choices: ")
+    # println(player_choices)
+
+    for player in players_iterator
         if rand() <= params.error
             player_choices[player] = rand(game.strategies[player])
         end
     end
+    # print("player choices post random: ")
+    # println(player_choices)
+    
+    # outcome = game.payoff_matrix[player_choices[1], player_choices[2]] #don't need this right now (wealth is not being analyzed)
+    # players[1].wealth += outcome[1]
+    # players[2].wealth += outcome[2]
+
     return player_choices
 end
 
 #update agent's memory vector
-function updateMemories!(players::Tuple{Agent, Agent}, player_choices::Tuple{Int8, Int8}, params::SimParams)
+function updateMemories!(players::Tuple{Agent, Agent}, player_choices::Vector{Int8}, params::SimParams)
     for player in players
         if length(player.memory) == params.memory_length
             popfirst!(player.memory)
@@ -179,19 +114,13 @@ function updateMemories!(players::Tuple{Agent, Agent}, player_choices::Tuple{Int
 end
 
 #play the defined game
-function playGameUpdated!(game::Game, params::SimParams, players::Tuple{Agent, Agent})
-
+function playGame!(game::Game, params::SimParams, players::Tuple{Agent, Agent})
     player_choices = makeChoices(game, params, players)
-
-    #outcome = game.payoff_matrix[player1_choice, player2_choice] #don't need this right now (wealth is not being analyzed)
-    #players[1].wealth += outcome[1]
-    #players[2].wealth += outcome[2]
-
     updateMemories!(players, player_choices, params)
     return nothing
 end
 
-##############################################################################################
+
 
 #ensure all nodes have at least a degree of one (not used)
 function ensureOneDegree(params) #make params a dictionary????
@@ -336,13 +265,11 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
     if use_seed == true
         Random.seed!(params.random_seed)
     end
-    #setup new graph to ensure no artifacts from last game
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
     meta_graph = initGraph(graph_params_dict, game, params)
     #println(graph.fadjlist)
     #println(adjacency_matrix(graph)[1, 2])
 
-    
     #play game until transition occurs (sufficient equity is reached)
     periods_elapsed = 0
     while !checkTransition(meta_graph, game, params)
@@ -350,23 +277,16 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         for match in 1:params.matches_per_period
             edge = rand(collect(edges(meta_graph))) #get random edge
             vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-            #=
-            must do shuffle this vector because src and dst 
-            always make a lower to higher pair of vertices, meaning player1
-            tends to be in lower 50% of vertices and vica versa. This means
-            that these two halves of vertices are more likely to play
-            against each other... not good.
-            =#
-            players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[1], :agent), get_prop(meta_graph, vertex_list[2], :agent)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+            players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[index], :agent) for index in eachindex(vertex_list)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
             #println(players[1].name * " playing game with " * players[2].name)
-            playGameUpdated!(game, params, players)
+            playGame!(game, params, players)
         end
         #increment period count
         periods_elapsed += 1
     end
     if db_store == true
-        agent_df = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
-        return agent_df
+        db_status = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
+        return periods_elapsed, db_status
     end
     return periods_elapsed
 end
