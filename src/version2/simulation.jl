@@ -11,9 +11,9 @@ function memory_init(agent::Agent, game::Game, memory_length, init::String)
         return
     elseif init == "fractious"
         if rand() <= 0.5
-            recollection = game.strategies[1]
+            recollection = game.strategies1[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
         else
-            recollection = game.strategies[3]
+            recollection = game.strategies1[3]
         end
 
         to_push = (agent.tag, recollection)
@@ -21,7 +21,7 @@ function memory_init(agent::Agent, game::Game, memory_length, init::String)
             push!(agent.memory, to_push)
         end
     elseif init == "equity"
-        recollection == game.strategies[2]
+        recollection == game.strategies1[2]
         to_push = (agent.tag, recollection)
         for i in 1:memory_length
             push!(agent.memory, to_push)
@@ -34,18 +34,22 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int8)
+function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int8) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
     if player_number == 1
         player = players[1]
+        player_strategies = game.strategies1
         opponent = players[2]
+        opponent_strategies = game.strategies2
     else
         player = players[2]
+        player_strategies = game.strategies2
         opponent = players[1]
+        opponent_strategies = game.strategies1
     end
     player_memory_length = count(i->(i[1] == opponent.tag), player.memory) #tag specific! (these should both work fine without tags too)
     #print("memory length: ")
     #println(memory_length)
-    player_recollection = [count(i->(i[1]==opponent.tag && i[2]==strategy), player.memory) for strategy in game.strategies]
+    player_recollection = [count(i->(i[1]==opponent.tag && i[2]==strategy), player.memory) for strategy in opponent_strategies]
     #println("decision process here...")
     #print("recollection: ")
     #println(player_recollection)
@@ -53,13 +57,13 @@ function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int
     #print("probs: ")
     #println(opponent_probs)
     
-    expected_utilities = zeros(Float32, length(game.strategies))
-    for i in 1:length(game.strategies)
-        for j in 1:length(game.strategies)
+    expected_utilities = zeros(Float32, length(player_strategies))
+    for i in 1:length(game.strategies1) #row strategies
+        for j in 1:length(game.strategies2) #column strategies
             if player_number == 1
                 expected_utilities[i] += game.payoff_matrix[i, j][player_number] * opponent_probs[j]
             else
-                expected_utilities[i] += game.payoff_matrix[j, i][player_number] * opponent_probs[j]
+                expected_utilities[j] += game.payoff_matrix[i, j][player_number] * opponent_probs[i]
             end
         end
     end
@@ -71,7 +75,7 @@ function makeChoice(game::Game, players::Tuple{Agent, Agent}; player_number::Int
     max_positions = findall(i->(i==max_value), expected_utilities)
     #println(max_positions)
     player_choice_index = rand(max_positions)
-    player_choice = game.strategies[player_choice_index]
+    player_choice = player_strategies[player_choice_index]
     #println(player_choice)
     return player_choice
 end
@@ -90,13 +94,13 @@ function playGame!(game::Game, params::SimParams, players::Tuple{Agent, Agent})
     player1_memory_length = count(i->(i[1] == players[2].tag), players[1].memory)  #tag specific! (these should both
     player2_memory_length = count(i->(i[1] == players[1].tag), players[2].memory)  #work fine without tags too)
     if player1_memory_length == 0 || rand() <= params.error
-        player1_choice = game.strategies[rand(1:length(game.strategies))]
+        player1_choice = game.strategies1[rand(1:length(game.strategies1))]
     else
         player1_choice = makeChoice(game, players; player_number = Int8(1))
         #println(player1_choice)
     end
     if player2_memory_length == 0 || rand() <= params.error
-        player2_choice = game.strategies[rand(1:length(game.strategies))]
+        player2_choice = game.strategies2[rand(1:length(game.strategies2))]
     else
         player2_choice = makeChoice(game, players; player_number = Int8(2))
         #println(player2_choice)
@@ -181,9 +185,9 @@ function setGraphMetaData!(graph::Graph, game::Game, params::SimParams)
         #set memory initialization
         #initialize in strict fractious state for now
         if vertex % 2 == 0
-            recollection = game.strategies[1]
+            recollection = game.strategies1[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
         else
-            recollection = game.strategies[3]
+            recollection = game.strategies1[3]
         end
         to_push = (agent.tag, recollection)
         for i in 1:params.memory_length
@@ -227,7 +231,7 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, params::SimParam
             continue
         end
         agent = get_prop(meta_graph, vertex, :agent)
-        count_M = count(i->(i[2] == game.strategies[2]), agent.memory)
+        count_M = count(i->(i[2] == game.strategies1[2]), agent.memory) #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
         # println("here!")
         # println(sufficient_equity)
         # println(count_M)

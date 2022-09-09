@@ -54,21 +54,24 @@ StructTypes.StructType(::Type{Game}) = StructTypes.Struct() #global declaration 
 struct Game{S1, S2}
     name::AbstractString
     payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
-    strategies::Tuple{Int8, Int8, Int8}                 #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
+    strategies1::SVector{S1, Int8}                 #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
+    strategies2::SVector{S2, Int8}
 
     function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
         matrix_size = size(payoff_matrix)
         S1 = matrix_size[1]
         S2 = matrix_size[2]
         static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
-        strategies = Tuple(Int8(n) for n in 1:S1) #create integer strategies that correspond to row/column indices of payoff_matrix
-        new{S1, S2}(name, static_payoff_matrix, strategies)
+        strategies1 = Tuple(Int8(n) for n in 1:S1) #create integer strategies that correspond to row/column indices of payoff_matrix
+        strategies2 = Tuple(Int8(n) for n in 1:S2)
+        new{S1, S2}(name, static_payoff_matrix, strategies1, strategies2)
     end
     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
         matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
         S1 = matrix_size[1]
         S2 = matrix_size[2]
-        strategies = Tuple(Int8(n) for n in 1:matrix_size[1])
+        strategies1 = Tuple(Int8(n) for n in 1:S1) #create integer strategies that correspond to row/column indices of payoff_matrix
+        strategies2 = Tuple(Int8(n) for n in 1:S2)
         indices = CartesianIndices(payoff_matrix)
         tuple_vector = Vector{Tuple{Int8, Int8}}([])
         for i in indices
@@ -76,16 +79,10 @@ struct Game{S1, S2}
             push!(tuple_vector, new_tuple)
         end
         new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new{S1, S2}(name, new_payoff_matrix, strategies)
+        return new{S1, S2}(name, new_payoff_matrix, strategies1, strategies2)
     end
-    function Game(name::String, payoff_matrix::SMatrix, strategies::Tuple{Int8, Int8, Int8}) #could probably eliminate this method
-        matrix_size = size(payoff_matrix)
-        S1 = matrix_size[1]
-        S2 = matrix_size[2]
-        return new{S1, S2}(name, payoff_matrix, strategies)
-    end
-    function Game{S1, S2}(name::String, payoff_matrix::SMatrix, strategies::Tuple{Int8, Int8, Int8}) where {S1, S2} #this method needed for reconstructing with JSON3
-        return new{S1, S2}(name, payoff_matrix, strategies)
+    function Game{S1, S2}(name::String, payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}}, strategies1::SVector{S1, Int8}, strategies2::SVector{S2, Int8}) where {S1, S2} ##this method needed for reconstructing with JSON3
+        return new{S1, S2}(name, payoff_matrix, strategies1, strategies2)
     end
 end
 
