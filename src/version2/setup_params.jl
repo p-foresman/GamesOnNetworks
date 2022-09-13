@@ -17,11 +17,11 @@ end
 
 params_list = constructParamsList(
                 number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 12,
-                number_agents_step = 2,
+                number_agents_end = 10,
+                number_agents_step = 1,
                 memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 12,
-                memory_length_step = 2,
+                memory_length_end = 22,
+                memory_length_step = 3,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
                 error_list = [0.1], #iterated over for multi-loop simulation
                 tag1 = :red,

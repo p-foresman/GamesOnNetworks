@@ -71,4 +71,4 @@ FOR DB QUERIES
     -Might be able to eliminate StaticArrays now that payoff_matrix_size is in DB anyway?
 
 
--keeping strategies for now. could remove since theyre implicit.
+-keeping strategies for now. could remove since theyre implicit. 

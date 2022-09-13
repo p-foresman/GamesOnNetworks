@@ -3,7 +3,7 @@ using JSON3, Random, Graphs, MetaGraphs
 include("types.jl")
 include("sql.jl")
 
-function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(grouping_id::Int, game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
 
     initSQL()
 
@@ -40,7 +40,7 @@ function pushToDatabase(game::Game, params::SimParams, graph_params_dict::Dict{S
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
-    simulation_insert_result = insertSimulationSQL(params, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id, seed_bool, rng_state_json)
+    simulation_insert_result = insertSimulationSQL(grouping_id, params, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id, seed_bool, rng_state_json)
     simulation_status = simulation_insert_result.status_message
     simulation_row_id = simulation_insert_result.insert_row_id
 

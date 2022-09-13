@@ -39,6 +39,7 @@ function initSQL()
                             CREATE TABLE IF NOT EXISTS simulations
                             (
                                 simulation_id INTEGER PRIMARY KEY,
+                                grouping_id INTEGER,
                                 number_agents INTEGER NOT NULL,
                                 memory_length INTEGER NOT NULL,
                                 error REAL NOT NULL,
@@ -138,12 +139,13 @@ function insertGraphSQL(graph_type::String, graph_params_dict_str::String, db_pa
     return tuple_to_return
 end
 
-function insertSimulationSQL(params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
+function insertSimulationSQL(grouping_id::Int, params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
     db = SQLite.DB("SimulationSaves.sqlite")
     
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
+                                        grouping_id,
                                         number_agents,
                                         memory_length,
                                         error,
@@ -157,6 +159,7 @@ function insertSimulationSQL(params::SimParams, sim_params_str::String, graph_ad
                                     )
                                     VALUES
                                     (
+                                        $grouping_id,
                                         $(params.number_agents),
                                         $(params.memory_length),
                                         $(params.error),

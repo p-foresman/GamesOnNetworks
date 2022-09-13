@@ -36,17 +36,15 @@ end
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
     players_iterator = eachindex(players)
-
-    player_memory_lengths = [count(i->(i[1] == players[2].tag), players[1].memory), count(i->(i[1] == players[1].tag), players[2].memory)] #tag specific! Could iterate through players tuple somehow to obtaain this?
     
     opponent_strategy_recollections = [[count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]]]
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
-    
+    player_memory_lengths = sum.(opponent_strategy_recollections)
     opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in players_iterator]
 
-    player_expected_utilities = [zeros(Float32, length(game.strategies[player])) for player in players_iterator]
+    player_expected_utilities = zeros.(Float32, length.(game.strategies))
     # for row in 1:size(game.payoff_matrix, 1) #row strategies
     #     for column in 1:size(game.payoff_matrix, 2) #column strategies
     #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
@@ -64,11 +62,12 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
     # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
     # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
 
-    player_max_values = [maximum(expected_utilities) for expected_utilities in player_expected_utilities]
+    player_max_values = maximum.(player_expected_utilities)
 
     player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in players_iterator]
 
-    player_choices = [game.strategies[player][rand(player_max_strategies[player])] for player in players_iterator]
+    # player_choices = [game.strategies[player][rand(player_max_strategies[player])] for player in players_iterator] #could remove this in favor of below?
+    player_choices = Int8.(rand.(player_max_strategies))
 
     # print("memory length: ")
     # println(player_memory_lengths)
@@ -84,19 +83,22 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
     # print("max strategy indices: ")
     # println(player_max_strategies)
     # print("player choices: ")
-    # println(player_choices)
+    # println(typeof(player_choices))
 
     for player in players_iterator
         if rand() <= params.error
             player_choices[player] = rand(game.strategies[player])
         end
     end
-    # print("player choices post random: ")
-    # println(player_choices)
     
     # outcome = game.payoff_matrix[player_choices[1], player_choices[2]] #don't need this right now (wealth is not being analyzed)
     # players[1].wealth += outcome[1]
     # players[2].wealth += outcome[2]
+
+    # print("player choices post random: ")
+    # println(player_choices)
+    # print("outcome: ")
+    # println(outcome)
 
     return player_choices
 end
@@ -261,7 +263,7 @@ end
 
 
 
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false)
+function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
     if use_seed == true
         Random.seed!(params.random_seed)
     end
@@ -285,21 +287,21 @@ function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol,
         periods_elapsed += 1
     end
     if db_store == true
-        db_status = pushToDatabase(game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
-        return periods_elapsed, db_status
+        db_status = pushToDatabase(db_grouping_id, game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
+        return (periods_elapsed, db_status)
     end
-    return periods_elapsed
+    return (periods_elapsed)
 end
 
 
 
-function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_simulations_list::AbstractVector{Dict{Symbol, Any}}; averager::Int64 = 1, use_seed::Bool = false, db_store::Bool = false)
+function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
     #standard_errors = Vector{AbstractFloat}([])
-    transition_times_matrix = rand(averager, length(graph_simulations_list))
-    matrix_index = 1
+    # transition_times_matrix = rand(averager, length(graph_simulations_list))
+    # matrix_index = 1
     for graph_params_dict in graph_simulations_list
         println("\n\n")
         println(graph_params_dict[:plot_label])
@@ -316,11 +318,11 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
             for run in 1:averager
                 println("Run $run of $averager")
 
-                periods_elapsed = simulate(game, params, graph_params_dict, use_seed=use_seed, db_store=false) #false for now
-                push!(run_results, periods_elapsed)
+                sim_results = simulate(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id)
+                push!(run_results, sim_results[1])
             end
             println(run_results)
-            transition_times_matrix[:, matrix_index] = run_results
+            # transition_times_matrix[:, matrix_index] = run_results
             
             #average_transition_time = sum(run_results) / averager
             #standard_deviation = std(run_results)
@@ -352,7 +354,7 @@ function simIterator(game::Game, params_list::AbstractVector{SimParams}, graph_s
             #                                         ) #for line under scatter 
             
         end
-        matrix_index += 1
+        # matrix_index += 1
     end
 
     #Plotting for box plot (all network classes)
