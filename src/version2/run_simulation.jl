@@ -1,6 +1,6 @@
 include("simulation.jl")
 
-#  bBenchmarkTools.DEFAULT_PARAMETERS.samples = 5
+#  BenchmarkTools.DEFAULT_PARAMETERS.samples = 5
 
 simIterator(game, params_list, graph_simulations_list, averager=20, use_seed=false, db_store=true, db_grouping_id=1)
 

@@ -1,4 +1,4 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, CSV, JSON3, BenchmarkTools
+using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, JSON3, BenchmarkTools
 
 include("database_api.jl")
 include("setup_params.jl")
@@ -29,30 +29,20 @@ function memory_init(agent::Agent, game::Game, memory_length, init::String)
     else
         throw(DomainError(init, "This is not an accepted memory initiallization."))
     end
+    return nothing
 end
 
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
-    players_iterator = eachindex(players)
-    
     opponent_strategy_recollections = [[count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]]]
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
     player_memory_lengths = sum.(opponent_strategy_recollections)
-    opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in players_iterator]
-
+    opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in eachindex(players)]
     player_expected_utilities = zeros.(Float32, length.(game.strategies))
-    # for row in 1:size(game.payoff_matrix, 1) #row strategies
-    #     for column in 1:size(game.payoff_matrix, 2) #column strategies
-    #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
-    #         player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
-    #     end
-    # end
-
-    #this should be equivalent to above. make sure and see which is more efficient
     for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
         player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
@@ -63,10 +53,7 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
     # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
 
     player_max_values = maximum.(player_expected_utilities)
-
-    player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in players_iterator]
-
-    # player_choices = [game.strategies[player][rand(player_max_strategies[player])] for player in players_iterator] #could remove this in favor of below?
+    player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in eachindex(players)]
     player_choices = Int8.(rand.(player_max_strategies))
 
     # print("memory length: ")
@@ -85,7 +72,7 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
     # print("player choices: ")
     # println(typeof(player_choices))
 
-    for player in players_iterator
+    for player in eachindex(players)
         if rand() <= params.error
             player_choices[player] = rand(game.strategies[player])
         end
@@ -263,7 +250,7 @@ end
 
 
 
-function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
+function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Float64 = 0.0)
     if use_seed == true
         Random.seed!(params.random_seed)
     end
@@ -295,7 +282,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
+function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Float64 = 0.0)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
@@ -313,11 +300,9 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
             print("Memory length: $(params.memory_length), ")
             println("Error: $(params.error)")
 
-
             run_results = Vector{Integer}([])
             for run in 1:averager
                 println("Run $run of $averager")
-
                 sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id)
                 push!(run_results, sim_results[1])
             end
@@ -372,5 +357,14 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
 end
 
 #used to continue a simulation
-function simIterator(db_grouping_id::Int, db_store::Bool)
+function simIterator(db_grouping_id::Float64, db_store::Bool = false)
+    simulation_ids_df = querySimulationIDsByGroup(db_grouping_id)
+    for row in eachrow(simulation_ids_df)
+        continueSimulation(row[:simulation_id])
+    end
+end
+
+
+function continueSimulation(db_simulation_id::Int; db_store::Bool = false)
+    restored_simulation = restoreFromDatabase(db_simulation_id)
 end

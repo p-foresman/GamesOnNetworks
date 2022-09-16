@@ -1,4 +1,4 @@
-using StructTypes, Random, StaticArrays
+using Random, StaticArrays
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
@@ -17,37 +17,6 @@ mutable struct Agent
         return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]))
     end
 end
-
-#= #constructor for specific game to be played (mutable to update object later)
-struct Game
-    name::AbstractString
-    payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
-    strategies::Tuple{Int8, Int8, Int8}                 #COULD DEFINE A SIZE FIELD THAT CONTAINS A Tuple{Int, Int} WITH DIMENSIONS OF MATRIX TO ALSO BE STORED IN DB
-
-    function Game(name::String, payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9})
-        strategies = Tuple(Int8(n) for n in 1:size(payoff_matrix, 1)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        new(name, payoff_matrix, strategies)
-    end
-    function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix
-        matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
-        strategies = Tuple(Int8(n) for n in 1:matrix_size[1])
-        indices = CartesianIndices(payoff_matrix)
-        tuple_vector = Vector{Tuple{Int8, Int8}}([])
-        for i in indices
-            new_tuple = Tuple{Int8, Int8}([payoff_matrix[i[1], i[2]], -payoff_matrix[i[1], i[2]]])
-            push!(tuple_vector, new_tuple)
-        end
-        new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new(name, new_payoff_matrix, strategies)
-    end
-    function Game(name::String, payoff_matrix::SMatrix{3, 3, Tuple{Int8, Int8}, 9}, strategies::Tuple{Int8, Int8, Int8})
-        return new(name, payoff_matrix, strategies)
-    end
-end
-StructTypes.StructType(::Type{Game}) = StructTypes.Struct() #global declaration needed to read and write with JSON3 package =#
-
-
-
 
 
 #constructor for specific game to be played

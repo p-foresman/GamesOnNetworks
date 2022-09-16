@@ -71,4 +71,10 @@ FOR DB QUERIES
     -Might be able to eliminate StaticArrays now that payoff_matrix_size is in DB anyway?
 
 
--keeping strategies for now. could remove since theyre implicit. 
+-keeping strategies for now. could remove since theyre implicit.  
+
+
+
+-change grouping_ids to floats and add 0.01 each time the simulation is continued (this gives 100 possible continuations. more than enough)
+
+-could eliminate grouping_ids and create a meta-params db table containing averager, use_seed, random_seed

@@ -1,6 +1,6 @@
-using SQLite, TypedTables, DataFrames #might be able to get rid of TypedTables (not sure if DataFrames are better or worse)
+using SQLite, DataFrames
 
-function initSQL()
+function initDataBase()
     #create or connect to database
     db = SQLite.DB("SimulationSaves.sqlite")
 
@@ -33,6 +33,30 @@ function initSQL()
                                 UNIQUE(graph_type, graph_params_dict)
                             );
                     ")
+
+    # #create simulations table which contains information specific to each simulation
+    # SQLite.execute(db, "
+    #                         CREATE TABLE IF NOT EXISTS sim_params
+    #                         (
+    #                             params_id INTEGER PRIMARY KEY,
+    #                             grouping_id INTEGER,
+    #                             number_agents INTEGER NOT NULL,
+    #                             memory_length INTEGER NOT NULL,
+    #                             error REAL NOT NULL,
+    #                             sim_params TEXT NOT NULL,
+    #                             game_id INTEGER NOT NULL,
+    #                             graph_id INTEGER NOT NULL,
+    #                             graph_adj_matrix TEXT NOT NULL,
+    #                             use_seed BOOLEAN NOT NULL,
+    #                             rng_state TEXT NOT NULL,
+    #                             periods_elapsed INTEGER NOT NULL,
+    #                             FOREIGN KEY (game_id)
+    #                                 REFERENCES games (game_id),
+    #                             FOREIGN KEY (graph_id)
+    #                                 REFERENCES graphs (graph_id),
+    #                             CHECK (use_seed in (0, 1))
+    #                         );
+    #                 ")
 
     #create simulations table which contains information specific to each simulation
     SQLite.execute(db, "
@@ -73,7 +97,7 @@ function initSQL()
     SQLite.close(db)
 end
 
-function insertGameSQL(game_name::String, game::String, payoff_matrix_size::String)
+function insertGame(game_name::String, game::String, payoff_matrix_size::String)
     db = SQLite.DB("SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
@@ -102,7 +126,7 @@ function insertGameSQL(game_name::String, game::String, payoff_matrix_size::Stri
     return tuple_to_return
 end
 
-function insertGraphSQL(graph_type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
+function insertGraph(graph_type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
     db = SQLite.DB("SimulationSaves.sqlite")
 
     insert_string_columns = "graph_type, graph_params_dict, "
@@ -139,9 +163,8 @@ function insertGraphSQL(graph_type::String, graph_params_dict_str::String, db_pa
     return tuple_to_return
 end
 
-function insertSimulationSQL(grouping_id::Int, params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
+function insertSimulation(grouping_id::Int, params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
     db = SQLite.DB("SimulationSaves.sqlite")
-    
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
@@ -178,7 +201,7 @@ function insertSimulationSQL(grouping_id::Int, params::SimParams, sim_params_str
     return tuple_to_return
 end
 
-function insertAgentsSQL(agent_list::Vector{String}, simulation_id::Integer)
+function insertAgents(agent_list::Vector{String}, simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
 
     values_string = "" #construct a values string to insert multiple agents into db table
@@ -201,9 +224,8 @@ function insertAgentsSQL(agent_list::Vector{String}, simulation_id::Integer)
     return "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]"
 end
 
-function queryGameSQL(game_id::Integer)
+function queryGame(game_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM games
@@ -214,9 +236,8 @@ function queryGameSQL(game_id::Integer)
     return df
 end
 
-function queryGraphSQL(graph_id::Integer)
+function queryGraph(graph_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM graphs
@@ -227,9 +248,8 @@ function queryGraphSQL(graph_id::Integer)
     return df
 end
 
-function querySimulationSQL(simulation_id::Integer)
+function querySimulation(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM simulations
@@ -240,9 +260,8 @@ function querySimulationSQL(simulation_id::Integer)
     return df
 end
 
-function queryAgentsSQL(simulation_id::Integer)
+function queryAgents(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM agents
@@ -254,13 +273,20 @@ function queryAgentsSQL(simulation_id::Integer)
     return df
 end
 
-function queryFullSimulation(simulation_id::Integer)
+function querySimulationForRestore(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
     query = DBInterface.execute(db, "
-                                        SELECT *
+                                        SELECT
+                                            simulations.grouping_id,
+                                            simulations.sim_params,
+                                            simulations.use_seed,
+                                            simulations.rng_state,
+                                            simulations.periods_elapsed,
+                                            simulations.graph_adj_matrix,
+                                            graphs.graph_params_dict,
+                                            games.game,
+                                            games.payoff_matrix_size
                                         FROM simulations
-                                        INNER JOIN agents USING(simulation_id)
                                         INNER JOIN games USING(game_id)
                                         INNER JOIN graphs USING(graph_id)
                                         WHERE simulation_id = $simulation_id;
@@ -270,39 +296,22 @@ function queryFullSimulation(simulation_id::Integer)
     return df
 end
 
-function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
+function queryAgentsForRestore(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
-
-    where_params_string = ""
-    for (param, value) in graph_params
-        where_params_string *= "graphs.$param = $value AND "
-    end
-    where_params_string = rstrip(where_params_string, [' ', 'A', 'N', 'D'])
-
     query = DBInterface.execute(db, "
-                                        SELECT
-                                            simulations.sim_params,
-                                            simulations.graph_adj_matrix,
-                                            simulations.use_seed,
-                                            simulations.rng_state,
-                                            games.game,
-                                            games.payoff_matrix_size,
-                                            graphs.graph_params_dict
-                                        FROM simulations
-                                        INNER JOIN games USING(game_id)
-                                        INNER JOIN graphs USING(graph_id)
-                                        WHERE games.game_name = '$game_name'
-                                        AND $where_params_string
-                                        AND simulations.number_agents = $number_agents
-                                        AND simulations.memory_length = $memory_length
-                                        AND simulations.error = $error;
+                                        SELECT agent
+                                        FROM agents
+                                        WHERE simulation_id = $simulation_id
+                                        ORDER BY agent_id ASC;
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
     return df
 end
 
-function querySimulationsByGroupSQL(grouping_id::Int)
+
+
+function querySimulationsByGroup(grouping_id::Int)
     db = SQLite.DB("SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
@@ -326,7 +335,7 @@ function querySimulationsByGroupSQL(grouping_id::Int)
 end
 
 #this function allows for RAM space savings during large iterative simulations
-function querySimulationIDsByGroupSQL(grouping_id::Int)
+function querySimulationIDsByGroup(grouping_id::Int)
     db = SQLite.DB("SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
@@ -334,6 +343,26 @@ function querySimulationIDsByGroupSQL(grouping_id::Int)
                                         FROM simulations
                                         WHERE grouping_id = $grouping_id
                                         ORDER BY simulation_id ASC
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    SQLite.close(db)
+    return df
+end
+
+
+function querySimulationsForPotting(grouping_id::Integer)
+    db = SQLite.DB("SimulationSaves.sqlite")
+    query = DBInterface.execute(db, "
+                                        SELECT
+                                            simulations.simulation_id,
+                                            simulations.sim_params,
+                                            simulations.periods_elapsed,
+                                            graphs.graph_params_dict,
+                                            games.game_name,
+                                        FROM simulations
+                                        INNER JOIN games USING(game_id)
+                                        INNER JOIN graphs USING(graph_id)
+                                        WHERE grouping_id = $grouping_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
