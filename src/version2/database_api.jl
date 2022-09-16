@@ -58,7 +58,7 @@ end
 
 function restoreFromDatabase(game_name::String, graph_params::Dict{Symbol, Any}, number_agents::Integer, memory_length::Integer, error::Float64)
     simulation_df = queryForSimReproduction(game_name, graph_params, number_agents, memory_length, error) #all returns from queries are DataFrames
-    
+    agents_df = queryAgentsSQL(simulation_id)
     #reproduce SimParams object
     reproduced_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
 
@@ -71,6 +71,11 @@ function restoreFromDatabase(game_name::String, graph_params::Dict{Symbol, Any},
     
 
     return reproduced_params, reproduced_game
+end
+
+function restoreFromDatabase(simulation_id::Integer)
+    simulation_df = queryFullSimulation(simulation_id)
+    agents_df = queryAgentsSQL(simulation_id)
 end
 
 

@@ -263,7 +263,7 @@ end
 
 
 
-function simulate(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
+function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0)
     if use_seed == true
         Random.seed!(params.random_seed)
     end
@@ -318,7 +318,7 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
             for run in 1:averager
                 println("Run $run of $averager")
 
-                sim_results = simulate(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id)
+                sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id)
                 push!(run_results, sim_results[1])
             end
             println(run_results)
@@ -369,4 +369,8 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
                     fillcolor = colors) =#
 
     #return sim_plot
+end
+
+#used to continue a simulation
+function simIterator(db_grouping_id::Int, db_store::Bool)
 end

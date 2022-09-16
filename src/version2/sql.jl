@@ -301,3 +301,41 @@ function queryForSimReproduction(game_name::String, graph_params::Dict{Symbol, A
     SQLite.close(db)
     return df
 end
+
+function querySimulationsByGroupSQL(grouping_id::Int)
+    db = SQLite.DB("SimulationSaves.sqlite")
+    query = DBInterface.execute(db, "
+                                        SELECT
+                                            simulations.simulation_id,
+                                            simulations.sim_params,
+                                            simulations.graph_adj_matrix,
+                                            simulations.use_seed,
+                                            simulations.rng_state,
+                                            simulations.periods_elapsed,
+                                            games.game,
+                                            games.payoff_matrix_size,
+                                            graphs.graph_params_dict
+                                        FROM simulations
+                                        INNER JOIN games USING(game_id)
+                                        INNER JOIN graphs USING(graph_id)
+                                        WHERE simulations.grouping_id = $grouping_id
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    SQLite.close(db)
+    return df
+end
+
+#this function allows for RAM space savings during large iterative simulations
+function querySimulationIDsByGroupSQL(grouping_id::Int)
+    db = SQLite.DB("SimulationSaves.sqlite")
+    query = DBInterface.execute(db, "
+                                        SELECT
+                                            simulation_id
+                                        FROM simulations
+                                        WHERE grouping_id = $grouping_id
+                                        ORDER BY simulation_id ASC
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    SQLite.close(db)
+    return df
+end
