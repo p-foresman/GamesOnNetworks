@@ -78,3 +78,4 @@ FOR DB QUERIES
 -change grouping_ids to floats and add 0.01 each time the simulation is continued (this gives 100 possible continuations. more than enough)
 
 -could eliminate grouping_ids and create a meta-params db table containing averager, use_seed, random_seed
+    -or could contain all sim-params without simulation-specific findings. This would allow for a large number of averaged simulations to be grouped together. maybe this could contain the grouping id?
