@@ -3,7 +3,7 @@ using JSON3, Graphs, MetaGraphs
 include("types.jl")
 include("sql.jl")
 
-function pushToDatabase(grouping_id::Int, game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
 
     initDataBase()
 
@@ -28,19 +28,23 @@ function pushToDatabase(grouping_id::Int, game::Game, params::SimParams, graph_p
     graph_status = graph_insert_result.status_message
     graph_row_id = graph_insert_result.insert_row_id
 
-    #prepare and insert data for "simulations" table. Duplicate rows necessary.
-    #description = "test description" Might want a description eventually. removed for now.
+    #prepare and insert data for "sim_params" table. Duplicate rows necessary.
     params_json_str = JSON3.write(params)
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
     if use_seed == true
         seed_bool = 1
     else
         seed_bool = 0
     end
+    sim_params_insert_result = insertSimParams(grouping_id, params, params_json_str, seed_bool)
+    sim_params_status = sim_params_insert_result.status_message
+    sim_params_row_id = sim_params_insert_result.insert_row_id
+
+    #prepare and insert data for "simulations" table. Duplicate rows necessary.
+    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
-    simulation_insert_result = insertSimulation(grouping_id, params, params_json_str, adj_matrix_json_str, periods_elapsed, game_row_id, graph_row_id, seed_bool, rng_state_json)
+    simulation_insert_result = insertSimulation(prev_simulation_id, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
     simulation_status = simulation_insert_result.status_message
     simulation_row_id = simulation_insert_result.insert_row_id
 
@@ -53,7 +57,7 @@ function pushToDatabase(grouping_id::Int, game::Game, params::SimParams, graph_p
     end
     agents_status = insertAgents(agents_list, simulation_row_id)
 
-    return game_status, graph_status, simulation_status, agents_status
+    return game_status, graph_status, sim_params_status, simulation_status, agents_status
 end
 
 
@@ -68,9 +72,9 @@ function restoreFromDatabase(simulation_id::Integer)
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
     reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2]})
 
-    #reproduced Graph
+    #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
     reproduced_graph_params_dict = JSON3.read(simulation_df[1, :graph_params_dict], Dict{Symbol, Any})
-    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrx{reproduced_params.number_agents, reproduced_params.number_agents, Int})
+    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_params.number_agents, reproduced_params.number_agents, Int})
     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
     reproduced_meta_graph = MetaGraph(reproduced_graph)
     for vertex in vertices(reproduced_meta_graph)

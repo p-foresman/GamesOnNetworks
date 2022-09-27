@@ -34,51 +34,42 @@ function initDataBase()
                             );
                     ")
 
-    # #create simulations table which contains information specific to each simulation
-    # SQLite.execute(db, "
-    #                         CREATE TABLE IF NOT EXISTS sim_params
-    #                         (
-    #                             params_id INTEGER PRIMARY KEY,
-    #                             grouping_id INTEGER,
-    #                             number_agents INTEGER NOT NULL,
-    #                             memory_length INTEGER NOT NULL,
-    #                             error REAL NOT NULL,
-    #                             sim_params TEXT NOT NULL,
-    #                             game_id INTEGER NOT NULL,
-    #                             graph_id INTEGER NOT NULL,
-    #                             graph_adj_matrix TEXT NOT NULL,
-    #                             use_seed BOOLEAN NOT NULL,
-    #                             rng_state TEXT NOT NULL,
-    #                             periods_elapsed INTEGER NOT NULL,
-    #                             FOREIGN KEY (game_id)
-    #                                 REFERENCES games (game_id),
-    #                             FOREIGN KEY (graph_id)
-    #                                 REFERENCES graphs (graph_id),
-    #                             CHECK (use_seed in (0, 1))
-    #                         );
-    #                 ")
+    #create simulations table which contains information specific to each simulation
+    SQLite.execute(db, "
+                            CREATE TABLE IF NOT EXISTS sim_params
+                            (
+                                sim_params_id INTEGER PRIMARY KEY,
+                                grouping_id INTEGER,
+                                number_agents INTEGER NOT NULL,
+                                memory_length INTEGER NOT NULL,
+                                error REAL NOT NULL,
+                                sim_params TEXT NOT NULL,
+                                use_seed BOOLEAN NOT NULL,
+                                UNIQUE(grouping_id, sim_params, use_seed),
+                                CHECK (use_seed in (0, 1))
+                            );
+                    ")
 
     #create simulations table which contains information specific to each simulation
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS simulations
                             (
                                 simulation_id INTEGER PRIMARY KEY,
-                                grouping_id INTEGER,
-                                number_agents INTEGER NOT NULL,
-                                memory_length INTEGER NOT NULL,
-                                error REAL NOT NULL,
-                                sim_params TEXT NOT NULL,
+                                prev_simulation_id INTEGER DEFAULT NULL,
                                 game_id INTEGER NOT NULL,
                                 graph_id INTEGER NOT NULL,
-                                graph_adj_matrix TEXT NOT NULL,
-                                use_seed BOOLEAN NOT NULL,
+                                sim_params_id INTEGER NOT NULL,
+                                graph_adj_matrix TEXT DEFAULT NULL,
                                 rng_state TEXT NOT NULL,
                                 periods_elapsed INTEGER NOT NULL,
+                                FOREIGN KEY (prev_simulation_id)
+                                    REFERENCES simulations (prev_simulation_id),
                                 FOREIGN KEY (game_id)
                                     REFERENCES games (game_id),
                                 FOREIGN KEY (graph_id)
                                     REFERENCES graphs (graph_id),
-                                CHECK (use_seed in (0, 1))
+                                FOREIGN KEY (sim_params_id)
+                                    REFERENCES sim_params (sim_params_id)
                             );
                     ")
                         #UNIQUE (number_agents, memory_length, error, sim_params, game_id, graph_id, graph_adj_matrix, use_seed, rng_state, periods_elapsed) might need to implement this
@@ -163,22 +154,17 @@ function insertGraph(graph_type::String, graph_params_dict_str::String, db_param
     return tuple_to_return
 end
 
-function insertSimulation(grouping_id::Int, params::SimParams, sim_params_str::String, graph_adj_matrix_str::String, periods_elapsed::Integer, game_id::Integer, graph_id::Integer, seed_bool::Integer, rng_state::String)
+function insertSimParams(grouping_id::Int, params::SimParams, sim_params_str::String, use_seed::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
     status = SQLite.execute(db, "
-                                    INSERT INTO simulations
+                                    INSERT OR IGNORE INTO sim_params
                                     (
                                         grouping_id,
                                         number_agents,
                                         memory_length,
                                         error,
                                         sim_params,
-                                        game_id,
-                                        graph_id,
-                                        graph_adj_matrix,
-                                        periods_elapsed,
-                                        use_seed,
-                                        rng_state
+                                        use_seed
                                     )
                                     VALUES
                                     (
@@ -187,12 +173,48 @@ function insertSimulation(grouping_id::Int, params::SimParams, sim_params_str::S
                                         $(params.memory_length),
                                         $(params.error),
                                         '$sim_params_str',
+                                        $use_seed
+                                );
+                            ")
+    query = DBInterface.execute(db, "
+                                        SELECT sim_params_id
+                                        FROM sim_params
+                                        WHERE grouping_id = $grouping_id
+                                        AND sim_params = '$sim_params_str'
+                                        AND use_seed = $use_seed;
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    insert_row = df[1, :sim_params_id]
+    SQLite.close(db)
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_params]... INSERT STATUS: [$status] SIM_PARAMS_ID: [$insert_row]", insert_row_id = insert_row)
+    return tuple_to_return
+end
+
+function insertSimulation(prev_simulation_id::Integer, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+    if prev_simulation_id == 0
+        prev_simulation_id = "NULL"
+    end
+    db = SQLite.DB("SimulationSaves.sqlite")
+    status = SQLite.execute(db, "
+                                    INSERT INTO simulations
+                                    (
+                                        prev_simulation_id,
+                                        game_id,
+                                        graph_id,
+                                        sim_params_id,
+                                        graph_adj_matrix,
+                                        rng_state,
+                                        periods_elapsed
+                                    )
+                                    VALUES
+                                    (
+                                        $prev_simulation_id,
                                         $game_id,
                                         $graph_id,
+                                        $sim_params_id,
                                         '$graph_adj_matrix_str',
-                                        $periods_elapsed,
-                                        $seed_bool,
-                                        '$rng_state'
+                                        '$rng_state',
+                                        $periods_elapsed
                                 );
                             ")
     insert_row = SQLite.last_insert_rowid(db)
@@ -248,6 +270,18 @@ function queryGraph(graph_id::Integer)
     return df
 end
 
+function querySimParams(sim_params_id::Integer)
+    db = SQLite.DB("SimulationSaves.sqlite")
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM sim_params
+                                        WHERE sim_params_id = $sim_params_id;
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    SQLite.close(db)
+    return df
+end
+
 function querySimulation(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
@@ -277,9 +311,10 @@ function querySimulationForRestore(simulation_id::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
-                                            simulations.grouping_id,
-                                            simulations.sim_params,
-                                            simulations.use_seed,
+                                            simulations.simulation_id,
+                                            sim_params.grouping_id,
+                                            sim_params.sim_params,
+                                            sim_params.use_seed,
                                             simulations.rng_state,
                                             simulations.periods_elapsed,
                                             simulations.graph_adj_matrix,
@@ -289,6 +324,7 @@ function querySimulationForRestore(simulation_id::Integer)
                                         FROM simulations
                                         INNER JOIN games USING(game_id)
                                         INNER JOIN graphs USING(graph_id)
+                                        INNER JOIN sim_params USING(sim_params_id)
                                         WHERE simulation_id = $simulation_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values

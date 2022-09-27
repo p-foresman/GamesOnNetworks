@@ -35,7 +35,7 @@ end
 
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix?
+function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
     opponent_strategy_recollections = [[count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]]]
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
@@ -43,6 +43,14 @@ function makeChoices(game::Game, params::SimParams, players::Tuple{Agent, Agent}
     player_memory_lengths = sum.(opponent_strategy_recollections)
     opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in eachindex(players)]
     player_expected_utilities = zeros.(Float32, length.(game.strategies))
+    # for row in 1:size(game.payoff_matrix, 1) #row strategies
+    #     for column in 1:size(game.payoff_matrix, 2) #column strategies
+    #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
+    #         player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
+    #     end
+    # end
+
+    #this should be equivalent to above. make sure and see which is more efficient
     for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
         player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
@@ -250,8 +258,8 @@ end
 
 
 
-function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Float64 = 0.0)
-    if use_seed == true
+function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
+    if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
         Random.seed!(params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
@@ -274,7 +282,7 @@ function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict
         periods_elapsed += 1
     end
     if db_store == true
-        db_status = pushToDatabase(db_grouping_id, game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
+        db_status = pushToDatabase(db_grouping_id, prev_simulation_id, game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
     return (periods_elapsed)
@@ -282,7 +290,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Float64 = 0.0)
+function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
@@ -300,10 +308,12 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
             print("Memory length: $(params.memory_length), ")
             println("Error: $(params.error)")
 
+
             run_results = Vector{Integer}([])
             for run in 1:averager
                 println("Run $run of $averager")
-                sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id)
+
+                sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id, prev_simulation_id=prev_simulation_id)
                 push!(run_results, sim_results[1])
             end
             println(run_results)
@@ -366,5 +376,6 @@ end
 
 
 function continueSimulation(db_simulation_id::Int; db_store::Bool = false)
-    restored_simulation = restoreFromDatabase(db_simulation_id)
+    prev_sim = restoreFromDatabase(db_simulation_id)
+    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.params, prev_sim.graph_params_dict, use_seed=prev_sim.use_seed, db_store=prev_sim.db_store, db_grouping_id=prev_sim.db_grouping_id, prev_simulation_id=prev_sim.prev_simulation_id)
 end

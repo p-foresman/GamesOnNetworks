@@ -79,3 +79,22 @@ FOR DB QUERIES
 
 -could eliminate grouping_ids and create a meta-params db table containing averager, use_seed, random_seed
     -or could contain all sim-params without simulation-specific findings. This would allow for a large number of averaged simulations to be grouped together. maybe this could contain the grouping id?
+
+
+
+
+
+Questions for Rajesh:
+-do we want to restore the RNG state even if the random seed wasnt originally set? It probably doesnt matter, but this way would ensure a true continuation
+
+-The sampling distribution of the random variable "transition time" will be different for a sample size of
+    1 agent, 10 agents (or some cluster), and the total population (say 100 agents).
+    Could construct histograms/sampling distributions for each of these emergent layers (with many replications)
+    and compare the results.
+
+-find percentage of agents transitioned over periods
+
+-find optimal error rate. This would show the amount of randomness/risk is ideal to reach the global equilibrium the fastest
+
+-add disturbances
+
