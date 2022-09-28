@@ -55,9 +55,9 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, p
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
-    agents_status = insertAgents(agents_list, simulation_row_id)
+    agents_status = insertAgents(simulation_row_id, agents_list)
 
-    return game_status, graph_status, sim_params_status, simulation_status, agents_status
+    return (game_status=game_status, graph_status=graph_status, sim_params_status=sim_params_status, simulation_status=simulation_status, agents_status=agents_status)
 end
 
 

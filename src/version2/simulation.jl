@@ -258,7 +258,7 @@ end
 
 
 
-function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
+function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}; use_seed::Bool = false, db_store::Bool = false, db_store_period::Int = 0, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
     if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
         Random.seed!(params.random_seed)
     end
@@ -278,10 +278,13 @@ function simulateTransitionTime(game::Game, params::SimParams, graph_params_dict
             #println(players[1].name * " playing game with " * players[2].name)
             playGame!(game, params, players)
         end
-        #increment period count
         periods_elapsed += 1
+        if db_store == true && db_store_period != 0 && periods_elapsed % db_store_period == 0 #push incremental results to DB
+            db_status = pushToDatabase(db_grouping_id, prev_simulation_id, game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
+            prev_simulation_id = db_status.simulation_status.insert_row_id
+        end
     end
-    if db_store == true
+    if db_store == true #push final results to DB
         db_status = pushToDatabase(db_grouping_id, prev_simulation_id, game, params, graph_params_dict, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
@@ -290,7 +293,7 @@ end
 
 
 
-function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
+function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulations_list::Vector{Dict{Symbol, Any}}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Int = 0, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
@@ -313,7 +316,7 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
             for run in 1:averager
                 println("Run $run of $averager")
 
-                sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_grouping_id=db_grouping_id, prev_simulation_id=prev_simulation_id)
+                sim_results = simulateTransitionTime(game, params, graph_params_dict, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_grouping_id=db_grouping_id, prev_simulation_id=prev_simulation_id)
                 push!(run_results, sim_results[1])
             end
             println(run_results)
@@ -367,15 +370,15 @@ function simIterator(game::Game, params_list::Vector{SimParams}, graph_simulatio
 end
 
 #used to continue a simulation
-function simIterator(db_grouping_id::Float64, db_store::Bool = false)
+function simIterator(db_grouping_id::Float64; db_store::Bool = false, db_store_period::Int = 0)
     simulation_ids_df = querySimulationIDsByGroup(db_grouping_id)
     for row in eachrow(simulation_ids_df)
-        continueSimulation(row[:simulation_id])
+        continueSimulation(row[:simulation_id], db_store=db_store, db_store_period=db_store_period)
     end
 end
 
 
-function continueSimulation(db_simulation_id::Int; db_store::Bool = false)
+function continueSimulation(db_simulation_id::Int; db_store::Bool = false, db_store_period::Int = 0)
     prev_sim = restoreFromDatabase(db_simulation_id)
     sim_results = simulateTransitionTime(prev_sim.game, prev_sim.params, prev_sim.graph_params_dict, use_seed=prev_sim.use_seed, db_store=prev_sim.db_store, db_grouping_id=prev_sim.db_grouping_id, prev_simulation_id=prev_sim.prev_simulation_id)
 end

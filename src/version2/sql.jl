@@ -72,7 +72,6 @@ function initDataBase()
                                     REFERENCES sim_params (sim_params_id)
                             );
                     ")
-                        #UNIQUE (number_agents, memory_length, error, sim_params, game_id, graph_id, graph_adj_matrix, use_seed, rng_state, periods_elapsed) might need to implement this
 
     #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
     SQLite.execute(db, "
@@ -223,7 +222,7 @@ function insertSimulation(prev_simulation_id::Integer, game_id::Integer, graph_i
     return tuple_to_return
 end
 
-function insertAgents(agent_list::Vector{String}, simulation_id::Integer)
+function insertAgents(simulation_id::Integer, agent_list::Vector{String})
     db = SQLite.DB("SimulationSaves.sqlite")
 
     values_string = "" #construct a values string to insert multiple agents into db table
@@ -243,7 +242,7 @@ function insertAgents(agent_list::Vector{String}, simulation_id::Integer)
                                         $values_string;
                             ")
     SQLite.close(db)
-    return "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]"
+    return (status_message = "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]")
 end
 
 function queryGame(game_id::Integer)

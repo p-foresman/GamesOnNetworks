@@ -98,3 +98,13 @@ Questions for Rajesh:
 
 -add disturbances
 
+-stochastic stability *******
+    what is the interaction between the stochastic stability and the network structure
+
+-noise induced phenomenon
+-young's papers
+
+
+
+
+-implement simulation_type column in simulations table along with init_state?
