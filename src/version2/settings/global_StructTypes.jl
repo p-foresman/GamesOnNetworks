@@ -14,6 +14,16 @@ StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable()
 StructTypes.StructType(::Type{SimParams}) = StructTypes.Mutable()
 
 
+############################## GraphParams Types ####################################
+#This StructTypes hierarchy is required to reproduce any given subtype from the abstract type input
+StructTypes.StructType(::Type{GraphParams}) = StructTypes.AbstractType()
+StructTypes.StructType(::Type{CompleteParams}) = StructTypes.Struct()
+StructTypes.StructType(::Type{ErdosRenyiParams}) = StructTypes.Struct()
+StructTypes.StructType(::Type{SmallWorldParams}) = StructTypes.Struct()
+StructTypes.StructType(::Type{ScaleFreeParams}) = StructTypes.Struct()
+StructTypes.StructType(::Type{StochasticBlockModelParams}) = StructTypes.Struct()
+StructTypes.subtypekey(::Type{GraphParams}) = :graph_type
+StructTypes.subtypes(::Type{GraphParams}) = (complete=CompleteParams, er=ErdosRenyiParams, sw=SmallWorldParams, sf=ScaleFreeParams, sbm=StochasticBlockModelParams)
 
 ####################### Xoshiro random number generator type ########################
 #Needed to read and write the state of the Xoshiro RNG with JSON3 package

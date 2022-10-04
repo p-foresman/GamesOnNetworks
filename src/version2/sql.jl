@@ -22,15 +22,15 @@ function initDataBase()
                             (
                                 graph_id INTEGER PRIMARY KEY,
                                 graph_type TEXT NOT NULL,
-                                graph_params_dict TEXT NOT NULL,
+                                graph_params TEXT NOT NULL,
                                 λ REAL DEFAULT NULL,
-                                k REAL DEFAULT NULL,
+                                κ REAL DEFAULT NULL,
                                 β REAL DEFAULT NULL,
                                 α REAL DEFAULT NULL,
                                 communities INTEGER DEFAULT NULL,
                                 internal_λ REAL DEFAULT NULL,
                                 external_λ REAL DEFAULT NULL,
-                                UNIQUE(graph_type, graph_params_dict)
+                                UNIQUE(graph_type, graph_params)
                             );
                     ")
 
@@ -116,12 +116,12 @@ function insertGame(game_name::String, game::String, payoff_matrix_size::String)
     return tuple_to_return
 end
 
-function insertGraph(graph_type::String, graph_params_dict_str::String, db_params_dict::Dict{Symbol, Any})
+function insertGraph(graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
     db = SQLite.DB("SimulationSaves.sqlite")
 
-    insert_string_columns = "graph_type, graph_params_dict, "
-    insert_string_values = "'$graph_type', '$graph_params_dict_str', "
-    for (param, value) in db_params_dict
+    insert_string_columns = "graph_type, graph_params, "
+    insert_string_values = "'$graph_type', '$graph_params_str', "
+    for (param, value) in db_graph_params_dict
         if value !== nothing
             insert_string_columns *= "'$param', "
             insert_string_values *= "$value, "
@@ -144,7 +144,7 @@ function insertGraph(graph_type::String, graph_params_dict_str::String, db_param
                                         SELECT graph_id
                                         FROM graphs
                                         WHERE graph_type = '$graph_type'
-                                        AND graph_params_dict = '$graph_params_dict_str';
+                                        AND graph_params = '$graph_params_str';
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
     insert_row = df[1, :graph_id]
@@ -153,7 +153,7 @@ function insertGraph(graph_type::String, graph_params_dict_str::String, db_param
     return tuple_to_return
 end
 
-function insertSimParams(grouping_id::Int, params::SimParams, sim_params_str::String, use_seed::Integer)
+function insertSimParams(grouping_id::Int, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
     db = SQLite.DB("SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_params
@@ -168,9 +168,9 @@ function insertSimParams(grouping_id::Int, params::SimParams, sim_params_str::St
                                     VALUES
                                     (
                                         $grouping_id,
-                                        $(params.number_agents),
-                                        $(params.memory_length),
-                                        $(params.error),
+                                        $(sim_params.number_agents),
+                                        $(sim_params.memory_length),
+                                        $(sim_params.error),
                                         '$sim_params_str',
                                         $use_seed
                                 );
@@ -317,7 +317,7 @@ function querySimulationForRestore(simulation_id::Integer)
                                             simulations.rng_state,
                                             simulations.periods_elapsed,
                                             simulations.graph_adj_matrix,
-                                            graphs.graph_params_dict,
+                                            graphs.graph_params,
                                             games.game,
                                             games.payoff_matrix_size
                                         FROM simulations
@@ -358,7 +358,7 @@ function querySimulationsByGroup(grouping_id::Int)
                                             simulations.periods_elapsed,
                                             games.game,
                                             games.payoff_matrix_size,
-                                            graphs.graph_params_dict
+                                            graphs.graph_params,
                                         FROM simulations
                                         INNER JOIN games USING(game_id)
                                         INNER JOIN graphs USING(graph_id)
@@ -392,7 +392,7 @@ function querySimulationsForPotting(grouping_id::Integer)
                                             simulations.simulation_id,
                                             simulations.sim_params,
                                             simulations.periods_elapsed,
-                                            graphs.graph_params_dict,
+                                            graphs.graph_params,
                                             games.game_name,
                                         FROM simulations
                                         INNER JOIN games USING(game_id)

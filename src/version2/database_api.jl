@@ -3,7 +3,7 @@ using JSON3, Graphs, MetaGraphs
 include("types.jl")
 include("sql.jl")
 
-function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, params::SimParams, graph_params_dict::Dict{Symbol, Any}, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
 
     initDataBase()
 
@@ -16,12 +16,12 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, p
     game_row_id = game_insert_result.insert_row_id
 
     #prepare and insert data for "graphs" table. No duplicate rows.
-    graph_type = String(graph_params_dict[:type])
-    graph_params_string = JSON3.write(graph_params_dict)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :k => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
+    graph_type = displayName(graph_params)
+    graph_params_string = JSON3.write(graph_params)
+    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
     for param in keys(db_params_dict)
-        if haskey(graph_params_dict, param)
-            db_params_dict[param] = graph_params_dict[param]
+        if param in fieldnames(typeof(graph_params))
+            db_params_dict[param] = getfield(graph_params, param)
         end
     end
     graph_insert_result = insertGraph(graph_type, graph_params_string, db_params_dict)
@@ -29,13 +29,13 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, p
     graph_row_id = graph_insert_result.insert_row_id
 
     #prepare and insert data for "sim_params" table. Duplicate rows necessary.
-    params_json_str = JSON3.write(params)
+    sim_params_json_str = JSON3.write(sim_params)
     if use_seed == true
         seed_bool = 1
     else
         seed_bool = 0
     end
-    sim_params_insert_result = insertSimParams(grouping_id, params, params_json_str, seed_bool)
+    sim_params_insert_result = insertSimParams(grouping_id, sim_params, sim_params_json_str, seed_bool)
     sim_params_status = sim_params_insert_result.status_message
     sim_params_row_id = sim_params_insert_result.insert_row_id
 
@@ -66,15 +66,15 @@ function restoreFromDatabase(simulation_id::Integer)
     agents_df = queryAgentsForRestore(simulation_id)
 
     #reproduce SimParams object
-    reproduced_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
+    reproduced_sim_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
 
     #reproduce Game object
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
     reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2]})
 
     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
-    reproduced_graph_params_dict = JSON3.read(simulation_df[1, :graph_params_dict], Dict{Symbol, Any})
-    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_params.number_agents, reproduced_params.number_agents, Int})
+    reproduced_graph_params = JSON3.read(simulation_df[1, :graph_params], GraphParams)
+    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
     reproduced_meta_graph = MetaGraph(reproduced_graph)
     for vertex in vertices(reproduced_meta_graph)
@@ -90,5 +90,5 @@ function restoreFromDatabase(simulation_id::Integer)
     else
         seed_bool = false
     end
-    return (game=reproduced_game, params=reproduced_params, graph_params_dict=reproduced_graph_params_dict, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], grouping_id=simulation_df[1, :grouping_id])
+    return (game=reproduced_game, sim_params=reproduced_sim_params, graph_params=reproduced_graph_params, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], grouping_id=simulation_df[1, :grouping_id])
 end

@@ -31,7 +31,7 @@ struct Game{S1, S2}
         S2 = matrix_size[2]
         static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        new{S1, S2}(name, static_payoff_matrix, strategies)
+        return new{S1, S2}(name, static_payoff_matrix, strategies)
     end
     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
         matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
@@ -54,9 +54,6 @@ end
 
 
 
-
-
-
 mutable struct SimParams
     number_agents::Int64
     memory_length::Int64
@@ -73,10 +70,73 @@ mutable struct SimParams
     function SimParams(;number_agents::Int64, memory_length::Int64, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
         matches_per_period = floor(number_agents / 2)
         sufficient_equity = (1 - error) * memory_length
-        new(number_agents, memory_length, memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, random_seed)
+        return new(number_agents, memory_length, memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, random_seed)
     end
     SimParams() = new()
 end
+
+
+abstract type GraphParams end
+
+struct CompleteParams <: GraphParams 
+    graph_type::Symbol
+    function CompleteParams()
+        return new(:complete)
+    end
+    function CompleteParams(::Symbol)
+        return new(:complete)
+    end
+end
+struct ErdosRenyiParams <: GraphParams
+    graph_type::Symbol
+    λ::Float64
+    function ErdosRenyiParams(λ::Float64)
+        return new(:er, λ)
+    end
+    function ErdosRenyiParams(::Symbol, λ::Float64)
+        return new(:er, λ)
+    end
+end
+struct SmallWorldParams <: GraphParams
+    graph_type::Symbol
+    κ::Int
+    β::Float64
+    function SmallWorldParams(κ::Int, β::Float64)
+        return new(:sw, κ, β)
+    end
+    function SmallWorldParams(::Symbol, κ::Int, β::Float64)
+        return new(:sw, κ, β)
+    end
+end
+struct ScaleFreeParams <: GraphParams
+    graph_type::Symbol
+    α::Float64
+    function ScaleFreeParams(α::Float64)
+        return new(:sf, α)
+    end
+    function ScaleFreeParams(::Symbol, α::Float64)
+        return new(:sf, α)
+    end
+end
+struct StochasticBlockModelParams <: GraphParams
+    graph_type::Symbol
+    communities::Int
+    internal_λ::Float64
+    external_λ::Float64
+    function StochasticBlockModelParams(communities::Int, internal_λ::Float64, external_λ::Float64)
+        return new(:sbm, communities, internal_λ, external_λ)
+    end
+    function StochasticBlockModelParams(::Symbol, communities::Int, internal_λ::Float64, external_λ::Float64)
+        return new(:sbm, communities, internal_λ, external_λ)
+    end
+end
+
+# methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
+function displayName(::CompleteParams) return "Complete" end
+function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
+function displayName(::SmallWorldParams) return "Small-World" end
+function displayName(::ScaleFreeParams) return "Scale-Free" end
+function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)
 include("settings/global_StructTypes.jl")
