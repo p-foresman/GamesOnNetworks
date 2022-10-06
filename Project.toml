@@ -2,6 +2,7 @@
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Fontconfig = "186bb1d3-e1f7-5a2c-a377-96d770f13627"
 GraphPlot = "a2cc645c-3eea-5389-862e-a155d0052231"

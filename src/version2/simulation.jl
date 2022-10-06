@@ -119,7 +119,7 @@ end
 
 
 ##### multiple dispatch for various graph parameter sets #####
-function initGraph(graph_params::CompleteParams, game::Game, sim_params::SimParams)
+function initGraph(::CompleteParams, game::Game, sim_params::SimParams)
     graph = complete_graph(sim_params.number_agents)
     meta_graph = setGraphMetaData!(graph, game, sim_params)
     return meta_graph
@@ -264,10 +264,10 @@ end
 
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; use_seed::Bool = false, db_store::Bool = false, db_store_period::Int = 0, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, prev_simulation_id::Integer = 0)
     if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
-    end
+    end 
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
     meta_graph = initGraph(graph_params, game, sim_params)
     #println(graph.fadjlist)
@@ -286,12 +286,12 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
         end
         periods_elapsed += 1
         if db_store == true && db_store_period != 0 && periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushToDatabase(db_grouping_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
+            db_status = pushToDatabase(db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
             prev_simulation_id = db_status.simulation_status.insert_row_id
         end
     end
     if db_store == true #push final results to DB
-        db_status = pushToDatabase(db_grouping_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
+        db_status = pushToDatabase(db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
     return (periods_elapsed)
@@ -299,7 +299,14 @@ end
 
 
 
-function simIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}; averager::Int = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Int = 0, db_grouping_id::Int = 0, prev_simulation_id::Int = 0)
+function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::GraphParamsList; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_group_description::String = "")
+    if db_group_description != ""
+        sim_group_insert_result = insertSimGroup(db_group_description)
+        println(sim_group_insert_result.status_message)
+        sim_group_id = sim_group_insert_result.insert_row_id
+    else
+        sim_group_id = 0
+    end
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
     #transition_times = Vector{AbstractFloat}([]) #vector to be updated
@@ -309,7 +316,7 @@ function simIterator(game::Game, sim_params_list::Vector{SimParams}, graph_param
     for graph_params in graph_params_list
         println("\n\n")
         println(displayName(graph_params))
-        println(dumps(graph_params))
+        println(dump(graph_params))
         for sim_params in sim_params_list
             #transition_times = Vector{AbstractFloat}([]) #vector to be updated
             # standard_errors = Vector{AbstractFloat}([])
@@ -323,7 +330,7 @@ function simIterator(game::Game, sim_params_list::Vector{SimParams}, graph_param
             for run in 1:averager
                 println("Run $run of $averager")
 
-                sim_results = simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_grouping_id=db_grouping_id, prev_simulation_id=prev_simulation_id)
+                sim_results = simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=sim_group_id)
                 push!(run_results, sim_results[1])
             end
             println(run_results)
@@ -377,15 +384,15 @@ function simIterator(game::Game, sim_params_list::Vector{SimParams}, graph_param
 end
 
 #used to continue a simulation
-function simIterator(db_grouping_id::Float64; db_store::Bool = false, db_store_period::Int = 0)
-    simulation_ids_df = querySimulationIDsByGroup(db_grouping_id)
+function simGroupIterator(db_sim_group_id::Integer; db_store::Bool = false, db_store_period::Int = 0)
+    simulation_ids_df = querySimulationIDsByGroup(db_sim_group_id)
     for row in eachrow(simulation_ids_df)
         continueSimulation(row[:simulation_id], db_store=db_store, db_store_period=db_store_period)
     end
 end
 
 
-function continueSimulation(db_simulation_id::Int; db_store::Bool = false, db_store_period::Int = 0)
+function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_store_period::Integer = 0)
     prev_sim = restoreFromDatabase(db_simulation_id)
-    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_store=prev_sim.db_store, db_grouping_id=prev_sim.db_grouping_id, prev_simulation_id=prev_sim.prev_simulation_id)
+    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_id=prev_sim.prev_simulation_id)
 end

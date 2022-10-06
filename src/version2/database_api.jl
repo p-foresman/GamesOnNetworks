@@ -3,9 +3,7 @@ using JSON3, Graphs, MetaGraphs
 include("types.jl")
 include("sql.jl")
 
-function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
-
-    initDataBase()
+function pushToDatabase(sim_group_id::Integer, prev_simulation_id::Integer, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
 
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
@@ -35,7 +33,7 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, s
     else
         seed_bool = 0
     end
-    sim_params_insert_result = insertSimParams(grouping_id, sim_params, sim_params_json_str, seed_bool)
+    sim_params_insert_result = insertSimParams(sim_params, sim_params_json_str, seed_bool)
     sim_params_status = sim_params_insert_result.status_message
     sim_params_row_id = sim_params_insert_result.insert_row_id
 
@@ -44,7 +42,7 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, s
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
-    simulation_insert_result = insertSimulation(prev_simulation_id, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
+    simulation_insert_result = insertSimulation(sim_group_id, prev_simulation_id, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
     simulation_status = simulation_insert_result.status_message
     simulation_row_id = simulation_insert_result.insert_row_id
 
@@ -57,7 +55,7 @@ function pushToDatabase(grouping_id::Int, prev_simulation_id::Int, game::Game, s
     end
     agents_status = insertAgents(simulation_row_id, agents_list)
 
-    return (game_status=game_status, graph_status=graph_status, sim_params_status=sim_params_status, simulation_status=simulation_status, agents_status=agents_status)
+    return (game_status=game_insert_result, graph_status=graph_insert_result, sim_params_status=sim_params_insert_result, simulation_status=simulation_insert_result, agents_status=agents_status)
 end
 
 
@@ -90,5 +88,5 @@ function restoreFromDatabase(simulation_id::Integer)
     else
         seed_bool = false
     end
-    return (game=reproduced_game, sim_params=reproduced_sim_params, graph_params=reproduced_graph_params, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], grouping_id=simulation_df[1, :grouping_id])
+    return (game=reproduced_game, sim_params=reproduced_sim_params, graph_params=reproduced_graph_params, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], sim_group_id=simulation_df[1, :sim_group_id])
 end

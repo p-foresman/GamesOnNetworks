@@ -1,68 +1,62 @@
-using Graphs, JSON3
-
-function adjMatrixStringParserOld(db_matrix_string)
-    string = chop(db_matrix_string, head=1, tail=1)
-    new_vector = Vector{Int64}([])
-    for i in string #parse the string into a vector
-        if i != ' ' && i != ';'
-            push!(new_vector, parse(Int64, i))
-        end
-    end
-    size = Int64(sqrt(length(new_vector))) #will always be a perfect square due to matrix being adjacency matrix
-    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix (this result can be fed into the SimpleGraph() function)
-    return new_matrix
-end
-
-function adjMatrixStringParser(db_matrix_string::String)
-    new_vector = JSON3.read(db_matrix_string)
-    size = Int64(sqrt(length(new_vector))) #will always be a perfect square due to matrix being adjacency matrix
-    new_matrix = reshape(new_vector, (size, size)) #reshape parsed vector into matrix (this result can be fed into the SimpleGraph() function)
-    return new_matrix
-end
-
+using Combinatorics
+include("types.jl")
 
 payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
-                                        (0, 0) (50, 50) (50, 30);
-                                        (30, 70) (30, 50) (30, 30)])
+                                            (0, 0) (50, 50) (50, 30);
+                                            (30, 70) (30, 50) (30, 30)])
+#Check "global_StructTypes.jl" file and ensure that the size of this payoff matrix is listed under the "Game type" section
 
-string = JSON3.write(payoff_matrix)
+
+#create bargaining game type (players will be slotted in)
+game = Game("Bargaining Game", payoff_matrix)
+
+memory_lengths = 7:20
+
+function makeChoiceTest(game::Game, memory_state)
+    opponent_strategy_recollection = [count(i->(i==strategy), memory_state) for strategy in game.strategies[1]]
+
+    player_memory_length = sum(opponent_strategy_recollection)
+    opponent_strategy_probs = [i / player_memory_length for i in opponent_strategy_recollection]
+    player_expected_utilities = zeros(Float32, length(game.strategies[1]))
 
 
-function payoffMatrixStringParser(db_matrix_string)
-    new_vector = JSON3.read(db_matrix_string)
-    tuple_vector = Vector{Tuple{Int8, Int8}}([])
-    for index in new_vector
-        new_tuple = Tuple{Int8, Int8}([index[1], index[2]])
-        push!(tuple_vector, new_tuple)
+    #this should be equivalent to above. make sure and see which is more efficient
+    for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
+        player_expected_utilities[index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[index[2]]
     end
-    size = Int64(sqrt(length(tuple_vector)))
-    new_matrix = reshape(tuple_vector, (size, size))
-    return new_matrix
+
+    ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
+    # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
+    # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
+
+    player_max_value = maximum(player_expected_utilities)
+    player_max_strategies = findall(i->(i==player_max_value), player_expected_utilities)
+    player_choice = Int8(rand(player_max_strategies))
+
+    return player_choice
 end
 
-new_matrix = payoffMatrixStringParser(string)
 
-println(new_matrix == payoff_matrix)
-
-
-
-# struct Test{S1, S2, L}
-#     sm::SMatrix{S1, S2, Int, L}
-#     function Test(S1::Int, S2::Int, L::Int,  matrix::SMatrix)
-#     new{S1, S2, L}(matrix)
-#     end
-#     end
-
-struct Test{S1, S2, L}
-    sm::SMatrix{S1, S2, Int, L}
-    function Test(matrix::SMatrix)
-    matrix_size = size(matrix)
-    S1 = matrix_size[1]
-    S2 = matrix_size[2]
-    L = S1 * S2
-    new{S1, S2, L}(matrix)
+function choiceTendancy(game::Game, memory_length::Integer)
+    memory_state_sets = collect(with_replacement_combinations(game.strategies[1], memory_length)) #gives all possible memory states given a memory length
+    choices_list = []
+    for memory_state in memory_state_sets
+        choice = makeChoiceTest(game, memory_state)
+        append!(choices_list, choice)
     end
+    choices_count = [count(i->(i==strategy), choices_list) for strategy in game.strategies[1]]
+    choices_proportions = [i / length(memory_state_sets) for i in choices_count]
+    return choices_proportions
 end
+
+# choice_proportions_list = []
+# for memory_length in memory_lengths
+#     choice_proportions = choiceTendancy(game, memory_length)
+#     append!(choice_proportions_list, choice_proportions)
+# end
+# println(choice_proportions_list)
+println(choiceTendancy(game, 20))
+
 
 
 

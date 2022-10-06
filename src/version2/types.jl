@@ -130,7 +130,7 @@ struct StochasticBlockModelParams <: GraphParams
         return new(:sbm, communities, internal_λ, external_λ)
     end
 end
-
+const GraphParamsList = Vector{T} where T <: GraphParams
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
 function displayName(::CompleteParams) return "Complete" end
 function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end

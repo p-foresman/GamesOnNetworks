@@ -2,6 +2,7 @@ using Plots, GraphPlot, StatsPlots, Cairo, Fontconfig
 
 include("database_api.jl")
 
+
 #Plotting for box plot (all network classes)
 function transitionTimesBoxPlot(db_grouping_id::Int)
     
@@ -38,3 +39,5 @@ function initLinePlot(params::SimParams)
                     legend_position = :topleft)
     return sim_plot
 end
+
+df = querySimulationsForPotting(1)
