@@ -10,11 +10,10 @@ payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
 #create bargaining game type (players will be slotted in)
 game = Game("Bargaining Game", payoff_matrix)
 
-memory_lengths = 7:20
+# memory_lengths = 7:20
 
 function makeChoiceTest(game::Game, memory_state)
     opponent_strategy_recollection = [count(i->(i==strategy), memory_state) for strategy in game.strategies[1]]
-
     player_memory_length = sum(opponent_strategy_recollection)
     opponent_strategy_probs = [i / player_memory_length for i in opponent_strategy_recollection]
     player_expected_utilities = zeros(Float32, length(game.strategies[1]))
@@ -33,20 +32,22 @@ function makeChoiceTest(game::Game, memory_state)
     player_max_strategies = findall(i->(i==player_max_value), player_expected_utilities)
     player_choice = Int8(rand(player_max_strategies))
 
-    return player_choice
+    return player_choice, player_choice
 end
 
 
 function choiceTendancy(game::Game, memory_length::Integer)
     memory_state_sets = collect(with_replacement_combinations(game.strategies[1], memory_length)) #gives all possible memory states given a memory length
     choices_list = []
+    mwe_test = []
     for memory_state in memory_state_sets
-        choice = makeChoiceTest(game, memory_state)
+        choice, test = makeChoiceTest(game, memory_state)
         append!(choices_list, choice)
+        append!(mwe_test, test)
     end
     choices_count = [count(i->(i==strategy), choices_list) for strategy in game.strategies[1]]
     choices_proportions = [i / length(memory_state_sets) for i in choices_count]
-    return choices_proportions
+    return choices_proportions, mwe_test
 end
 
 # choice_proportions_list = []
@@ -55,7 +56,8 @@ end
 #     append!(choice_proportions_list, choice_proportions)
 # end
 # println(choice_proportions_list)
-println(choiceTendancy(game, 20))
+choice_tendancies, mwe = choiceTendancy(game, 10)
+choice_tendancies2, mwe2 = choiceTendancy(game, 10)
 
 
 

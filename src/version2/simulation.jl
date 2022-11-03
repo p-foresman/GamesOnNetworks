@@ -54,11 +54,19 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
     end
 
+<<<<<<< HEAD
     ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!#### (currently slower)
     # player_expected_utilities_test = Vector{Vector{Float32}}([])
     # push!(player_expected_utilities_test, vec(sum(transpose(opponent_strategy_probs[1]) .* getindex.(game.payoff_matrix, 1), dims=2)))
     # push!(player_expected_utilities_test, vec(sum(opponent_strategy_probs[2] .* getindex.(game.payoff_matrix, 2), dims=1)))
 
+=======
+
+    ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
+    player_expected_utilities_vectorTest = zeros.(Float32, length.(game.strategies))
+    player_expected_utilities_vectorTest[1] = [(transpose(opponent_strategy_probs[2]) .* game.payoff_matrix)]
+    player_expected_utilities_vectorTest[2] = opponent_strategy_probs[1] .* game.payoff_matrix
+>>>>>>> 5410af8da4b5e2dbf5acfe5db4419825a53c240c
 
     player_max_values = maximum.(player_expected_utilities)
     player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in eachindex(players)]
@@ -297,10 +305,17 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
 end
 
 
+<<<<<<< HEAD
 
 function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
     if db_sim_group_description != ""
         sim_group_insert_result = insertSimGroup(db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
+=======
+                                                                            #graph_params_list::Vector{<:GraphParams}
+function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::GraphParamsList; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_group_description::String = "")
+    if db_group_description != ""
+        sim_group_insert_result = insertSimGroup(db_group_description)
+>>>>>>> 5410af8da4b5e2dbf5acfe5db4419825a53c240c
         println(sim_group_insert_result.status_message)
         db_sim_group_id = sim_group_insert_result.insert_row_id
     end

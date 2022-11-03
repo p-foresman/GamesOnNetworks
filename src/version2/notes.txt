@@ -127,3 +127,46 @@ memory_length = 17: [0.21637426900584794, 0.4327485380116959, 0.3508771929824561
 memory_length = 18: [0.22631578947368422, 0.45789473684210524, 0.3157894736842105]
 memory_length = 19: [0.21904761904761905, 0.4380952380952381, 0.34285714285714286]
 memory_length = 20: [0.22077922077922077, 0.45021645021645024, 0.329004329004329]
+
+
+
+-could initialize with a different distribution throughout network
+-grid lattice networks (10x10 grid with edges between neighbors)
+-ergodicity/broken ergodicity
+-course grained states. percentage of agents who choose each strategy at each period
+-figure out plotting and simplexes (data-wrangling)
+-start working with cluster
+-can fairness spread? start disturbance in a corner
+
+
+By end of term:
+-implement tags
+-implement disturbances
+-boxplots
+-finish networks simulations
+-working simulation in cluster
+-manuscript by thanksgiving
+
+winter term:
+-agents
+-temporal networks??
+
+
+-networks codify interaction. How does structure produce randomness. The structure 
+
+
+
+-store potential initialization states in the game object?
+
+-definitely want plots that follow percent transitioned (macro) (and average percent transitioned (micro)?) vs periods elapsed.
+    This way it will be possible to see the threshold for the attractor states (fractious/equity),
+    therefore showing how much noise (/energy) is required to "jump states" for various social structures.
+    Another thought here: does this have to do with entropy in the sense that the equity norm (most uniform) is the most stable attractor?
+    (most stable in the sense that the "state jumping threshold" is closer to the fractious state (in terms of percent transitioned,
+    e.g., once the state of the system reaches 20% "transitioned", it reaches 100% relatively quickly)),
+    and therefore less energy/noise is required to push the state of society passed the threshold to the equity norm from the
+    fractious state). This would allow us to study the effect of interaction structure on this threshold (a.k.a. "stability proportions" of attractors
+    (which would change due to interaction structure in the sense that more noise may be needed to reach the threshold from the fractious
+    state to jump to the equity norm, making the fractious state more stochastically stable within some structures)).
+    ***** could i model a chemical system in this way? (jumping energy states where energy=noise)
+    
