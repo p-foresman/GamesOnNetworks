@@ -1,7 +1,5 @@
 ################### Simulation Parameters #######################
 
-
-
 function constructSimParamsList(;number_agents_start::Int64, number_agents_end::Int64, number_agents_step::Int64, memory_length_start::Int64, memory_length_end::Int64, memory_length_step::Int64, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_start:number_agents_step:number_agents_end
@@ -15,15 +13,15 @@ function constructSimParamsList(;number_agents_start::Int64, number_agents_end::
     return sim_params_list
 end
 
-sim_params_list = constructSimParamsList(
+const sim_params_list::Vector{SimParams} = constructSimParamsList(
                 number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 10,
-                number_agents_step = 1,
-                memory_length_start = 7, #creates iterator for multi-loop simulation
-                memory_length_end = 20,
+                number_agents_end = 100,
+                number_agents_step = 10,
+                memory_length_start = 10, #creates iterator for multi-loop simulation
+                memory_length_end = 10,
                 memory_length_step = 1,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.1], #iterated over for multi-loop simulation
+                error_list = [0.1, 0.05], #iterated over for multi-loop simulation
                 tag1 = :red,
                 tag2 = :blue,
                 tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
@@ -34,15 +32,16 @@ sim_params_list = constructSimParamsList(
 
 ################### Define Game Payoff Matrix and Strategies #######################
 
-payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
+const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
                                             (0, 0) (50, 50) (50, 30);
                                             (30, 70) (30, 50) (30, 30)])
 #Check "global_StructTypes.jl" file and ensure that the size of this payoff matrix is listed under the "Game type" section
 
+# s1 = size(payoff_matrix, 1)
+# s2 = size(payoff_matrix, 2)
 
 #create bargaining game type (players will be slotted in)
-game = Game("Bargaining Game", payoff_matrix)
-
+const game::Game = Game("Bargaining Game", payoff_matrix) # would game::Game{s1, s2} improve performance?
 
 
 
@@ -57,7 +56,7 @@ Graph types available with relevant type constructors and parameters (structs fo
     Stochastic Block Model: StochasticBlockModelParams(communities, internal_λ, external_λ)
 =#
 
-graph_simulations_list = [
+const graph_params_list::Vector{GraphParams} = [
     CompleteParams(),
     ErdosRenyiParams(1.0),
     ErdosRenyiParams(5.0),

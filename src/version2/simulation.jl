@@ -1,7 +1,5 @@
 using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, JSON3, BenchmarkTools
-
 include("database_api.jl")
-include("setup_params.jl")
 
 ############################### FUNCTIONS #######################################
 
@@ -56,9 +54,11 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
     end
 
-    ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
-    # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
-    # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
+    ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!#### (currently slower)
+    # player_expected_utilities_test = Vector{Vector{Float32}}([])
+    # push!(player_expected_utilities_test, vec(sum(transpose(opponent_strategy_probs[1]) .* getindex.(game.payoff_matrix, 1), dims=2)))
+    # push!(player_expected_utilities_test, vec(sum(opponent_strategy_probs[2] .* getindex.(game.payoff_matrix, 2), dims=1)))
+
 
     player_max_values = maximum.(player_expected_utilities)
     player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in eachindex(players)]
@@ -264,7 +264,7 @@ end
 
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, prev_simulation_id::Integer = 0)
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, prev_simulation_id::Integer = 0)
     if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end 
@@ -274,7 +274,6 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     #println(adjacency_matrix(graph)[1, 2])
 
     #play game until transition occurs (sufficient equity is reached)
-    periods_elapsed = 0
     while !checkTransition(meta_graph, game, sim_params)
         #play a period worth of games
         for match in 1:sim_params.matches_per_period
@@ -299,13 +298,11 @@ end
 
 
 
-function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::GraphParamsList; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_group_description::String = "")
-    if db_group_description != ""
-        sim_group_insert_result = insertSimGroup(db_group_description)
+function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
+    if db_sim_group_description != ""
+        sim_group_insert_result = insertSimGroup(db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
         println(sim_group_insert_result.status_message)
-        sim_group_id = sim_group_insert_result.insert_row_id
-    else
-        sim_group_id = 0
+        db_sim_group_id = sim_group_insert_result.insert_row_id
     end
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
@@ -330,7 +327,7 @@ function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_
             for run in 1:averager
                 println("Run $run of $averager")
 
-                sim_results = simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=sim_group_id)
+                sim_results = simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
                 push!(run_results, sim_results[1])
             end
             println(run_results)
