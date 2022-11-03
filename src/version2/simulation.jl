@@ -56,9 +56,11 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
     end
 
+
     ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
-    # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
-    # player_expected_utilities[2] = transpose(opponent_strategy_probs[1]) .* game.payoff_matrix
+    player_expected_utilities_vectorTest = zeros.(Float32, length.(game.strategies))
+    player_expected_utilities_vectorTest[1] = [(transpose(opponent_strategy_probs[2]) .* game.payoff_matrix)]
+    player_expected_utilities_vectorTest[2] = opponent_strategy_probs[1] .* game.payoff_matrix
 
     player_max_values = maximum.(player_expected_utilities)
     player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in eachindex(players)]
@@ -298,7 +300,7 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
 end
 
 
-
+                                                                            #graph_params_list::Vector{<:GraphParams}
 function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::GraphParamsList; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_group_description::String = "")
     if db_group_description != ""
         sim_group_insert_result = insertSimGroup(db_group_description)
