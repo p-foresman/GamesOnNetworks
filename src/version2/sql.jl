@@ -1,4 +1,4 @@
-using SQLite, DataFrames
+@everywhere using SQLite, DataFrames
 
 function initDataBase()
     #create or connect to database
@@ -449,4 +449,25 @@ function querySimulationsForPlotting(sim_group_id::Integer)
     df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
     return df
+end
+
+
+# Merge two SQLite "simulation save" files. These db files MUST have the same schema
+function mergeDatabases(db1::String, db2::String)
+    db = SQLite.DB(db1)
+    status = SQLite.execute(db, "
+                                    ATTACH DATABASE $db2 AS merge_db;
+                                    BEGIN;
+                                    INSERT INTO agents SELECT * FROM merge_db.agents;
+                                    INSERT INTO games SELECT * FROM merge_db.games;
+                                    INSERT INTO graphs SELECT * FROM merge_db.graphs;
+                                    INSERT INTO sim_groups SELECT * FROM merge_db.sim_groups;
+                                    INSERT INTO sim_params SELECT * FROM merge_db.sim_params;
+                                    INSERT INTO simulations SELECT * FROM merge_db.simulations;
+                                    COMMIT;
+                                    detach merge_db;
+                            ")
+    #delete db2
+    SQLite.close(db)
+    return (status_message = "SQLite merge executed... MERGE STATUS: [$status]")
 end

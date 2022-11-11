@@ -1,4 +1,4 @@
-using Combinatorics
+using Combinatorics, BenchmarkTools
 include("types.jl")
 
 payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
@@ -8,7 +8,7 @@ payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
 
 
 #create bargaining game type (players will be slotted in)
-game = Game("Bargaining Game", payoff_matrix)
+const game = Game("Bargaining Game", payoff_matrix)
 
 # memory_lengths = 7:20
 
@@ -18,11 +18,18 @@ function makeChoiceTest(game::Game, memory_state)
     opponent_strategy_probs = [i / player_memory_length for i in opponent_strategy_recollection]
     player_expected_utilities = zeros(Float32, length(game.strategies[1]))
 
+    #### WINNER ####
+    for column in 1:size(game.payoff_matrix, 2) #column strategies
+        for row in 1:size(game.payoff_matrix, 1) #row strategies
+            player_expected_utilities[row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[column]
+        end
+    end
+
 
     #this should be equivalent to above. make sure and see which is more efficient
-    for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
-        player_expected_utilities[index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[index[2]]
-    end
+    # for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
+    #     player_expected_utilities[index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[index[2]]
+    # end
 
     ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!####
     # player_expected_utilities[1] = [(opponent_strategy_probs[2] .* game.payoff_matrix)]
@@ -34,6 +41,8 @@ function makeChoiceTest(game::Game, memory_state)
 
     return player_choice, player_choice
 end
+
+
 
 
 function choiceTendancy(game::Game, memory_length::Integer)
@@ -56,9 +65,17 @@ end
 #     append!(choice_proportions_list, choice_proportions)
 # end
 # println(choice_proportions_list)
-choice_tendancies, mwe = choiceTendancy(game, 10)
-choice_tendancies2, mwe2 = choiceTendancy(game, 10)
+# choice_tendancies, mwe = choiceTendancy(game, 20)
+# choice_tendancies2, mwe2 = choiceTendancy(game, 20)
 
 
+
+
+function settingsImportTest(settings_filename::String)
+    include("settings/$settings_filename")
+    for (i, val) in enumerate(x)
+        y = val + i
+    end
+end
 
 
