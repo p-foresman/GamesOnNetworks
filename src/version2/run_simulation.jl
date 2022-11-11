@@ -5,7 +5,7 @@ include("setup_params.jl")
 #  BenchmarkTools.DEFAULT_PARAMETERS.samples = 5
 
 
-simGroupIterator(game, sim_params_list, graph_params_list, averager=20, use_seed=false, db_store=true, db_sim_group_description="Number agents iteration for each graph type (10:10:100). Errors 0.1 and 0.5")
+simGroupIterator(game, sim_params_list, graph_params_list, averager=20, use_seed=false, db_store=true, db_sim_group_id=2)
 
 
 # sim_params = SimParams(number_agents=10, memory_length=10, memory_init_state=:fractious, error=0.1, tag1=:red, tag2=:blue, tag1_proportion=1.0, random_seed=1234)

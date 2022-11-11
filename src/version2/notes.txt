@@ -170,3 +170,26 @@ winter term:
     state to jump to the equity norm, making the fractious state more stochastically stable within some structures)).
     ***** could i model a chemical system in this way? (jumping energy states where energy=noise)
     
+
+
+Immediate to-do before first manuscript:
+-distributed computation
+-simulation settings "page" to be loaded into simulation (w/ a struct?)
+-remove game, sim_params, graph_params from global scope?
+-remove "strategies" in game? they are inherent in the matrix
+-create boxplot algorithm and get results
+------- below before manuscript? -------
+-implement lattice graphs (2D and 3D)
+-simulate for % transitioned over periods elapsed
+
+
+
+
+Need to simulate:
+-ER 1.0 4 runs of 19 memory_length 0.05 error
+-SBM 20 runs of 19 memory_length 0.05 error
+-10 runs 60 agents 0.05 error complete graph
+-9 runs 90 agents 0.1 error complete graph
+-20 runs 100 agents 0.1 error complete graph
+-20 runs >= 70 agents 0.05 error complete graph
+-all runs for population iteration for all graphs besides complete
