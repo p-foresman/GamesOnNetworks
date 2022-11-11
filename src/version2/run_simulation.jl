@@ -1,3 +1,5 @@
+# using Distributed
+# addprocs(2; exeflags="--project")
 include("simulation.jl")
 include("setup_params.jl")
 

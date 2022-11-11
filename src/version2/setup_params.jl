@@ -41,7 +41,7 @@ const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
 # s2 = size(payoff_matrix, 2)
 
 #create bargaining game type (players will be slotted in)
-const game::Game = Game("Bargaining Game", payoff_matrix) # would game::Game{s1, s2} improve performance?
+const game = Game("Bargaining Game", payoff_matrix) # would game::Game{s1, s2} improve performance?
 
 
 

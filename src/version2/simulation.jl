@@ -1,4 +1,5 @@
-using Graphs, MetaGraphs, GraphPlot, Cairo, Fontconfig, Random, Plots, Statistics, StatsPlots, DataFrames, JSON3, BenchmarkTools
+using Graphs, MetaGraphs, Random, Plots, DataFrames, JSON3
+using GraphPlot, Cairo, Fontconfig, Statistics, StatsPlots, BenchmarkTools
 include("database_api.jl")
 
 ############################### FUNCTIONS #######################################
@@ -257,6 +258,21 @@ function checkTransition(meta_graph::AbstractGraph, game::Game, sim_params::SimP
         return false
     end
 end
+
+#sets the number of CPU cores to be used
+# function setCores(desired_cores)
+#     println("number cores before: $(nprocs())")
+#     current_cores = nprocs()
+#     if desired_cores > current_cores
+#         addprocs(desired_cores - current_cores)
+#     elseif desired_cores < current_cores
+#         ids_to_remove = collect(current_cores - desired_cores:current_cores)
+#         rmprocs(ids_to_remove)
+#     else
+#     end
+#     println("number cores before: $(nprocs())")
+#     return nothing
+# end
 
 
 

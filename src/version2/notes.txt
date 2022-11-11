@@ -193,3 +193,11 @@ Need to simulate:
 -20 runs 100 agents 0.1 error complete graph
 -20 runs >= 70 agents 0.05 error complete graph
 -all runs for population iteration for all graphs besides complete
+
+
+
+FOR FAST SIMULATION
+-column major! (when iterating through matrix, for column, for row to iterate through columns, whose indices exist closer together in memory)
+-use static arrays/vectors when possible to avoid allocations (especially on SMALL arrays created within functions)
+-reuse arrays and use mutating functions (!) as much as possible since an already instantiated array has already been allocated, whereas creating new arrays requires an allocation
+-reuse arrays that you dont need to keep within functions (e.g. A = [1, 2] ... A = A .+2)
