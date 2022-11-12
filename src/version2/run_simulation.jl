@@ -1,5 +1,6 @@
 # using Distributed
 # addprocs(2; exeflags="--project")
+using BenchmarkTools
 include("simulation.jl")
 include("setup_params.jl")
 

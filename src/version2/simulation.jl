@@ -32,7 +32,6 @@ function memory_init(agent::Agent, game::Game, memory_length, init::String)
 end
 
 
-
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
     opponent_strategy_recollections = [[count(i->(i[1]==players[2].tag && i[2]==strategy), players[1].memory) for strategy in game.strategies[2]], [count(i->(i[1]==players[1].tag && i[2]==strategy), players[2].memory) for strategy in game.strategies[1]]]
@@ -49,7 +48,14 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
     #     end
     # end
 
-    #this should be equivalent to above. make sure and see which is more efficient
+    # for column in 1:size(game.payoff_matrix, 2) #column strategies
+    #     for row in 1:size(game.payoff_matrix, 1) #row strategies
+    #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
+    #         player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
+    #     end
+    # end
+
+    #this is equivalent to above. slightly faster (very slightly), but makes more allocations
     for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
         player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
         player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
@@ -95,7 +101,6 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
     # println(player_choices)
     # print("outcome: ")
     # println(outcome)
-
     return player_choices
 end
 
@@ -164,43 +169,6 @@ function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_par
     meta_graph = setGraphMetaData!(graph, game, sim_params)
     return meta_graph
 end
-
-
-# function initGraph(graph_params::Dict, game::Game, sim_params::SimParams)
-#     graph_type = graph_params[:type]
-#     if graph_type == :complete
-#         graph = complete_graph(sim_params.number_agents)
-#     elseif graph_type == :er
-#         probability = graph_params[:λ] / sim_params.number_agents
-#         while true
-#             graph = erdos_renyi(sim_params.number_agents, probability)
-#             if length(collect(edges(graph))) >= 1 #simulation will break if graph has no edges
-#                 break
-#             end
-#         end
-#     elseif graph_type == :sw
-#         graph = watts_strogatz(sim_params.number_agents, graph_params[:k], graph_params[:β])
-#     elseif graph_type == :sf
-#         m_count = Int64(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
-#         graph = static_scale_free(sim_params.number_agents, m_count, graph_params[:α])
-#     elseif graph_type == :sbm
-#         community_size = Int64(sim_params.number_agents / graph_params[:communities])
-#         # println(community_size)
-#         internal_probability = graph_params[:internal_λ] / community_size
-#         internal_probability_vector = Vector{Float64}([])
-#         sizes_vector = Vector{Int64}([])
-#         for community in 1:graph_params[:communities]
-#             push!(internal_probability_vector, internal_probability)
-#             push!(sizes_vector, community_size)
-#         end
-#         external_probability = graph_params[:external_λ] / sim_params.number_agents
-#         affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_probability_vector, external_probability, sizes_vector)
-#         graph = stochastic_block_model(affinity_matrix, sizes_vector)
-#     end
-
-#     meta_graph = setGraphMetaData!(graph, game, sim_params)
-#     return meta_graph
-# end
 
 
 #set metadata properties for all vertices
