@@ -1,6 +1,7 @@
-using Graphs, MetaGraphs, Random, Plots, DataFrames, JSON3
-using GraphPlot, Cairo, Fontconfig, Statistics, StatsPlots, BenchmarkTools
+using Graphs, MetaGraphs, Random, StaticArrays, DataFrames, JSON3, SQLite
+include("types.jl")
 include("database_api.jl")
+include("setup_params.jl")
 
 ############################### FUNCTIONS #######################################
 
@@ -41,25 +42,20 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
     player_memory_lengths = sum.(opponent_strategy_recollections)
     opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in eachindex(players)]
     player_expected_utilities = zeros.(Float32, length.(game.strategies))
-    # for row in 1:size(game.payoff_matrix, 1) #row strategies
-    #     for column in 1:size(game.payoff_matrix, 2) #column strategies
-    #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
-    #         player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
-    #     end
-    # end
 
-    # for column in 1:size(game.payoff_matrix, 2) #column strategies
-    #     for row in 1:size(game.payoff_matrix, 1) #row strategies
-    #         player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
-    #         player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
-    #     end
-    # end
+
+    for column in 1:size(game.payoff_matrix, 2) #column strategies
+        for row in 1:size(game.payoff_matrix, 1) #row strategies
+            player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
+            player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
+        end
+    end
 
     #this is equivalent to above. slightly faster (very slightly), but makes more allocations
-    for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
-        player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
-        player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
-    end
+    # for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
+    #     player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
+    #     player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
+    # end
 
     ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!#### (currently slower)
     # player_expected_utilities_test = Vector{Vector{Float32}}([])
@@ -103,6 +99,7 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
     # println(outcome)
     return player_choices
 end
+
 
 #update agent's memory vector
 function updateMemories!(players::Tuple{Agent, Agent}, player_choices::Vector{Int8}, sim_params::SimParams)
@@ -273,6 +270,7 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
             prev_simulation_id = db_status.simulation_status.insert_row_id
         end
     end
+    println(" --> periods elapsed: $periods_elapsed")
     if db_store == true #push final results to DB
         db_status = pushToDatabase(db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
@@ -282,11 +280,15 @@ end
 
 
 
-function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
-    if db_sim_group_description != ""
-        sim_group_insert_result = insertSimGroup(db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
-        println(sim_group_insert_result.status_message)
-        db_sim_group_id = sim_group_insert_result.insert_row_id
+function simGroupIterator(; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
+    game, sim_params_list, graph_params_list = getSetupParams()
+
+    if db_store == true 
+        if db_sim_group_description != ""
+            sim_group_insert_result = insertSimGroup(db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
+            println(sim_group_insert_result.status_message)
+            db_sim_group_id = sim_group_insert_result.insert_row_id
+        end
     end
     #sim_plot = initLinePlot(params)
     #sim_plot = initBoxPlot(params, length(graph_simulations_list))
@@ -295,7 +297,7 @@ function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_
     # transition_times_matrix = rand(averager, length(graph_simulations_list))
     # matrix_index = 1
     for graph_params in graph_params_list
-        println("\n\n")
+        println("\n\n\n")
         println(displayName(graph_params))
         println(dump(graph_params))
         for sim_params in sim_params_list
@@ -306,15 +308,11 @@ function simGroupIterator(game::Game, sim_params_list::Vector{SimParams}, graph_
             print("Memory length: $(sim_params.memory_length), ")
             println("Error: $(sim_params.error)")
 
-
-            run_results = Vector{Integer}([])
             for run in 1:averager
-                println("Run $run of $averager")
+                print("Run $run of $averager")
 
-                sim_results = simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
-                push!(run_results, sim_results[1])
+                simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
             end
-            println(run_results)
             # transition_times_matrix[:, matrix_index] = run_results
             
             #average_transition_time = sum(run_results) / averager

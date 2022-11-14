@@ -1,6 +1,6 @@
-using JSON3, Graphs, MetaGraphs
+# using JSON3, Graphs, MetaGraphs
 
-include("types.jl")
+# include("types.jl")
 include("sql.jl")
 
 function pushToDatabase(sim_group_id::Integer, prev_simulation_id::Integer, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)

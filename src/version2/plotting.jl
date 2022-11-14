@@ -1,4 +1,4 @@
-using Plots, GraphPlot, StatsPlots, Cairo, Fontconfig
+using Plots, GraphPlot, StatsPlots, Cairo, Fontconfig, Statistics
 
 include("database_api.jl")
 
@@ -41,3 +41,6 @@ function initLinePlot(params::SimParams)
 end
 
 df = querySimulationsForPotting(1)
+memory_length_iterator = 10:3:19
+for memory_length in memory_length_iterator
+    new_df = df[]

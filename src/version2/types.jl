@@ -1,4 +1,4 @@
-using Random, StaticArrays
+# using Random, StaticArrays
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
@@ -138,7 +138,6 @@ struct LatticeParams <: GraphParams
         return new(:lattice, length(dim_lengths), dim_lengths)
     end
 end
-const GraphParamsList = Vector{T} where T <: GraphParams
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
 function displayName(::CompleteParams) return "Complete" end
 function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
