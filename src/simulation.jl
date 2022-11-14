@@ -308,7 +308,7 @@ function simGroupIterator(; averager::Integer = 1, use_seed::Bool = false, db_st
             print("Memory length: $(sim_params.memory_length), ")
             println("Error: $(sim_params.error)")
 
-            for run in 1:averager
+            @sync @distributed for run in 1:averager
                 print("Run $run of $averager")
 
                 simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)

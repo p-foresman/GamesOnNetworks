@@ -1,5 +1,5 @@
 using Combinatorics, BenchmarkTools
-include("types.jl")
+include("../src/types.jl")
 
 payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
                                             (0, 0) (50, 50) (50, 30);

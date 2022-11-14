@@ -1,12 +1,15 @@
-# using Distributed
-# addprocs(2; exeflags="--project")
-using BenchmarkTools
-include("simulation.jl")
+using Distributed
+const number_cores = 3
+addprocs(number_cores; exeflags="--project")
+@everywhere using Distributed
+# using BenchmarkTools
+@everywhere include("simulation.jl")
 
 
 
 
-@btime simGroupIterator(averager=10, use_seed=true, db_store=false)
+simGroupIterator(averager=9, db_store=true, db_sim_group_id=2)
+rmprocs(number_cores - (number_cores - 2):number_cores + 1)
 
 
 # sim_params = SimParams(number_agents=10, memory_length=10, memory_init_state=:fractious, error=0.1, tag1=:red, tag2=:blue, tag1_proportion=1.0, random_seed=1234)

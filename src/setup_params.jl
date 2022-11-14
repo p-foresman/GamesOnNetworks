@@ -15,8 +15,8 @@ function getSetupParams()
     end
 
     sim_params_list = constructSimParamsList(
-                    number_agents_start = 100, #creates iterator for multi-loop simulation
-                    number_agents_end = 100,
+                    number_agents_start = 90, #creates iterator for multi-loop simulation
+                    number_agents_end = 90,
                     number_agents_step = 1,
                     memory_length_start = 10, #creates iterator for multi-loop simulation
                     memory_length_end = 10,
@@ -58,7 +58,7 @@ function getSetupParams()
     =#
 
     graph_params_list = [
-        CompleteParams()
+        CompleteParams(),
         # ErdosRenyiParams(1.0),
         # ErdosRenyiParams(5.0),
         # SmallWorldParams(4, 0.6),
