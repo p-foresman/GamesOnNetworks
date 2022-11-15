@@ -1,6 +1,6 @@
 using Plots, GraphPlot, StatsPlots, Cairo, Fontconfig, Statistics
 
-include("database_api.jl")
+include("../src/database_api.jl")
 
 
 #Plotting for box plot (all network classes)

@@ -2,7 +2,8 @@
 
 function initDataBase()
     #create or connect to database
-    db = SQLite.DB("SimulationSaves.sqlite")
+    mkpath("./sqlite/")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
 
     #create 'games' table (currently only the "bargaining game" exists)
     SQLite.execute(db, "
