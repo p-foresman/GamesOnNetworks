@@ -58,9 +58,9 @@ mutable struct SimParams
     number_agents::Int64
     memory_length::Int64
     memory_init_state::Symbol
-    error::Float64 #will be initialized at 0.0 and updated based on error_list value (list iterated over)
-    matches_per_period::Int64 #will be initialized at 0 and updated based on floor(number_agents/2) value in simulation
-    sufficient_equity::Float64 #will be initialized at 0.0 and updated based on (1-error)*memory_length value in simulation
+    error::Float64
+    matches_per_period::Int64 #defined within constructor
+    sufficient_equity::Float64 #defined within constructor
     tag1::Symbol #could make tags a vararg to have any given number of tags
     tag2::Symbol
     tag1_proportion::Float64
@@ -144,6 +144,13 @@ function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
 function displayName(::SmallWorldParams) return "Small-World" end
 function displayName(::ScaleFreeParams) return "Scale-Free" end
 function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
+
+struct DatabaseSettings #should i use this??
+    filepath::String
+    store::Bool
+    store_period::Integer
+end
+
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)
 include("settings/global_StructTypes.jl")
