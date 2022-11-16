@@ -15,8 +15,8 @@ function getSetupParams()
     end
 
     sim_params_list = constructSimParamsList(
-                    number_agents_start = 90, #creates iterator for multi-loop simulation
-                    number_agents_end = 90,
+                    number_agents_start = 100, #creates iterator for multi-loop simulation
+                    number_agents_end = 100,
                     number_agents_step = 1,
                     memory_length_start = 10, #creates iterator for multi-loop simulation
                     memory_length_end = 10,
@@ -57,7 +57,7 @@ function getSetupParams()
         Stochastic Block Model: StochasticBlockModelParams(communities, internal_λ, external_λ)
     =#
 
-    graph_params_list = [
+    graph_params_list = (
         CompleteParams(),
         # ErdosRenyiParams(1.0),
         # ErdosRenyiParams(5.0),
@@ -66,6 +66,6 @@ function getSetupParams()
         # ScaleFreeParams(4.0),
         # ScaleFreeParams(8.0),
         # StochasticBlockModelParams(2, 5.0, 0.5),
-    ]
+    )
     return game, sim_params_list, graph_params_list
 end

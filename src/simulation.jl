@@ -248,7 +248,7 @@ end
 function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_store::Bool = false, db_store_period::Integer = 0, db_sim_group_id::Integer = 0, prev_simulation_id::Integer = 0)
     if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
-    end 
+    end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
     meta_graph = initGraph(graph_params, game, sim_params)
     #println(graph.fadjlist)

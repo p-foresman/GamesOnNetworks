@@ -101,7 +101,7 @@ end
 initDataBase() #initialize db at runtime
 
 function insertGame(game_name::String, game::String, payoff_matrix_size::String)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
                                     (
@@ -130,7 +130,7 @@ function insertGame(game_name::String, game::String, payoff_matrix_size::String)
 end
 
 function insertGraph(graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
 
     insert_string_columns = "graph_type, graph_params, "
     insert_string_values = "'$graph_type', '$graph_params_str', "
@@ -167,7 +167,7 @@ function insertGraph(graph_type::String, graph_params_str::String, db_graph_para
 end
 
 function insertSimParams(sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_params
                                     (
@@ -200,7 +200,7 @@ function insertSimParams(sim_params::SimParams, sim_params_str::String, use_seed
 end
 
 function insertSimGroup(description::String)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT INTO sim_groups
                                     (
@@ -221,7 +221,7 @@ function insertSimulation(sim_group_id::Integer, prev_simulation_id::Integer, ga
     sim_group_id == 0 ? sim_group_id = "NULL" : nothing
     prev_simulation_id == 0 ?  prev_simulation_id = "NULL" : nothing
 
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
@@ -253,7 +253,7 @@ function insertSimulation(sim_group_id::Integer, prev_simulation_id::Integer, ga
 end
 
 function insertAgents(simulation_id::Integer, agent_list::Vector{String})
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
 
     values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
@@ -276,7 +276,7 @@ function insertAgents(simulation_id::Integer, agent_list::Vector{String})
 end
 
 function queryGame(game_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM games
@@ -288,7 +288,7 @@ function queryGame(game_id::Integer)
 end
 
 function queryGraph(graph_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM graphs
@@ -300,7 +300,7 @@ function queryGraph(graph_id::Integer)
 end
 
 function querySimParams(sim_params_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM sim_params
@@ -312,7 +312,7 @@ function querySimParams(sim_params_id::Integer)
 end
 
 function querySimGroups(sim_group_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM sim_groups
@@ -324,7 +324,7 @@ function querySimGroups(sim_group_id::Integer)
 end
 
 function querySimulation(simulation_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM simulations
@@ -336,7 +336,7 @@ function querySimulation(simulation_id::Integer)
 end
 
 function queryAgents(simulation_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM agents
@@ -349,7 +349,7 @@ function queryAgents(simulation_id::Integer)
 end
 
 function querySimulationForRestore(simulation_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
@@ -374,7 +374,7 @@ function querySimulationForRestore(simulation_id::Integer)
 end
 
 function queryAgentsForRestore(simulation_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT agent
                                         FROM agents
@@ -389,7 +389,7 @@ end
 
 
 function querySimulationsByGroup(sim_group_id::Int)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
@@ -415,7 +415,7 @@ end
 
 #this function allows for RAM space savings during large iterative simulations
 function querySimulationIDsByGroup(sim_group_id::Int)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulation_id
@@ -430,7 +430,7 @@ end
 
 
 function querySimulationsForPlotting(sim_group_id::Integer)
-    db = SQLite.DB("SimulationSaves.sqlite")
+    db = SQLite.DB("./sqlite/SimulationSaves.sqlite")
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,

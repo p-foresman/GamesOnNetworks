@@ -8,7 +8,7 @@ addprocs(number_cores; exeflags="--project")
 
 
 
-simGroupIterator(averager=9, db_store=true, db_sim_group_id=2)
+simGroupIterator(averager=15, db_store=true, db_sim_group_id=2)
 rmprocs(number_cores - (number_cores - 2):number_cores + 1)
 
 
