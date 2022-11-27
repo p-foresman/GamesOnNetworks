@@ -15,14 +15,14 @@ function getSetupParams()
     end
 
     sim_params_list = constructSimParamsList(
-                    number_agents_start = 100, #creates iterator for multi-loop simulation
-                    number_agents_end = 100,
+                    number_agents_start = 60, #creates iterator for multi-loop simulation
+                    number_agents_end = 60,
                     number_agents_step = 1,
                     memory_length_start = 10, #creates iterator for multi-loop simulation
                     memory_length_end = 10,
                     memory_length_step = 1,
                     memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                    error_list = [0.1], #iterated over for multi-loop simulation
+                    error_list = [0.05], #iterated over for multi-loop simulation
                     tag1 = :red,
                     tag2 = :blue,
                     tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)

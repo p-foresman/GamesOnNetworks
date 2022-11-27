@@ -283,11 +283,17 @@ end
 function simGroupIterator(; averager::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
     game, sim_params_list, graph_params_list = getSetupParams()
 
-    if db_store == true 
-        if db_sim_group_description != ""
-            sim_group_insert_result = insertSimGroup(db_filepath, db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
-            println(sim_group_insert_result.status_message)
-            db_sim_group_id = sim_group_insert_result.insert_row_id
+    if db_store == true
+        if db_filepath == ""
+            throw(ArgumentError("To store simulation run(s) in database, a db_filepath argument must be given specifying the database filepath!"))
+        elseif db_sim_group_description != ""
+            if db_sim_group_id != 0
+                throw(ArgumentError("Specifying both 'db_sim_group_description' and 'db_sim_group_id' results in a conflict. Please specify 'db_sim_group_id' to add these simulation runs to an existing group or specify 'db_sim_group_description' to create a new group!"))
+            else
+                sim_group_insert_result = insertSimGroup(db_filepath, db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
+                println(sim_group_insert_result.status_message)
+                db_sim_group_id = sim_group_insert_result.insert_row_id
+            end
         end
     end
     #sim_plot = initLinePlot(params)
