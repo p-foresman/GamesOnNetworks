@@ -3,7 +3,7 @@ const number_cores = 3
 addprocs(number_cores; exeflags="--project")
 @everywhere using Distributed
 # using BenchmarkTools
-const db_filepath = "./sqlite/SimulationSaves.jl"
+const db_filepath = "./sqlite/SimulationSaves.sqlite"
 @everywhere include("simulation.jl")
 
 
