@@ -59,7 +59,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Integer, prev_simulat
 end
 
 
-function restoreFromDatabase(db_filepath, simulation_id::Integer)
+function restoreFromDatabase(db_filepath::String, simulation_id::Integer)
     simulation_df = querySimulationForRestore(db_filepath, simulation_id)
     agents_df = queryAgentsForRestore(db_filepath, simulation_id)
 

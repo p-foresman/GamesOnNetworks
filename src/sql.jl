@@ -428,23 +428,41 @@ function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
 end
 
 
-function querySimulationsForPlotting(db_filepath::String, sim_group_id::Integer)
+function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Tuple = (), sample_size::Int)
+    graph_ids_sql = ""
+    if graph_ids != ()
+        graph_ids_sql *= "AND simulations.graph_id IN $graph_ids"
+    end
+    
     db = SQLite.DB("$db_filepath")
     query = DBInterface.execute(db, "
-                                        SELECT
-                                            simulations.simulation_id,
-                                            sim_params.sim_params,
-                                            sim_params.number_agents,
-                                            sim_params.memory_length,
-                                            sim_params.error,
-                                            simulations.periods_elapsed,
-                                            graphs.graph_params,
-                                            games.game_name
-                                        FROM simulations
-                                        INNER JOIN sim_params USING(sim_params_id)
-                                        INNER JOIN games USING(game_id)
-                                        INNER JOIN graphs USING(graph_id)
-                                        WHERE simulations.sim_group_id = $sim_group_id;
+                                        SELECT * FROM (
+                                            SELECT
+                                                ROW_NUMBER () OVER ( 
+                                                    PARTITION BY graph_id
+                                                    ORDER BY graph_id, simulation_id
+                                                ) RowNum,
+                                                graphs.graph_id,
+                                                simulations.simulation_id,
+                                                sim_params.sim_params,
+                                                sim_params.number_agents,
+                                                sim_params.memory_length,
+                                                sim_params.error,
+                                                simulations.periods_elapsed,
+                                                
+                                                graphs.graph_params,
+                                                games.game_name
+                                            FROM simulations
+                                            INNER JOIN sim_params USING(sim_params_id)
+                                            INNER JOIN games USING(game_id)
+                                            INNER JOIN graphs USING(graph_id)
+                                            WHERE simulations.game_id = $game_id
+                                            AND sim_params.number_agents = $number_agents
+                                            AND sim_params.memory_length = $memory_length
+                                            AND sim_params.error = $error
+                                            $graph_ids_sql
+                                            )
+                                        WHERE RowNum <= $sample_size;
                                 ")
     df = DataFrame(query) #must create a DataFrame to access query values
     SQLite.close(db)
@@ -452,8 +470,9 @@ function querySimulationsForPlotting(db_filepath::String, sim_group_id::Integer)
 end
 
 
+
 # Merge two SQLite "simulation save" files. These db files MUST have the same schema
-function mergeDatabases(db_filename_1::String, db_filename_2::String)
+function mergeDatabases(db_filepath_1::String, db_filepath_2::String)
     db = SQLite.DB("$db_filepath_1")
     status = SQLite.execute(db, "
                                     ATTACH DATABASE $db_filepath_2 AS merge_db;
@@ -470,4 +489,48 @@ function mergeDatabases(db_filename_1::String, db_filename_2::String)
     #delete db2
     SQLite.close(db)
     return (status_message = "SQLite merge executed... MERGE STATUS: [$status]")
+end
+
+
+
+
+function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Tuple = (), sample_size::Int)
+    graph_ids_sql = ""
+    if graph_ids != ()
+        graph_ids_sql *= "AND simulations.graph_id IN $graph_ids"
+    end
+    
+    db = SQLite.DB("$db_filepath")
+    query = DBInterface.execute(db, "
+                                        SELECT * FROM (
+                                            SELECT
+                                                ROW_NUMBER () OVER ( 
+                                                    PARTITION BY graph_id
+                                                    ORDER BY graph_id, simulation_id
+                                                ) RowNum,
+                                                simulations.simulation_id,
+                                                sim_params.sim_params,
+                                                sim_params.number_agents,
+                                                sim_params.memory_length,
+                                                sim_params.error,
+                                                simulations.periods_elapsed,
+                                                graphs.graph_id,
+                                                graphs.graph_type,
+                                                graphs.graph_params,
+                                                games.game_name
+                                            FROM simulations
+                                            INNER JOIN sim_params USING(sim_params_id)
+                                            INNER JOIN games USING(game_id)
+                                            INNER JOIN graphs USING(graph_id)
+                                            WHERE simulations.game_id = $game_id
+                                            AND sim_params.number_agents = $number_agents
+                                            AND sim_params.memory_length = $memory_length
+                                            AND sim_params.error = $error
+                                            $graph_ids_sql
+                                            )
+                                        WHERE RowNum <= $sample_size;
+                                ")
+    df = DataFrame(query) #must create a DataFrame to access query values
+    SQLite.close(db)
+    return df
 end
