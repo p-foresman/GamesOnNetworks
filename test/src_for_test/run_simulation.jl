@@ -1,5 +1,5 @@
 using Distributed
-const number_cores = 3
+const number_cores = 2
 addprocs(number_cores; exeflags="--project") #add some logic to ensure that nprocs is 1 before adding procs
 @everywhere using Distributed
 using BenchmarkTools, TimerOutputs

@@ -173,11 +173,12 @@ winter term:
 
 
 Immediate to-do before first manuscript:
--sqlite file path global to feed into the sql.jl script? this would allow for the creation of new scripts and the addition of old ones by changing one variable (could be within settings page)
+x sqlite file path global to feed into the sql.jl script? this would allow for the creation of new scripts and the addition of old ones by changing one variable (could be within settings page)
 -simulation settings "page" to be loaded into simulation (w/ a struct?)
--remove game, sim_params, graph_params from global scope?
--remove "strategies" in game? they are inherent in the matrix
--create boxplot algorithm and get results
+x remove game, sim_params, graph_params from global scope?
+-remove "strategies" in game? they are inherent in the matrix ***
+x create boxplot algorithm
+-get results
 ------- below before manuscript? -------
 -implement lattice graphs (2D and 3D)
 -simulate for % transitioned over periods elapsed
@@ -188,14 +189,16 @@ Immediate to-do before first manuscript:
 Need to simulate:
 -ER 1.0 4 runs of 19 memory_length 0.05 error
 -SBM 20 runs of 19 memory_length 0.05 error
--10 runs 60 agents 0.05 error complete graph
+-5 runs 60 agents 0.05 error complete graph
 -20 runs >= 70 agents 0.05 error complete graph
 -all runs for population iteration for all graphs besides complete
 
 
 
 FOR FAST SIMULATION
--column major! (when iterating through matrix, for column, for row to iterate through columns, whose indices exist closer together in memory)
+-column major! (when iterating through matrix, [for column, -> for row] to iterate through columns, whose indices exist closer together in memory)
 -use static arrays/vectors when possible to avoid allocations (especially on SMALL arrays created within functions)
 -reuse arrays and use mutating functions (!) as much as possible since an already instantiated array has already been allocated, whereas creating new arrays requires an allocation
 -reuse arrays that you dont need to keep within functions (e.g. A = [1, 2] ... A = A .+2)
+-TimerOutputs to find bottlenecks
+-Type Stability!! use code_warntype and break functions into smaller chunks so the julia compiler can infer return types from parameter types.

@@ -37,7 +37,7 @@ end
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
-    player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
+    player_choices::Vector{Int8} = [rand(game.strategies), rand(game.strategies)] #could change to MVector?
     if rand() <= sim_params.error
         return player_choices
     else
@@ -45,22 +45,30 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
         #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
         #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
         #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
-
-        opponent_strategy_probs = [opponent_strategy_recollections[player] ./ sum(opponent_strategy_recollections[player]) for player in eachindex(players)] #sum(opponent_strategy_recollections) counts effective memory length
-        
-
+        player_memory_lengths = sum.(opponent_strategy_recollections)
+        opponent_strategy_probs = [[i / player_memory_lengths[player] for i in opponent_strategy_recollections[player]] for player in eachindex(players)]
         player_expected_utilities = zeros.(Float32, length.(game.strategies))
-        function findExpectedUtilities!(expected_utilities, payoff_matrix, opponent_probs)
-            for column in axes(payoff_matrix, 2) #column strategies
-                for row in axes(payoff_matrix, 1) #row strategies
-                    expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs[1][column]
-                    expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs[2][row]
-                end
+
+
+        for column in 1:size(game.payoff_matrix, 2) #column strategies
+            for row in 1:size(game.payoff_matrix, 1) #row strategies
+                player_expected_utilities[1][row] += game.payoff_matrix[row, column][1] * opponent_strategy_probs[1][column]
+                player_expected_utilities[2][column] += game.payoff_matrix[row, column][2] * opponent_strategy_probs[2][row]
             end
         end
-        findExpectedUtilities!(player_expected_utilities, game.payoff_matrix, opponent_strategy_probs)
 
-        
+
+        #this is equivalent to above. slightly faster (very slightly), but makes more allocations
+        # for index in CartesianIndices(game.payoff_matrix) #index in form (row, column)
+        #     player_expected_utilities[1][index[1]] += game.payoff_matrix[index][1] * opponent_strategy_probs[1][index[2]]
+        #     player_expected_utilities[2][index[2]] += game.payoff_matrix[index][2] * opponent_strategy_probs[2][index[1]]
+        # end
+
+        ####!!!! AN ATTEMPT TO VECTORIZE THIS OPERATION !!!!#### (currently slower)
+        # player_expected_utilities_test = Vector{Vector{Float32}}([])
+        # push!(player_expected_utilities_test, vec(sum(transpose(opponent_strategy_probs[1]) .* getindex.(game.payoff_matrix, 1), dims=2)))
+        # push!(player_expected_utilities_test, vec(sum(opponent_strategy_probs[2] .* getindex.(game.payoff_matrix, 2), dims=1)))
+
         function findMaximumStrats(expected_utilities::Vector{Float32})
             max_strats::Vector{Int8} = []
             max = maximum(expected_utilities)
@@ -71,9 +79,13 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
             end
             return rand(max_strats)
         end
-        player_choices[1] = findMaximumStrats(player_expected_utilities[1])
-        player_choices[2] = findMaximumStrats(player_expected_utilities[2])
+
+        # player_max_values = maximum.(player_expected_utilities)
+        # player_max_strategies = [findall(i->(i==player_max_values[player]), player_expected_utilities[player]) for player in eachindex(players)]
+        # player_choices = Int8.(rand.(player_max_strategies))
+        player_choices = Vector{Int8}([findMaximumStrats(player_expected_utilities[1]), findMaximumStrats(player_expected_utilities[2])])
         return player_choices
+
         # print("memory length: ")
         # println(player_memory_lengths)
         # println("decision process here...")
@@ -89,10 +101,21 @@ function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Ag
         # println(player_max_strategies)
         # print("player choices: ")
         # println(typeof(player_choices))
+
+        # for player in eachindex(players)
+        #     if rand() <= sim_params.error
+        #         player_choices[player] = rand(game.strategies[player])
+        #     end
+        # end
         
         # outcome = game.payoff_matrix[player_choices[1], player_choices[2]] #don't need this right now (wealth is not being analyzed)
         # players[1].wealth += outcome[1]
         # players[2].wealth += outcome[2]
+
+        # print("player choices post random: ")
+        # println(player_choices)
+        # print("outcome: ")
+        # println(outcome)
     end
 end
 
