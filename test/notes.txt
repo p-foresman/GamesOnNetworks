@@ -187,9 +187,7 @@ x create boxplot algorithm
 
 
 Need to simulate:
--ER 1.0 4 runs of 19 memory_length 0.05 error
 -SBM 20 runs of 19 memory_length 0.05 error
--5 runs 60 agents 0.05 error complete graph
 -20 runs >= 70 agents 0.05 error complete graph
 -all runs for population iteration for all graphs besides complete
 

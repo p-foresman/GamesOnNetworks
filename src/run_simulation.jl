@@ -1,5 +1,5 @@
 using Distributed
-const number_cores = 0
+const number_cores = 5
 addprocs(number_cores; exeflags="--project") #add some logic to ensure that nprocs is 1 before adding procs
 @everywhere using Distributed
 using BenchmarkTools, TimerOutputs
@@ -9,7 +9,7 @@ using BenchmarkTools, TimerOutputs
 # const times = TimerOutput()
 
 # @btime simulationIterator(averager=1, use_seed=false)
-# simulationIterator(averager=5, db_store=true, db_filepath=db_filepath, db_sim_group_id=2)
+simulationIterator(averager=20, db_store=true, db_filepath=db_filepath, db_sim_group_id=1)
 # rmprocs(number_cores - (number_cores - 2):number_cores + 1)
 
 
