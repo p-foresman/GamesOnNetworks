@@ -97,6 +97,7 @@ function initDataBase(db_filepath::String)
                     ")
     SQLite.close(db)
 end
+initDataBase(db_filepath) #initialize db at runtime
 
 function insertGame(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
     db = SQLite.DB("$db_filepath")

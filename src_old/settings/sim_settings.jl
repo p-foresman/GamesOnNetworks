@@ -1,4 +1,5 @@
 # Run this script to update simulation settings
+include("../sql.jl")
 
 
 ######## SIMULATION SETTINGS #########
