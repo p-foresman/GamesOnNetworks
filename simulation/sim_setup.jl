@@ -1,9 +1,9 @@
 const sim_params_list = constructSimParamsList(
-                number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 10,
+                number_agents_start = 20, #creates iterator for multi-loop simulation
+                number_agents_end = 20,
                 number_agents_step = 1,
-                memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 10,
+                memory_length_start = 13, #creates iterator for multi-loop simulation
+                memory_length_end = 13,
                 memory_length_step = 1,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
                 error_list = [0.1], #iterated over for multi-loop simulation

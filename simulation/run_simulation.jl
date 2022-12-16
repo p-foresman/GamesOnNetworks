@@ -6,7 +6,7 @@ addprocs(0; exeflags="--project")
 
 include("sim_setup.jl")
 
-simulationIterator(game, sim_params_list, graph_params_list; run_count=1)
+simulationIterator(game, sim_params_list, graph_params_list; run_count=1, use_seed=true)
 
 # using BenchmarkTools, TimerOutputs
 # const times = TimerOutput()

@@ -283,8 +283,6 @@ end
 
 
 function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list; run_count::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
-    # game, sim_params_list, graph_params_list = getSetupParams()
-
     if db_store == true
         if db_filepath == ""
             throw(ArgumentError("To store simulation run(s) in database, a db_filepath argument must be given specifying the database filepath!"))
