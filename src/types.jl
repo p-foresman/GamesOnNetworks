@@ -145,12 +145,6 @@ function displayName(::SmallWorldParams) return "Small-World" end
 function displayName(::ScaleFreeParams) return "Scale-Free" end
 function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
 
-struct DatabaseSettings #should i use this??
-    filepath::String
-    store::Bool
-    store_period::Integer
-end
-
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)
 include("settings/global_StructTypes.jl")

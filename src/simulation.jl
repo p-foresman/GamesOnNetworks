@@ -282,8 +282,8 @@ end
 
 
 
-function simulationIterator(; run_count::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
-    game, sim_params_list, graph_params_list = getSetupParams()
+function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list; run_count::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
+    # game, sim_params_list, graph_params_list = getSetupParams()
 
     if db_store == true
         if db_filepath == ""
@@ -298,75 +298,22 @@ function simulationIterator(; run_count::Integer = 1, use_seed::Bool = false, db
             end
         end
     end
-    #sim_plot = initLinePlot(params)
-    #sim_plot = initBoxPlot(params, length(graph_simulations_list))
-    #transition_times = Vector{AbstractFloat}([]) #vector to be updated
-    #standard_errors = Vector{AbstractFloat}([])
-    # transition_times_matrix = rand(run_count, length(graph_simulations_list))
-    # matrix_index = 1
     for graph_params in graph_params_list
         println("\n\n\n")
         println(displayName(graph_params))
         println(dump(graph_params))
-        for sim_params in sim_params_list
-            #transition_times = Vector{AbstractFloat}([]) #vector to be updated
-            # standard_errors = Vector{AbstractFloat}([])
-            
+        for sim_params in sim_params_list            
             print("Number of agents: $(sim_params.number_agents), ")
             print("Memory length: $(sim_params.memory_length), ")
             println("Error: $(sim_params.error)")
 
+            # run simulation (could have a parameter in simulationIterator that specifies the actual simulation function (in this case simulateTransitionTime) to run)
             @sync @distributed for run in 1:run_count
                 print("Run $run of $run_count")
                 simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
             end
-            # transition_times_matrix[:, matrix_index] = run_results
-            
-            #average_transition_time = sum(run_results) / run_count
-            #standard_deviation = std(run_results)
-            #standard_error = standard_deviation / sqrt(params.number_agents)
-            #push!(transition_times, average_transition_time)
-            #push!(standard_errors, standard_error)
-            
-           
-            #println(transition_times)
-
-            # if params.error == 0.1
-            #     line_style = :solid
-            # else
-            #     line_style = :dash
-            # end
-
-            # plot_label = graph_params_dict[:plot_label] * ", e=$error"
-
-            # sim_plot = plot!(params.iterator, transition_times,
-            #                                         label = plot_label,
-            #                                         color = graph_params_dict[:line_color],
-            #                                         linestyle = line_style
-            #                                         )
-
-            # sim_plot = plot!(params.iterator, transition_times,
-            #                                         seriestype = :scatter,
-            #                                         markercolor = :black,
-            #                                         label = :none
-            #                                         ) #for line under scatter 
-            
         end
-        # matrix_index += 1
     end
-
-    #Plotting for box plot (all network classes)
-    #= colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]
-    x_vals = ["Complete" "ER λ=1" "ER λ=5" "SW" "SF α=2" "SF α=4" "SF α=8" "SBM"]
-    sim_plot = boxplot(x_vals,
-                   transition_times_matrix,
-                    leg = false,
-                    yscale = :log10,
-                    xlabel = "Network",
-                    ylabel = "Transtition Time (periods)",
-                    fillcolor = colors) =#
-
-    #return sim_plot
 end
 
 #used to continue a simulation

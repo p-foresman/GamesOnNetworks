@@ -2,14 +2,14 @@
 
 using Distributed
 addprocs(0; exeflags="--project")
-@everywhere push!(LOAD_PATH, "./src") #dont even need this
+@everywhere using GamesOnNetworks
 
+include("sim_setup.jl")
+
+simulationIterator(game, sim_params_list, graph_params_list; run_count=1)
 
 # using BenchmarkTools, TimerOutputs
 # const times = TimerOutput()
-
-
-@everywhere using GamesOnNetworks
 
 # simulationIterator(run_count=20, db_store=true, db_filepath=db_filepath, db_sim_group_id=1)
 # simulationIterator(run_count=1)
