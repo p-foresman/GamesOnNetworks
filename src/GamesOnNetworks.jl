@@ -11,6 +11,7 @@ export
     StochasticBlockModelParams,
     LatticeParams,
     constructSimParamsList,
+    initDataBase,
     simulationIterator,
     simulateTransitionTime,
     transitionTimesBoxPlot

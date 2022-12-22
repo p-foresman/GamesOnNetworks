@@ -1,8 +1,6 @@
 
 
 function pushToDatabase(db_filepath::String, sim_group_id::Integer, prev_simulation_id::Integer, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
-    #initiallize sqlite file with proper schema if it doesn't already exist at the filepath
-    initDataBase(db_filepath)
 
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
