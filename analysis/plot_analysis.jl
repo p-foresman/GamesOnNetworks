@@ -1,6 +1,6 @@
 using GamesOnNetworks, ColorSchemes, Plots
 
-graph_ids = (1, 2, 3, 4, 5, 6, 7, 8)
+graph_ids = [1, 2, 3, 4, 5, 6, 7, 8]
 
 x_labels = ["1" "2" "3" "4" "5" "6" "7" "8"]
 colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]

@@ -1,7 +1,8 @@
 #Plotting for box plot (all network classes)
-function transitionTimesBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length, error::Float64, graph_ids::Tuple = (), x_labels, colors, sample_size::Integer)
+function transitionTimesBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, x_labels, colors, sample_size::Integer)
     df = querySimulationsForBoxPlot(db_filepath, game_id=game_id, number_agents=number_agents, memory_length=memory_length, error=error, graph_ids=graph_ids, sample_size=sample_size)
     transition_times_matrix = zeros(sample_size, length(graph_ids))
+    println(df)
     for (graph_number, graph_id) in enumerate(graph_ids)
         filtered_df = filter(:graph_id => id -> id == graph_id, df)
         transition_times_matrix[:, graph_number] = filtered_df[:, :periods_elapsed]

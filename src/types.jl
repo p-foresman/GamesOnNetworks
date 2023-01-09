@@ -2,15 +2,15 @@
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
-    name::AbstractString
+    name::String
     tag::Symbol
     wealth::Int #is this necessary?
     memory::Vector{Tuple{Symbol, Int8}}
 
-    function Agent(name::AbstractString, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}})
+    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}})
         return new(name, tag, wealth, memory)
     end
-    function Agent(name::AbstractString, tag::Symbol)
+    function Agent(name::String, tag::Symbol)
         return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]))
     end
     function Agent()
@@ -21,7 +21,7 @@ end
 
 #constructor for specific game to be played
 struct Game{S1, S2}
-    name::AbstractString
+    name::String
     payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
     strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
 

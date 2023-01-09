@@ -12,6 +12,7 @@ export
     LatticeParams,
     constructSimParamsList,
     initDataBase,
+    insertSimGroup,
     simulationIterator,
     simulateTransitionTime,
     transitionTimesBoxPlot

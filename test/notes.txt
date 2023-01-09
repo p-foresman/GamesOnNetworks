@@ -173,9 +173,7 @@ winter term:
 
 
 Immediate to-do before first manuscript:
-x sqlite file path global to feed into the sql.jl script? this would allow for the creation of new scripts and the addition of old ones by changing one variable (could be within settings page)
 -simulation settings "page" to be loaded into simulation (w/ a struct?)
-x remove game, sim_params, graph_params from global scope?
 -remove "strategies" in game? they are inherent in the matrix ***
 x create boxplot algorithm
 -get results
@@ -199,3 +197,10 @@ FOR FAST SIMULATION
 -reuse arrays that you dont need to keep within functions (e.g. A = [1, 2] ... A = A .+2)
 -TimerOutputs to find bottlenecks
 -Type Stability!! use code_warntype and break functions into smaller chunks so the julia compiler can infer return types from parameter types.
+-use @inbounds for array opperations to override bounds checking (when size is certain)
+
+
+FUTURE POSIBILITIES
+-uniform error model (current) OR log-linear decision model (Young 2014)
+    -make a custom type for each of these and use multiple dispatch
+

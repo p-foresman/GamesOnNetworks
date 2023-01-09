@@ -247,8 +247,8 @@ end
 
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, prev_simulation_id::Integer = 0)
-    if use_seed == true && prev_simulation_id == 0 #set seed only if the simulation has no past runs
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_id::Union{Integer, Nothing} = nothing)
+    if use_seed == true && prev_simulation_id !== nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
@@ -267,13 +267,13 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
             playGame!(game, sim_params, players)
         end
         periods_elapsed += 1
-        if db_store == true && db_store_period != 0 && periods_elapsed % db_store_period == 0 #push incremental results to DB
+        if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
             db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
             prev_simulation_id = db_status.simulation_status.insert_row_id
         end
     end
     println(" --> periods elapsed: $periods_elapsed")
-    if db_store == true #push final results to DB
+    if db_filepath !== nothing #push final results to DB at filepath
         db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
@@ -281,24 +281,12 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
 end
 
 
-
-function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list; run_count::Integer = 1, use_seed::Bool = false, db_store::Bool = false, db_filepath::String = "", db_store_period::Integer = 0, db_sim_group_id::Integer = 0, db_sim_group_description::String = "")
+function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
     
-    if db_store == true #could get rid of this argument (implicit if db_filepath is provided?)
-        if db_filepath == ""
-            throw(ArgumentError("To store simulation run(s) in database, a db_filepath argument must be given specifying the database filepath!"))
-        end
-        if db_sim_group_description != ""
-            if db_sim_group_id != 0
-                throw(ArgumentError("Specifying both 'db_sim_group_description' and 'db_sim_group_id' results in a conflict. Please specify 'db_sim_group_id' to add these simulation runs to an existing group or specify 'db_sim_group_description' to create a new group!"))
-            else
-                sim_group_insert_result = insertSimGroup(db_filepath, db_sim_group_description) #if a new description is present, it creates a new group and overrides the sim_group_id. A better system for this could be implemented.
-                println(sim_group_insert_result.status_message)
-                db_sim_group_id = sim_group_insert_result.insert_row_id
-            end
-        #need to ensure that given group id actually exists in DB
-        end
+    if db_filepath === nothing && db_sim_group_id !== nothing
+        throw(ArgumentError("The dm_sim_group_id parameter was specified without a db_filepath. Provide a db_filepath to store to database"))
     end
+
     for graph_params in graph_params_list
         println("\n\n\n")
         println(displayName(graph_params))
@@ -311,7 +299,7 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
             # run simulation (could have a parameter in simulationIterator that specifies the actual simulation function (in this case simulateTransitionTime) to run)
             @sync @distributed for run in 1:run_count
                 print("Run $run of $run_count")
-                simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_store=db_store, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
+                simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id)
             end
         end
     end
@@ -328,5 +316,5 @@ end
 
 function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Integer = 0)
     prev_sim = restoreFromDatabase(db_filepath, db_simulation_id)
-    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_store=db_store, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_id=prev_sim.prev_simulation_id)
+    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_id=prev_sim.prev_simulation_id)
 end
