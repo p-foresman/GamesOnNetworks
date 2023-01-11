@@ -181,7 +181,11 @@ x create boxplot algorithm
 -implement lattice graphs (2D and 3D)
 -simulate for % transitioned over periods elapsed
 
-
+Immediate TO DO:
+-add cascading deletes to db (and ensure that db merging function works)
+-add tests to package
+-fix potential memory leak issue
+    -add a 'choice' field to Agent struct which specifies the current choice 
 
 
 Need to simulate:

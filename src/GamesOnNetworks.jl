@@ -10,6 +10,7 @@ export
     ScaleFreeParams,
     StochasticBlockModelParams,
     LatticeParams,
+    SimParams,
     constructSimParamsList,
     initDataBase,
     insertSimGroup,

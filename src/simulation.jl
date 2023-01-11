@@ -248,7 +248,7 @@ end
 
 
 function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_id::Union{Integer, Nothing} = nothing)
-    if use_seed == true && prev_simulation_id !== nothing #set seed only if the simulation has no past runs
+    if use_seed == true && prev_simulation_id === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
@@ -277,7 +277,7 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
         db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
-    return (periods_elapsed)
+    return periods_elapsed
 end
 
 
