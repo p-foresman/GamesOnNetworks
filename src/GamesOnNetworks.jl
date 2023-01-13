@@ -2,6 +2,7 @@ module GamesOnNetworks
 
 export 
     Game,
+    SimParams,
     Agent,
     GraphParams,
     CompleteParams,

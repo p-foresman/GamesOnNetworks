@@ -64,7 +64,8 @@ function restoreFromDatabase(db_filepath::String, simulation_id::Integer)
 
     #reproduce Game object
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
-    reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2]})
+    payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
+    reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
 
     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
     reproduced_graph_params = JSON3.read(simulation_df[1, :graph_params], GraphParams)

@@ -3,7 +3,7 @@
 function initDataBase(db_filepath::String)
     #create or connect to database
     db = SQLite.DB("$db_filepath")
-
+    SQLite.busy_timeout(db, 1000)
     #create 'games' table (currently only the "bargaining game" exists)
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS games
@@ -84,7 +84,7 @@ function initDataBase(db_filepath::String)
                             );
                     ")
 
-    #create agents table which contains json strings of agent types (with memory states). FK points to specific simulation
+    #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS agents
                             (
@@ -97,10 +97,10 @@ function initDataBase(db_filepath::String)
                     ")
     SQLite.close(db)
 end
-initDataBase(db_filepath) #initialize db at runtime
 
 function insertGame(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
                                     (
@@ -121,7 +121,7 @@ function insertGame(db_filepath::String, game_name::String, game::String, payoff
                                         WHERE game_name = '$game_name'
                                         AND game = '$game';
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :game_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: games]... INSERT STATUS: [$status] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
@@ -130,7 +130,7 @@ end
 
 function insertGraph(db_filepath::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
     db = SQLite.DB("$db_filepath")
-
+    SQLite.busy_timeout(db, 1000)
     insert_string_columns = "graph_type, graph_params, "
     insert_string_values = "'$graph_type', '$graph_params_str', "
     for (param, value) in db_graph_params_dict
@@ -158,7 +158,7 @@ function insertGraph(db_filepath::String, graph_type::String, graph_params_str::
                                         WHERE graph_type = '$graph_type'
                                         AND graph_params = '$graph_params_str';
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :graph_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs]... INSERT STATUS: [$status] GRAPH_ID: [$insert_row]", insert_row_id = insert_row)
@@ -167,6 +167,7 @@ end
 
 function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_params
                                     (
@@ -191,7 +192,7 @@ function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_
                                         WHERE sim_params = '$sim_params_str'
                                         AND use_seed = $use_seed;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :sim_params_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_params]... INSERT STATUS: [$status] SIM_PARAMS_ID: [$insert_row]", insert_row_id = insert_row)
@@ -200,6 +201,7 @@ end
 
 function insertSimGroup(db_filepath::String, description::String)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     status = SQLite.execute(db, "
                                     INSERT INTO sim_groups
                                     (
@@ -216,11 +218,12 @@ function insertSimGroup(db_filepath::String, description::String)
     return tuple_to_return
 end
 
-function insertSimulation(db_filepath::String, sim_group_id::Integer, prev_simulation_id::Integer, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
-    sim_group_id == 0 ? sim_group_id = "NULL" : nothing
-    prev_simulation_id == 0 ?  prev_simulation_id = "NULL" : nothing
+function insertSimulation(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+    sim_group_id === nothing ? sim_group_id = "NULL" : nothing
+    prev_simulation_id === nothing ?  prev_simulation_id = "NULL" : nothing
 
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
@@ -253,7 +256,7 @@ end
 
 function insertAgents(db_filepath::String, simulation_id::Integer, agent_list::Vector{String})
     db = SQLite.DB("$db_filepath")
-
+    SQLite.busy_timeout(db, 1000)
     values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
         values_string *= "($simulation_id, '$agent'), "
@@ -276,79 +279,86 @@ end
 
 function queryGame(db_filepath::String, game_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM games
                                         WHERE game_id = $game_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function queryGraph(db_filepath::String, graph_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM graphs
                                         WHERE graph_id = $graph_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function querySimParams(db_filepath::String, sim_params_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM sim_params
                                         WHERE sim_params_id = $sim_params_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function querySimGroups(db_filepath::String, sim_group_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM sim_groups
                                         WHERE sim_group_id = $sim_group_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function querySimulation(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM simulations
                                         WHERE simulation_id = $simulation_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function queryAgents(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM agents
                                         WHERE simulation_id = $simulation_id
                                         ORDER BY agent_id ASC;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function querySimulationForRestore(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
@@ -367,20 +377,21 @@ function querySimulationForRestore(db_filepath::String, simulation_id::Integer)
                                         INNER JOIN sim_params USING(sim_params_id)
                                         WHERE simulations.simulation_id = $simulation_id;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
 
 function queryAgentsForRestore(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT agent
                                         FROM agents
                                         WHERE simulation_id = $simulation_id
                                         ORDER BY agent_id ASC;
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
@@ -389,6 +400,7 @@ end
 
 function querySimulationsByGroup(db_filepath::String, sim_group_id::Int)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
@@ -407,7 +419,7 @@ function querySimulationsByGroup(db_filepath::String, sim_group_id::Int)
                                         INNER JOIN sim_params USING(sim_params_id)
                                         WHERE simulations.sim_group_id = $sim_group_id
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
@@ -415,6 +427,7 @@ end
 #this function allows for RAM space savings during large iterative simulations
 function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulation_id
@@ -422,49 +435,7 @@ function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
                                         WHERE sim_group_id = $sim_group_id
                                         ORDER BY simulation_id ASC
                                 ")
-    df = DataFrame(query) #must create a DataFrame to access query values
-    SQLite.close(db)
-    return df
-end
-
-
-function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Tuple = (), sample_size::Int)
-    graph_ids_sql = ""
-    if graph_ids != ()
-        graph_ids_sql *= "AND simulations.graph_id IN $graph_ids"
-    end
-    
-    db = SQLite.DB("$db_filepath")
-    query = DBInterface.execute(db, "
-                                        SELECT * FROM (
-                                            SELECT
-                                                ROW_NUMBER () OVER ( 
-                                                    PARTITION BY graph_id
-                                                    ORDER BY graph_id, simulation_id
-                                                ) RowNum,
-                                                graphs.graph_id,
-                                                simulations.simulation_id,
-                                                sim_params.sim_params,
-                                                sim_params.number_agents,
-                                                sim_params.memory_length,
-                                                sim_params.error,
-                                                simulations.periods_elapsed,
-                                                
-                                                graphs.graph_params,
-                                                games.game_name
-                                            FROM simulations
-                                            INNER JOIN sim_params USING(sim_params_id)
-                                            INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
-                                            WHERE simulations.game_id = $game_id
-                                            AND sim_params.number_agents = $number_agents
-                                            AND sim_params.memory_length = $memory_length
-                                            AND sim_params.error = $error
-                                            $graph_ids_sql
-                                            )
-                                        WHERE RowNum <= $sample_size;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+    df = DataFrame(query) #must create a DataFrame to acces query data
     SQLite.close(db)
     return df
 end
@@ -474,6 +445,7 @@ end
 # Merge two SQLite "simulation save" files. These db files MUST have the same schema
 function mergeDatabases(db_filepath_1::String, db_filepath_2::String)
     db = SQLite.DB("$db_filepath_1")
+    SQLite.busy_timeout(db, 1000)
     status = SQLite.execute(db, "
                                     ATTACH DATABASE $db_filepath_2 AS merge_db;
                                     BEGIN;
@@ -494,17 +466,19 @@ end
 
 
 
-function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Tuple = (), sample_size::Int)
+
+function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Int)
     graph_ids_sql = ""
-    if graph_ids != ()
-        graph_ids_sql *= "AND simulations.graph_id IN $graph_ids"
+    if graph_ids !== nothing
+        graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
     
     db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 1000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
                                             SELECT
-                                                ROW_NUMBER () OVER ( 
+                                                ROW_NUMBER() OVER ( 
                                                     PARTITION BY graph_id
                                                     ORDER BY graph_id, simulation_id
                                                 ) RowNum,
@@ -529,8 +503,21 @@ function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, numbe
                                             $graph_ids_sql
                                             )
                                         WHERE RowNum <= $sample_size;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to access query values
+                                ") #dont need ROW_NUMBER() above, keeping for future use reference
+    df = DataFrame(query)
     SQLite.close(db)
-    return df
+
+    #error handling
+    graph_types_error_set = Set([])
+    for graph_id in graph_ids
+        filtered_df = filter(:graph_id => id -> id == graph_id, df)
+        if nrow(filtered_df) < sample_size
+            push!(graph_types_error_set, filtered_df[1, :graph_type])
+        end
+    end
+    if !isempty(graph_types_error_set)
+        throw(ErrorException("Not enough samples for graphs: $graph_types_error_set"))
+    else
+        return df
+    end
 end

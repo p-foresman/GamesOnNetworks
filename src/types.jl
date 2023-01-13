@@ -6,37 +6,46 @@ mutable struct Agent
     tag::Symbol
     wealth::Int #is this necessary?
     memory::Vector{Tuple{Symbol, Int8}}
+    choice::Union{Int8, Nothing}
 
-    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}})
-        return new(name, tag, wealth, memory)
+    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing)
+        return new(name, tag, wealth, memory, choice)
     end
     function Agent(name::String, tag::Symbol)
-        return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]))
+        return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
     function Agent()
-        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]))
+        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
 end
 
 
 #constructor for specific game to be played
-struct Game{S1, S2}
+struct Game{S1, S2, L}
     name::String
-    payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+    payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
     strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
 
+    function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}}) where {S1, S2}
+        L = S1 * S2
+        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
+        strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2))
+        return new{S1, S2, L}(name, static_payoff_matrix, strategies)
+    end
     function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
         matrix_size = size(payoff_matrix)
         S1 = matrix_size[1]
         S2 = matrix_size[2]
+        L = S1 * S2
         static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        return new{S1, S2}(name, static_payoff_matrix, strategies)
+        return new{S1, S2, L}(name, static_payoff_matrix, strategies)
     end
     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
         matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
         S1 = matrix_size[1]
         S2 = matrix_size[2]
+        L = S1 * S2
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
         indices = CartesianIndices(payoff_matrix)
         tuple_vector = Vector{Tuple{Int8, Int8}}([])
@@ -45,10 +54,10 @@ struct Game{S1, S2}
             push!(tuple_vector, new_tuple)
         end
         new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new{S1, S2}(name, new_payoff_matrix, strategies)
+        return new{S1, S2, L}(name, new_payoff_matrix, strategies)
     end
-    function Game{S1, S2}(name::String, payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}}, strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}) where {S1, S2} ##this method needed for reconstructing with JSON3
-        return new{S1, S2}(name, payoff_matrix, strategies)
+    function Game{S1, S2, L}(name::String, payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}}, strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}) where {S1, S2, L} ##this method needed for reconstructing with JSON3
+        return new{S1, S2, L}(name, payoff_matrix, strategies)
     end
 end
 
@@ -72,7 +81,9 @@ mutable struct SimParams
         sufficient_equity = (1 - error) * memory_length
         return new(number_agents, memory_length, memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, random_seed)
     end
-    SimParams() = new()
+    function SimParams()
+        return new()
+    end
 end
 
 
