@@ -14,6 +14,9 @@ mutable struct Agent
     function Agent(name::String, tag::Symbol)
         return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
+    function Agent(name::String)
+        return new(name, Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+    end
     function Agent()
         return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
@@ -28,7 +31,7 @@ struct Game{S1, S2, L}
 
     function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}}) where {S1, S2}
         L = S1 * S2
-        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
+        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2))
         return new{S1, S2, L}(name, static_payoff_matrix, strategies)
     end
@@ -37,7 +40,7 @@ struct Game{S1, S2, L}
         S1 = matrix_size[1]
         S2 = matrix_size[2]
         L = S1 * S2
-        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}}(payoff_matrix)
+        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
         return new{S1, S2, L}(name, static_payoff_matrix, strategies)
     end
@@ -63,7 +66,7 @@ end
 
 
 
-mutable struct SimParams
+struct SimParams
     number_agents::Int64
     memory_length::Int64
     memory_init_state::Symbol
@@ -155,6 +158,19 @@ function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
 function displayName(::SmallWorldParams) return "Small-World" end
 function displayName(::ScaleFreeParams) return "Scale-Free" end
 function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
+
+
+
+struct AgentGraph{N} #a simpler replacement for MetaGraphs
+    graph::SimpleGraph{Int64}
+    agents::SVector{N, Agent}
+    
+    function AgentGraph{N}(graph::SimpleGraph{Int64}) where {N}
+        # N = length(vertices(graph))
+        agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
+        return new{N}(graph, agents)
+    end
+end
 
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)
