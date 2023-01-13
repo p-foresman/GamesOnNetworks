@@ -1,6 +1,6 @@
 
 
-function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool)
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     game_json_str = JSON3.write(game)
@@ -34,7 +34,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     sim_params_row_id = sim_params_insert_result.insert_row_id
 
     #prepare and insert data for "simulations" table. Duplicate rows necessary.
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph)))
+    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
@@ -44,8 +44,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
 
     #create agents list to insert all agents into "agents" table at once
     agents_list = Vector{String}([])
-    for vertex in vertices(graph)
-        agent = get_prop(graph, vertex, :agent)
+    for agent in agent_graph.agents
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
@@ -71,7 +70,7 @@ function restoreFromDatabase(db_filepath::String, simulation_id::Integer)
     reproduced_graph_params = JSON3.read(simulation_df[1, :graph_params], GraphParams)
     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
-    reproduced_meta_graph = MetaGraph(reproduced_graph)
+    reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
     for vertex in vertices(reproduced_meta_graph)
         agent = JSON3.read(agents_df[vertex, :agent], Agent)
         set_prop!(reproduced_meta_graph, vertex, :agent, agent)

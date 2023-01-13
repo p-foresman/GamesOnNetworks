@@ -1,6 +1,32 @@
 
 ############################### FUNCTIONS #######################################
 
+#memory state initialization
+function memory_init(agent::Agent, game::Game, memory_length, init::String)
+    if init == ""
+        return
+    elseif init == "fractious"
+        if rand() <= 0.5
+            recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+        else
+            recollection = game.strategies[1][3]
+        end
+
+        to_push = (agent.tag, recollection)
+        for i in 1:memory_length
+            push!(agent.memory, to_push)
+        end
+    elseif init == "equity"
+        recollection == game.strategies[1][2]
+        to_push = (agent.tag, recollection)
+        for i in 1:memory_length
+            push!(agent.memory, to_push)
+        end
+    else
+        throw(DomainError(init, "This is not an accepted memory initiallization."))
+    end
+    return nothing
+end
 
 
 ######################## game algorithm ####################
@@ -99,8 +125,7 @@ end
 ##### multiple dispatch for various graph parameter sets #####
 function initGraph(::CompleteParams, game::Game, sim_params::SimParams)
     graph = complete_graph(sim_params.number_agents)
-    meta_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(meta_graph, game, sim_params)
+    meta_graph = setGraphMetaData!(graph, game, sim_params)
     return meta_graph
 end
 function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams)
@@ -112,8 +137,7 @@ function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimPa
             break
         end
     end
-    meta_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(meta_graph, game, sim_params)
+    meta_graph = setGraphMetaData!(graph, game, sim_params)
     return meta_graph
 end
 function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams)
@@ -173,39 +197,18 @@ function setGraphMetaData!(graph::Graph, game::Game, sim_params::SimParams)
     return meta_graph
 end
 
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams)
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
-        #set memory initialization
-        #initialize in strict fractious state for now
-        if vertex % 2 == 0
-            recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
-        else
-            recollection = game.strategies[1][3]
-        end
-        to_push = (agent.tag, recollection)
-        for i in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
-        end
-    end
-    return nothing
-end
 
 
 #check whether transition has occured
-function checkTransition(meta_graph::AgentGraph, sim_params::SimParams)
+function checkTransition(meta_graph::MetaGraph, sim_params::SimParams)
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
-    for (vertex, agent) in enumerate(meta_graph.agents)
-        if degree(meta_graph.graph, vertex) == 0
+    for vertex in vertices(meta_graph)
+        if degree(meta_graph, vertex) == 0
             number_hermits += 1
             continue
         end
+        agent::Agent = get_prop(meta_graph, vertex, :agent)
 
         if countStrats(agent.memory, 2) >= sim_params.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
             number_transitioned += 1
@@ -250,9 +253,9 @@ end
 
 function runPeriod!(meta_graph, game, sim_params)
     for match in 1:sim_params.matches_per_period
-        edge = rand(collect(edges(meta_graph.graph))) #get random edge
+        edge = rand(collect(edges(meta_graph))) #get random edge
         vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-        players = Tuple{Agent, Agent}([meta_graph.agents[vertex] for vertex in vertex_list]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+        players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[index], :agent) for index in eachindex(vertex_list)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
         #println(players[1].name * " playing game with " * players[2].name)
         playGame!(game, sim_params, players)
     end

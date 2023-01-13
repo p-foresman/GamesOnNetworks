@@ -11,7 +11,7 @@ StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable()
 
 
 ################################ SimParams Type #####################################
-StructTypes.StructType(::Type{SimParams}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{SimParams}) = StructTypes.Struct()
 
 
 ############################## GraphParams Types ####################################
