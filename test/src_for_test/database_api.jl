@@ -1,10 +1,6 @@
-# using JSON3, Graphs, MetaGraphs
 
-# include("types.jl")
-include("sql.jl")
 
-function pushToDatabase(db_filepath::String, sim_group_id::Integer, prev_simulation_id::Integer, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
-
+function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, graph::AbstractGraph, periods_elapsed::Integer, use_seed::Bool)
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     game_json_str = JSON3.write(game)

@@ -2,26 +2,27 @@
 
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
-    name::AbstractString
+    name::String
     tag::Symbol
     wealth::Int #is this necessary?
     memory::Vector{Tuple{Symbol, Int8}}
+    choice::Union{Int8, Nothing}
 
-    function Agent(name::AbstractString, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}})
-        return new(name, tag, wealth, memory)
+    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing)
+        return new(name, tag, wealth, memory, choice)
     end
-    function Agent(name::AbstractString, tag::Symbol)
-        return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]))
+    function Agent(name::String, tag::Symbol)
+        return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
     function Agent()
-        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]))
+        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
 end
 
 
 #constructor for specific game to be played
 struct Game{S1, S2}
-    name::AbstractString
+    name::String
     payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
     strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
 
@@ -72,7 +73,9 @@ mutable struct SimParams
         sufficient_equity = (1 - error) * memory_length
         return new(number_agents, memory_length, memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, random_seed)
     end
-    SimParams() = new()
+    function SimParams()
+        return new()
+    end
 end
 
 
@@ -144,12 +147,6 @@ function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
 function displayName(::SmallWorldParams) return "Small-World" end
 function displayName(::ScaleFreeParams) return "Scale-Free" end
 function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
-
-struct DatabaseSettings #should i use this??
-    filepath::String
-    store::Bool
-    store_period::Integer
-end
 
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)

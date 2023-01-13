@@ -29,87 +29,97 @@ function memory_init(agent::Agent, game::Game, memory_length, init::String)
 end
 
 
+######################## game algorithm ####################
 
+#play the defined game
+function playGame!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent})
+    makeChoices!(game, sim_params, players)
+    updateMemories!(players, sim_params)
+    return nothing
+end
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoices(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
-    player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
+function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
+    # player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
     
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
 
-    function findOpponentStrategyProbs(player_memory, opponent_tag, opponent_strategies)
-        opponent_strategy_recollection = zero.(opponent_strategies)
-        for memory in player_memory
-            if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
-                for strategy in opponent_strategies
-                    if memory[2] == strategy
-                        opponent_strategy_recollection[strategy] += 1 #strategy is simply the payoff_matrix index for the given dimension. Will remove explicit strategies eventually
-                        break
-                    end
-                end
-            end
-        end
-        return opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
-    end
-
     player_expected_utilities = zeros.(Float32, length.(game.strategies))
-    function findExpectedUtilities!(expected_utilities, payoff_matrix, opponent_probs_1, opponent_probs_2)
-        for column in axes(payoff_matrix, 2) #column strategies
-            for row in axes(payoff_matrix, 1) #row strategies
-                expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs_1[column]
-                expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs_2[row]
-            end
-        end
-    end
+
     findExpectedUtilities!(player_expected_utilities, game.payoff_matrix, findOpponentStrategyProbs(players[1].memory, players[2].tag, axes(game.payoff_matrix, 2)), findOpponentStrategyProbs(players[2].memory, players[1].tag, axes(game.payoff_matrix, 1)))
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
-    function findMaximumStrats(expected_utilities::Vector{Float32})
-        max_strats::Vector{Int8} = []
-        max = maximum(expected_utilities)
-        for i in eachindex(expected_utilities)
-            if expected_utilities[i] == max
-                push!(max_strats, Int8(i))
-            end
-        end
-        # print("max_strats: ")
-        # println(max_strats)
-        return rand(max_strats)
-    end
     for player in eachindex(players)
-        if (rand() > sim_params.error) player_choices[player] = findMaximumStrats(player_expected_utilities[player]) end #if rand() <= error, do nothing (i.e., keep random choice)
+        if rand() <= sim_params.error 
+            players[player].choice = rand(game.strategies[player])
+        else
+            players[player].choice = findMaximumStrats(player_expected_utilities[player])
+        end
     end
     # print("player_choices: ")
     # println(player_choices)
-    return player_choices
+    return nothing
 
     # outcome = game.payoff_matrix[player_choices[1], player_choices[2]] #don't need this right now (wealth is not being analyzed)
     # players[1].wealth += outcome[1]
     # players[2].wealth += outcome[2]
 end
 
+function findOpponentStrategyProbs(player_memory, opponent_tag, opponent_strategies)
+    opponent_strategy_recollection = zero.(opponent_strategies)
+    @inbounds for memory in player_memory
+        if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
+            for strategy in opponent_strategies
+                if memory[2] == strategy
+                    opponent_strategy_recollection[strategy] += 1 #strategy is simply the payoff_matrix index for the given dimension. Will remove explicit strategies eventually
+                    break
+                end
+            end
+        end
+    end
+    return opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+end
+
+function findExpectedUtilities!(expected_utilities, payoff_matrix, opponent_probs_1, opponent_probs_2)
+    @inbounds for column in axes(payoff_matrix, 2) #column strategies
+        for row in axes(payoff_matrix, 1) #row strategies
+            expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs_1[column]
+            expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs_2[row]
+        end
+    end
+    return nothing
+end
+
+function findMaximumStrats(expected_utilities::Vector{Float32})
+    max_strats::Vector{Int8} = []
+    max = maximum(expected_utilities)
+    @inbounds for i in eachindex(expected_utilities)
+        if expected_utilities[i] == max
+            push!(max_strats, Int8(i))
+        end
+    end
+    # print("max_strats: ")
+    # println(max_strats)
+    return rand(max_strats)
+end
 
 #update agent's memory vector
-function updateMemories!(players::Tuple{Agent, Agent}, player_choices::Vector{Int8}, sim_params::SimParams)
+function updateMemories!(players::Tuple{Agent, Agent}, sim_params::SimParams)
     for player in players
         if length(player.memory) == sim_params.memory_length
             popfirst!(player.memory)
         end
     end
-    push!(players[1].memory, (players[2].tag, player_choices[2]))
-    push!(players[2].memory, (players[1].tag, player_choices[1]))
+    push!(players[1].memory, (players[2].tag, players[2].choice))
+    push!(players[2].memory, (players[1].tag, players[1].choice))
     return nothing
 end
 
-#play the defined game
-function playGame!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent})
-    player_choices = makeChoices(game, sim_params, players)
-    updateMemories!(players, player_choices, sim_params)
-    return nothing
-end
+#######################################################
+
 
 
 ##### multiple dispatch for various graph parameter sets #####
@@ -190,7 +200,7 @@ end
 
 
 #check whether transition has occured
-function checkTransition(meta_graph::MetaGraph, game::Game, sim_params::SimParams)
+function checkTransition(meta_graph::MetaGraph, sim_params::SimParams)
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
     for vertex in vertices(meta_graph)
@@ -198,13 +208,9 @@ function checkTransition(meta_graph::MetaGraph, game::Game, sim_params::SimParam
             number_hermits += 1
             continue
         end
-        agent = get_prop(meta_graph, vertex, :agent)
-        count_M = countStrats(agent.memory, 2) #this is hard coded to strategy 2 (M) for now. Should change later!
+        agent::Agent = get_prop(meta_graph, vertex, :agent)
 
-        # println("here!")
-        # println(sufficient_equity)
-        # println(count_M)
-        if count_M >= sim_params.sufficient_equity
+        if countStrats(agent.memory, 2) >= sim_params.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
             number_transitioned += 1
         end
         # println(number_transitioned)
@@ -216,7 +222,7 @@ function checkTransition(meta_graph::MetaGraph, game::Game, sim_params::SimParam
     end
 end
 
-function countStrats(memory_set::Vector, desired_strat::Int64)
+function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
     count::Int64 = 0
     for memory in memory_set
         if memory[2] == desired_strat
@@ -245,10 +251,20 @@ end
 
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
+function runPeriod!(meta_graph, game, sim_params)
+    for match in 1:sim_params.matches_per_period
+        edge = rand(collect(edges(meta_graph))) #get random edge
+        vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
+        players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[index], :agent) for index in eachindex(vertex_list)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+        #println(players[1].name * " playing game with " * players[2].name)
+        playGame!(game, sim_params, players)
+    end
+    return nothing
+end
 
 
 function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_id::Union{Integer, Nothing} = nothing)
-    if use_seed == true && prev_simulation_id !== nothing #set seed only if the simulation has no past runs
+    if use_seed == true && prev_simulation_id === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
@@ -257,15 +273,9 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     #println(adjacency_matrix(graph)[1, 2])
 
     #play game until transition occurs (sufficient equity is reached)
-    while !checkTransition(meta_graph, game, sim_params)
+    while !checkTransition(meta_graph, sim_params)
         #play a period worth of games
-        for match in 1:sim_params.matches_per_period
-            edge = rand(collect(edges(meta_graph))) #get random edge
-            vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-            players = Tuple{Agent, Agent}([get_prop(meta_graph, vertex_list[index], :agent) for index in eachindex(vertex_list)]) #get the agents associated with these vertices and create a tuple => (player1, player2)
-            #println(players[1].name * " playing game with " * players[2].name)
-            playGame!(game, sim_params, players)
-        end
+        runPeriod!(meta_graph, game, sim_params)
         periods_elapsed += 1
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
             db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, meta_graph, periods_elapsed, use_seed)

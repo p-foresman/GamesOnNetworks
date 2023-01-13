@@ -199,8 +199,17 @@ FOR FAST SIMULATION
 -Type Stability!! use code_warntype and break functions into smaller chunks so the julia compiler can infer return types from parameter types.
 -use @inbounds for array opperations to override bounds checking (when size is certain)
 
+-could set up a static vector of agents whose indices correspond to the graph's vertices. This way, no metagraph is needed
+-eliminate strategies? (make implicit)
+-separate the need for tags
+
 
 FUTURE POSIBILITIES
 -uniform error model (current) OR log-linear decision model (Young 2014)
     -make a custom type for each of these and use multiple dispatch
 
+
+
+
+NOTES 1/12/23
+-write .bat script and run simulations this way
