@@ -6,23 +6,22 @@
 ######################## game algorithm ####################
 
 #play the defined game
-function playGame!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent})
-    makeChoices!(game, sim_params, players)
+function playGame!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}, opponent_strategy_recollection::Tuple{Vector{Int64}, Vector{Int64}}, opponent_strategy_probs::Tuple{Vector{Float64}, Vector{Float64}}, player_expected_utilities::Tuple{Vector{Float32}, Vector{Float32}})
+    makeChoices!(game, sim_params, players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
     updateMemories!(players, sim_params)
     return nothing
 end
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
+function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}, opponent_strategy_recollection::Tuple{Vector{Int64}, Vector{Int64}}, opponent_strategy_probs::Tuple{Vector{Float64}, Vector{Float64}}, player_expected_utilities::Tuple{Vector{Float32}, Vector{Float32}}) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
     # player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
     
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
 
-    player_expected_utilities = zeros.(Float32, length.(game.strategies))
-
-    findExpectedUtilities!(player_expected_utilities, game.payoff_matrix, findOpponentStrategyProbs(players[1].memory, players[2].tag, axes(game.payoff_matrix, 2)), findOpponentStrategyProbs(players[2].memory, players[1].tag, axes(game.payoff_matrix, 1)))
+    findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
+    findExpectedUtilities!(player_expected_utilities, game.payoff_matrix, opponent_strategy_probs)
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
@@ -42,26 +41,40 @@ function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, A
     # players[2].wealth += outcome[2]
 end
 
-function findOpponentStrategyProbs(player_memory, opponent_tag, opponent_strategies)
-    opponent_strategy_recollection = zero.(opponent_strategies)
+
+
+function calculateOpponentStrategyProbs!(player_memory, opponent_tag, opponent_strategy_recollection, opponent_strategy_probs)
     @inbounds for memory in player_memory
         if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
-            for strategy in opponent_strategies
-                if memory[2] == strategy
-                    opponent_strategy_recollection[strategy] += 1 #strategy is simply the payoff_matrix index for the given dimension. Will remove explicit strategies eventually
-                    break
-                end
-            end
+            opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
         end
     end
-    return opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+    opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
 end
 
-function findExpectedUtilities!(expected_utilities, payoff_matrix, opponent_probs_1, opponent_probs_2)
+function rtest()
+    return "works"
+end
+
+function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
+    for player in opponent_strategy_recollection
+        player .= Int64(0) #reset opponent_strategy_recollection
+    end
+    for player in opponent_strategy_probs
+        player .= Float64(0)
+    end
+    calculateOpponentStrategyProbs!(players[1].memory, players[2].tag, opponent_strategy_recollection[1], opponent_strategy_probs[1])
+    calculateOpponentStrategyProbs!(players[2].memory, players[1].tag, opponent_strategy_recollection[2], opponent_strategy_probs[2])
+end
+
+function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
+    for player in player_expected_utilities #reset expected utilities
+        player .= Float32(0)
+    end
     @inbounds for column in axes(payoff_matrix, 2) #column strategies
         for row in axes(payoff_matrix, 1) #row strategies
-            expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs_1[column]
-            expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs_2[row]
+            player_expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs[1][column]
+            player_expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs[2][row]
         end
     end
     return nothing
@@ -223,13 +236,13 @@ end
 
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
-function runPeriod!(agent_graph, game, sim_params)
+function runPeriod!(agent_graph, game, sim_params, opponent_strategy_recollection::Tuple{Vector{Int64}, Vector{Int64}}, opponent_strategy_probs::Tuple{Vector{Float64}, Vector{Float64}}, player_expected_utilities::Tuple{Vector{Float32}, Vector{Float32}})
     for match in 1:sim_params.matches_per_period
         edge = rand(collect(edges(agent_graph.graph))) #get random edge
         vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
         players = Tuple{Agent, Agent}([agent_graph.agents[vertex] for vertex in vertex_list]) #get the agents associated with these vertices and create a tuple => (player1, player2)
         #println(players[1].name * " playing game with " * players[2].name)
-        playGame!(game, sim_params, players)
+        playGame!(game, sim_params, players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
     end
     return nothing
 end
@@ -245,9 +258,12 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     #println(adjacency_matrix(graph)[1, 2])
 
     #play game until transition occurs (sufficient equity is reached)
+    opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
+    opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
+    player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
     while !checkTransition(agent_graph, sim_params)
         #play a period worth of games
-        runPeriod!(agent_graph, game, sim_params)
+        runPeriod!(agent_graph, game, sim_params, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
         periods_elapsed += 1
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
             db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
