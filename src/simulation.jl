@@ -65,6 +65,7 @@ function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_str
     end
     calculateOpponentStrategyProbs!(players[1].memory, players[2].tag, opponent_strategy_recollection[1], opponent_strategy_probs[1])
     calculateOpponentStrategyProbs!(players[2].memory, players[1].tag, opponent_strategy_recollection[2], opponent_strategy_probs[2])
+    return nothing
 end
 
 function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
