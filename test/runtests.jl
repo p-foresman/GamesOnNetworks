@@ -17,12 +17,12 @@ using Test, BenchmarkTools, Suppressor
     @test @suppress simulateTransitionTime(game, sim_params_2, graph_params_sw, use_seed=true) == 4374
 
     #scale-free
-    @test @suppress simulateTransitionTime(game, sim_params_1, graph_params_sw, use_seed=true) == 85
-    @test @suppress simulateTransitionTime(game, sim_params_2, graph_params_sw, use_seed=true) == 4466
+    @test @suppress simulateTransitionTime(game, sim_params_1, graph_params_sf, use_seed=true) == 85
+    @test @suppress simulateTransitionTime(game, sim_params_2, graph_params_sf, use_seed=true) == 4466
 
     #sbm
-    @test @suppress simulateTransitionTime(game, sim_params_1, graph_params_sw, use_seed=true) == 2735
-    @test @suppress simulateTransitionTime(game, sim_params_2, graph_params_sw, use_seed=true) == 13429
+    @test @suppress simulateTransitionTime(game, sim_params_1, graph_params_sbm, use_seed=true) == 2735
+    @test @suppress simulateTransitionTime(game, sim_params_2, graph_params_sbm, use_seed=true) == 13429
 
     
     benchmark = @suppress begin @benchmark simulateTransitionTime(game, sim_params_1, graph_params_complete, use_seed=true) end
