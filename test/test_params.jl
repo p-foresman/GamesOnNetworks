@@ -19,8 +19,3 @@ const graph = GamesOnNetworks.initGraph(graph_params, game, sim_params)
 
 const agent1 = Agent("agent1", :red, 0, [(:red, Int8(1)), (:red, Int8(2)), (:red, Int8(3)), (:red, Int8(1)), (:red, Int8(2)), (:red, Int8(3)), (:red, Int8(2)), (:red, Int8(2)), (:red, Int8(3)), (:red, Int8(1))])
 const agent2 = Agent("agent1", :red, 0, [(:red, Int8(1)), (:red, Int8(1)), (:red, Int8(3)), (:red, Int8(3)), (:red, Int8(2)), (:red, Int8(3)), (:red, Int8(1)), (:red, Int8(1)), (:red, Int8(3)), (:red, Int8(1))])
-
-
-const opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
-const opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
-const player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
