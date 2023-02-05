@@ -9,7 +9,7 @@ addprocs(5; exeflags="--project")
 
 
 ## 3: initiallize sqlite file with proper schema if it doesn't already exist at the filepath
-const db_filepath = "./sqlite/SimulationSaves_test.sqlite"
+const db_filepath = "./sqlite/test.sqlite"
 initDataBase(db_filepath)
 #NOTE: simulation groups must be created manually. Use insertSimGroup("description") to insert group. Returns the group_id in 'insert_row_id' field.
 const sim_group_id = insertSimGroup(db_filepath, "description").insert_row_id
@@ -19,7 +19,7 @@ const sim_group_id = insertSimGroup(db_filepath, "description").insert_row_id
 include("sim_setup.jl")
 
 ## 5: run simulation
-simulationIterator(game, sim_params_list, graph_params_list; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id)
+simulationIterator(game, sim_params_list, graph_params_list; run_count=200, db_filepath=db_filepath, db_sim_group_id=sim_group_id)
 
 
 ##6: remove worker cores

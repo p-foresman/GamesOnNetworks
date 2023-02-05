@@ -50,8 +50,9 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     end
     # agents_status = insertAgents(db_filepath, simulation_row_id, agents_list)
 
+    #push everything to DB
     db = SQLite.DB(db_filepath)
-    SQLite.busy_timeout(db, 5000)
+    SQLite.busy_timeout(db, 3000)
 
     game_insert_result = insertGame(db, game_name, game_json_str, payoff_matrix_size)
     #game_status = game_insert_result.status_message
