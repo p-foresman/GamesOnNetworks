@@ -1,6 +1,27 @@
+function createTempDirPath(db_filepath::String) rsplit(db_filepath, ".", limit=2)[1] * "/" end
+
+function initDistributedDB(db_filepath::String) #creates a sparate sqlite file for each worker to prevent database locking conflicts (to later be collected).
+    temp_dirpath = createTempDirPath(db_filepath)
+    mkdir(temp_dirpath)
+    for worker in workers()
+        temp_filepath = temp_dirpath * "$worker.sqlite"
+        initDataBase(temp_filepath)
+    end
+    return nothing
+end
+
+function collectDistributedDB(db_filepath::String) #collects distributed db files into the db_filepath 
+    temp_dirpath = createTempDirPath(db_filepath)
+    for worker in workers()
+        temp_filepath = temp_dirpath * "$worker.sqlite"
+        mergeDatabases(db_filepath, temp_filepath)
+        rm(temp_filepath)
+    end
+    rm(temp_dirpath)
+end
 
 
-function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool)
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     game_json_str = JSON3.write(game)
@@ -38,7 +59,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
-    # simulation_insert_result = insertSimulation(db_filepath, sim_group_id, prev_simulation_id, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
+    # simulation_insert_result = insertSimulation(db_filepath, sim_group_id, prev_simulation_uuid, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
     # simulation_status = simulation_insert_result.status_message
     # simulation_row_id = simulation_insert_result.insert_row_id
 
@@ -50,7 +71,15 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     end
     # agents_status = insertAgents(db_filepath, simulation_row_id, agents_list)
 
-    #push everything to DB
+
+
+
+    #push everything to DB (CLEAN THIS UP)
+    if nworkers() > 1
+        temp_dirpath = createTempDirPath(db_filepath)
+        db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
+    end
+
     db = SQLite.DB(db_filepath)
     SQLite.busy_timeout(db, 3000)
 
@@ -66,11 +95,11 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     #sim_params_status = sim_params_insert_result.status_message
     sim_params_row_id = sim_params_insert_result.insert_row_id
 
-    simulation_insert_result = insertSimulation(db, sim_group_id, prev_simulation_id, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
+    simulation_insert_result = insertSimulation(db, sim_group_id, prev_simulation_uuid, game_row_id, graph_row_id, sim_params_row_id, adj_matrix_json_str, rng_state_json, periods_elapsed)
     #simulation_status = simulation_insert_result.status_message
-    simulation_row_id = simulation_insert_result.insert_row_id
+    simulation_uuid = simulation_insert_result.uuid
 
-    agents_status = insertAgents(db, simulation_row_id, agents_list)
+    agents_status = insertAgents(db, simulation_uuid, agents_list)
 
     SQLite.close(db)
 
@@ -78,7 +107,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
 end
 
 
-function restoreFromDatabase(db_filepath::String, simulation_id::Integer)
+function restoreFromDatabase(db_filepath::String, simulation_id::Integer) #MUST FIX TO USE UUID
     simulation_df = querySimulationForRestore(db_filepath, simulation_id)
     agents_df = queryAgentsForRestore(db_filepath, simulation_id)
 

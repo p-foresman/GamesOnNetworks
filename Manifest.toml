@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.8.2"
+julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "0247c9e6d929af9236f6569c498a64a7645e2bc1"
+project_hash = "1444e2ff258107dcf40db18b6010527bbbf451b4"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -1067,11 +1067,6 @@ version = "1.10.0"
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
-[[deps.Suppressor]]
-git-tree-sha1 = "c6ed566db2fe3931292865b966d6d140b7ef32a9"
-uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-version = "0.2.1"
-
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -1098,7 +1093,7 @@ version = "1.10.0"
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.1"
+version = "1.10.0"
 
 [[deps.TensorCore]]
 deps = ["LinearAlgebra"]

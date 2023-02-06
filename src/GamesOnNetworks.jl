@@ -27,6 +27,7 @@ using
     DataFrames,
     JSON3,
     SQLite,
+    UUIDs,
     Distributed,
     Plots,
     GraphPlot,

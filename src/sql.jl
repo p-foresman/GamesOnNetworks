@@ -52,7 +52,8 @@ function initDataBase(db_filepath::String)
                             CREATE TABLE IF NOT EXISTS sim_groups
                             (
                                 sim_group_id INTEGER PRIMARY KEY,
-                                description TEXT DEFAULT NULL
+                                description TEXT DEFAULT NULL,
+                                UNIQUE(description)
                             );
                     ")
 
@@ -61,8 +62,9 @@ function initDataBase(db_filepath::String)
                             CREATE TABLE IF NOT EXISTS simulations
                             (
                                 simulation_id INTEGER PRIMARY KEY,
+                                simulation_uuid TEXT NOT NULL,
                                 sim_group_id INTEGER DEFAULT NULL,
-                                prev_simulation_id INTEGER DEFAULT NULL,
+                                prev_simulation_uuid TEXT DEFAULT NULL,
                                 game_id INTEGER NOT NULL,
                                 graph_id INTEGER NOT NULL,
                                 sim_params_id INTEGER NOT NULL,
@@ -70,15 +72,20 @@ function initDataBase(db_filepath::String)
                                 rng_state TEXT NOT NULL,
                                 periods_elapsed INTEGER NOT NULL,
                                 FOREIGN KEY (sim_group_id)
-                                    REFERENCES sim_groups (sim_group_id),
-                                FOREIGN KEY (prev_simulation_id)
-                                    REFERENCES simulations (prev_simulation_id),
+                                    REFERENCES sim_groups (sim_group_id)
+                                    ON DELETE CASCADE,
+                                FOREIGN KEY (prev_simulation_uuid)
+                                    REFERENCES simulations (simulation_uuid),
                                 FOREIGN KEY (game_id)
-                                    REFERENCES games (game_id),
+                                    REFERENCES games (game_id)
+                                    ON DELETE CASCADE,
                                 FOREIGN KEY (graph_id)
-                                    REFERENCES graphs (graph_id),
+                                    REFERENCES graphs (graph_id)
+                                    ON DELETE CASCADE,
                                 FOREIGN KEY (sim_params_id)
                                     REFERENCES sim_params (sim_params_id)
+                                    ON DELETE CASCADE,
+                                UNIQUE(simulation_uuid)
                             );
                     ")
 
@@ -87,10 +94,11 @@ function initDataBase(db_filepath::String)
                             CREATE TABLE IF NOT EXISTS agents
                             (
                                 agent_id INTEGER PRIMARY KEY,
-                                simulation_id INTEGER NOT NULL,
+                                simulation_uuid TEXT NOT NULL,
                                 agent TEXT NOT NULL,
-                                FOREIGN KEY (simulation_id)
-                                    REFERENCES simulations (simulation_id)
+                                FOREIGN KEY (simulation_uuid)
+                                    REFERENCES simulations (simulation_uuid)
+                                    ON DELETE CASCADE
                             );
                     ")
     SQLite.close(db)
@@ -216,17 +224,20 @@ function insertSimGroup(db_filepath::String, description::String)
     return tuple_to_return
 end
 
-function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_id::Union{Integer, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+    uuid = "$(uuid4())"
+    
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
-    prev_simulation_id === nothing ?  prev_simulation_id = "NULL" : nothing
+    prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
 
     # db = SQLite.DB("$db_filepath")
     # SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
                                     (
+                                        simulation_uuid,
                                         sim_group_id,
-                                        prev_simulation_id,
+                                        prev_simulation_uuid,
                                         game_id,
                                         graph_id,
                                         sim_params_id,
@@ -236,8 +247,9 @@ function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simula
                                     )
                                     VALUES
                                     (
+                                        '$uuid',
                                         $sim_group_id,
-                                        $prev_simulation_id,
+                                        '$prev_simulation_uuid',
                                         $game_id,
                                         $graph_id,
                                         $sim_params_id,
@@ -248,16 +260,16 @@ function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simula
                             ")
     insert_row = SQLite.last_insert_rowid(db)
     # SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations]... INSERT STATUS: [$status] SIMULATION_ID: [$insert_row]", insert_row_id = insert_row)
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations]... INSERT STATUS: [$status] SIMULATION_ID: [$insert_row]", insert_row_id = insert_row, uuid = uuid)
     return tuple_to_return
 end
 
-function insertAgents(db, simulation_id::Integer, agent_list::Vector{String})
+function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
     # db = SQLite.DB("$db_filepath")
     # SQLite.busy_timeout(db, 3000)
     values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
-        values_string *= "($simulation_id, '$agent'), "
+        values_string *= "('$simulation_uuid', '$agent'), "
     end
     values_string = rstrip(values_string, [' ', ','])
     #println(values_string)
@@ -265,7 +277,7 @@ function insertAgents(db, simulation_id::Integer, agent_list::Vector{String})
     status = SQLite.execute(db, "
                                     INSERT INTO agents
                                     (
-                                        simulation_id,
+                                        simulation_uuid,
                                         agent
                                     )
                                     VALUES
@@ -443,29 +455,31 @@ function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
     return df
 end
 
-
-
-# Merge two SQLite "simulation save" files. These db files MUST have the same schema
-function mergeDatabases(db_filepath_1::String, db_filepath_2::String)
-    db = SQLite.DB("$db_filepath_1")
+function deleteSimulationById(db_filepath::String, simulation_id::Int)
+    db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    ATTACH DATABASE $db_filepath_2 AS merge_db;
-                                    BEGIN;
-                                    INSERT INTO agents SELECT * FROM merge_db.agents;
-                                    INSERT INTO games SELECT * FROM merge_db.games;
-                                    INSERT INTO graphs SELECT * FROM merge_db.graphs;
-                                    INSERT INTO sim_groups SELECT * FROM merge_db.sim_groups;
-                                    INSERT INTO sim_params SELECT * FROM merge_db.sim_params;
-                                    INSERT INTO simulations SELECT * FROM merge_db.simulations;
-                                    COMMIT;
-                                    detach merge_db;
-                            ")
-    #delete db2
+    SQLite.execute(db, "PRAGMA foreign_keys = ON;") #turn on foreign key support to allow cascading deletes
+    status = SQLite.execute(db, "DELETE FROM simulations WHERE simulation_id = $simulation_id;")
     SQLite.close(db)
-    return (status_message = "SQLite merge executed... MERGE STATUS: [$status]")
+    return status
 end
 
+
+# Merge two SQLite files. These db files MUST have the same schema
+function mergeDatabases(db_filepath_master::String, db_filepath_merge::String)
+    db = SQLite.DB("$db_filepath_master")
+    SQLite.busy_timeout(db, 3000)
+    SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merge' as merge_db;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
+    SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    SQLite.execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
+    SQLite.execute(db, "DETACH DATABASE merge_db;")
+    SQLite.close(db)
+    return nothing
+end
 
 
 

@@ -239,8 +239,8 @@ function runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_ar
 end
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_id::Union{Integer, Nothing} = nothing)
-    if use_seed == true && prev_simulation_id === nothing #set seed only if the simulation has no past runs
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
+    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
@@ -259,13 +259,13 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
-            prev_simulation_id = db_status.simulation_status.insert_row_id
+            db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
+            prev_simulation_uuid = db_status.simulation_status.uuid
         end
     end
     println(" --> periods elapsed: $periods_elapsed")
     if db_filepath !== nothing #push final results to DB at filepath
-        db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_id, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
+        db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
         return (periods_elapsed, db_status)
     end
     return periods_elapsed
@@ -273,9 +273,12 @@ end
 
 
 function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    
     if db_filepath === nothing && db_sim_group_id !== nothing
         throw(ArgumentError("The dm_sim_group_id parameter was specified without a db_filepath. Provide a db_filepath to store to database"))
+    end
+
+    if db_filepath !== nothing && nworkers() > 1
+        initDistributedDB(db_filepath)
     end
 
     for graph_params in graph_params_list
@@ -294,6 +297,10 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
             end
         end
     end
+
+    if db_filepath !== nothing && nworkers() > 1
+        collectDistributedDB(db_filepath)
+    end
 end
 
 #used to continue a simulation
@@ -307,5 +314,5 @@ end
 
 function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Integer = 0)
     prev_sim = restoreFromDatabase(db_filepath, db_simulation_id)
-    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_id=prev_sim.prev_simulation_id)
+    sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_uuid=prev_sim.prev_simulation_uuid)
 end
