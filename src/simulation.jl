@@ -239,7 +239,7 @@ function runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_ar
 end
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
@@ -259,13 +259,13 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
+            db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed, distributed_uuid)
             prev_simulation_uuid = db_status.simulation_status.uuid
         end
     end
     println(" --> periods elapsed: $periods_elapsed")
     if db_filepath !== nothing #push final results to DB at filepath
-        db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed)
+        db_status = pushToDatabase(db_filepath, db_sim_group_id, prev_simulation_uuid, game, sim_params, graph_params, agent_graph, periods_elapsed, use_seed, distributed_uuid)
         return (periods_elapsed, db_status)
     end
     return periods_elapsed
@@ -273,12 +273,14 @@ end
 
 
 function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
+    distributed_uuid = "$(uuid4())"
+    
     if db_filepath === nothing && db_sim_group_id !== nothing
         throw(ArgumentError("The dm_sim_group_id parameter was specified without a db_filepath. Provide a db_filepath to store to database"))
     end
 
     if db_filepath !== nothing && nworkers() > 1
-        initDistributedDB(db_filepath)
+        initDistributedDB(distributed_uuid)
     end
 
     for graph_params in graph_params_list
@@ -299,7 +301,7 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
     end
 
     if db_filepath !== nothing && nworkers() > 1
-        collectDistributedDB(db_filepath)
+        collectDistributedDB(db_filepath, distributed_uuid)
     end
 end
 

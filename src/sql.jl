@@ -466,10 +466,10 @@ end
 
 
 # Merge two SQLite files. These db files MUST have the same schema
-function mergeDatabases(db_filepath_master::String, db_filepath_merge::String)
+function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
-    SQLite.busy_timeout(db, 3000)
-    SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merge' as merge_db;")
+    SQLite.busy_timeout(db, 5000)
+    SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
     SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")

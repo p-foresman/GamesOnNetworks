@@ -1,7 +1,8 @@
 function createTempDirPath(db_filepath::String) rsplit(db_filepath, ".", limit=2)[1] * "/" end
 
-function initDistributedDB(db_filepath::String) #creates a sparate sqlite file for each worker to prevent database locking conflicts (to later be collected).
-    temp_dirpath = createTempDirPath(db_filepath)
+function initDistributedDB(distributed_uuid::String) #creates a sparate sqlite file for each worker to prevent database locking conflicts (to later be collected).
+    # temp_dirpath = createTempDirPath(db_filepath)
+    temp_dirpath = distributed_uuid * "/"
     mkdir(temp_dirpath)
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
@@ -10,8 +11,9 @@ function initDistributedDB(db_filepath::String) #creates a sparate sqlite file f
     return nothing
 end
 
-function collectDistributedDB(db_filepath::String) #collects distributed db files into the db_filepath 
-    temp_dirpath = createTempDirPath(db_filepath)
+function collectDistributedDB(db_filepath::String, distributed_uuid::String) #collects distributed db files into the db_filepath 
+    # temp_dirpath = createTempDirPath(db_filepath)
+    temp_dirpath = distributed_uuid * "/"
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
         mergeDatabases(db_filepath, temp_filepath)
@@ -21,7 +23,7 @@ function collectDistributedDB(db_filepath::String) #collects distributed db file
 end
 
 
-function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool)
+function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare and instert data for "games" table. No duplicate rows.
     game_name = game.name
     game_json_str = JSON3.write(game)
@@ -75,8 +77,10 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
 
 
     #push everything to DB (CLEAN THIS UP)
-    if nworkers() > 1
-        temp_dirpath = createTempDirPath(db_filepath)
+
+    if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
+        # temp_dirpath = createTempDirPath(db_filepath)
+        temp_dirpath = distributed_uuid * "/"
         db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
     end
 

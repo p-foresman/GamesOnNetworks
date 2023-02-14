@@ -2,7 +2,7 @@
 
 ## 1: add processess if you want simulations to run in a distributed manner
 using Distributed
-addprocs(5; exeflags="--project")
+addprocs(3; exeflags="--project")
 
 ## 2: import the main module on all processes
 @everywhere using GamesOnNetworks
@@ -19,7 +19,7 @@ const sim_group_id = insertSimGroup(db_filepath, "description").insert_row_id
 include("sim_setup.jl")
 
 ## 5: run simulation
-simulationIterator(game, sim_params_list, graph_params_list; run_count=200, db_filepath=db_filepath, db_sim_group_id=sim_group_id)
+simulationIterator(game, sim_params_list, graph_params_list; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id)
 
 
 ##6: remove worker cores
