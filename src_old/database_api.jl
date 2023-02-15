@@ -6,7 +6,7 @@ function initDistributedDB(distributed_uuid::String) #creates a sparate sqlite f
     mkdir(temp_dirpath)
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
-        initTempSimulationDB(temp_filepath)
+        initDataBase(temp_filepath)
     end
     return nothing
 end
@@ -16,95 +16,11 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
     temp_dirpath = distributed_uuid * "/"
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
-        mergeTempDatabases(db_filepath, temp_filepath)
+        mergeDatabases(db_filepath, temp_filepath)
         rm(temp_filepath)
     end
     rm(temp_dirpath)
 end
-
-
-
-function pushGameToDB(db_filepath::String, game::Game)
-    game_name = game.name
-    game_json_str = JSON3.write(game)
-    payoff_matrix_size = JSON3.write(size(game.payoff_matrix))
-
-    game_insert_result = insertGame(db_filepath, game_name, game_json_str, payoff_matrix_size)
-    #game_status = game_insert_result.status_message
-    game_row_id = game_insert_result.insert_row_id
-
-    return game_row_id
-end
-
-function pushGraphToDB(db_filepath::String, graph_params::GraphParams)
-    graph_type = displayName(graph_params)
-    graph_params_string = JSON3.write(graph_params)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
-    
-    for param in keys(db_params_dict)
-        if param in fieldnames(typeof(graph_params))
-            db_params_dict[param] = getfield(graph_params, param)
-        end
-    end
-
-    graph_insert_result = insertGraph(db_filepath, graph_type, graph_params_string, db_params_dict)
-    #graph_status = graph_insert_result.status_message
-    graph_row_id = graph_insert_result.insert_row_id
-
-    return graph_params_row_id
-end
-
-function pushSimParamsToDB(db_filepath::String, sim_params::SimParams, use_seed::Bool)
-    sim_params_json_str = JSON3.write(sim_params)
-
-    if use_seed == true
-        seed_bool = 1
-    else
-        seed_bool = 0
-    end
-
-    sim_params_insert_result = insertSimParams(db_filepath, sim_params, sim_params_json_str, seed_bool)
-    #sim_params_status = sim_params_insert_result.status_message
-    sim_params_row_id = sim_params_insert_result.insert_row_id
-
-    return sim_params_row_id
-end
-
-function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
-    #prepare simulation to be inserted
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
-    rng_state = copy(Random.default_rng())
-    rng_state_json = JSON3.write(rng_state)
-
-    #prepare agents to be inserted
-    agents_list = Vector{String}([])
-    for agent in agent_graph.agents
-        agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
-        push!(agents_list, agent_json_str)
-    end
-
-
-    if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
-        # temp_dirpath = createTempDirPath(db_filepath)
-        temp_dirpath = distributed_uuid * "/"
-        db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
-    end
-
-
-    simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
-    #simulation_status = simulation_insert_result.status_message
-    simulation_uuid = simulation_insert_result.uuid
-
-    return (simulation_uuid = simulation_uuid)
-end
-
-
-
-
-
-
-
-################## old method ######################
 
 
 function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game::Game, sim_params::SimParams, graph_params::GraphParams, agent_graph::AgentGraph, periods_elapsed::Integer, use_seed::Bool, distributed_uuid::Union{String, Nothing} = nothing)

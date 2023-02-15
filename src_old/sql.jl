@@ -104,64 +104,9 @@ function initDataBase(db_filepath::String)
     SQLite.close(db)
 end
 
-#this DB only needs tables for simulations and agents. These will be collected into the master DB later
-function initTempSimulationDB(db_filepath::String)
-    #create or connect to database
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-
-    #create 'simulations' table which contains information specific to each simulation
-    SQLite.execute(db, "
-                            CREATE TABLE IF NOT EXISTS simulations
-                            (
-                                simulation_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                sim_group_id INTEGER DEFAULT NULL,
-                                prev_simulation_uuid TEXT DEFAULT NULL,
-                                game_id INTEGER NOT NULL,
-                                graph_id INTEGER NOT NULL,
-                                sim_params_id INTEGER NOT NULL,
-                                graph_adj_matrix TEXT DEFAULT NULL,
-                                rng_state TEXT NOT NULL,
-                                periods_elapsed INTEGER NOT NULL,
-                                FOREIGN KEY (sim_group_id)
-                                    REFERENCES sim_groups (sim_group_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (prev_simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid),
-                                FOREIGN KEY (game_id)
-                                    REFERENCES games (game_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (graph_id)
-                                    REFERENCES graphs (graph_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (sim_params_id)
-                                    REFERENCES sim_params (sim_params_id)
-                                    ON DELETE CASCADE,
-                                UNIQUE(simulation_uuid)
-                            );
-                    ")
-
-    #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
-    SQLite.execute(db, "
-                            CREATE TABLE IF NOT EXISTS agents
-                            (
-                                agent_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                agent TEXT NOT NULL,
-                                FOREIGN KEY (simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid)
-                                    ON DELETE CASCADE
-                            );
-                    ")
-    SQLite.close(db)
-end
-
-
-
-function insertGame(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+function insertGame(db, game_name::String, game::String, payoff_matrix_size::String)
+    # db = SQLite.DB("$db_filepath")
+    # SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
                                     (
@@ -184,14 +129,14 @@ function insertGame(db_filepath::String, game_name::String, game::String, payoff
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :game_id]
-    SQLite.close(db)
+    # SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: games]... INSERT STATUS: [$status] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
     return tuple_to_return
 end
 
-function insertGraph(db_filepath::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+function insertGraph(db, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
+    # db = SQLite.DB("$db_filepath")
+    # SQLite.busy_timeout(db, 3000)
     insert_string_columns = "graph_type, graph_params, "
     insert_string_values = "'$graph_type', '$graph_params_str', "
     for (param, value) in db_graph_params_dict
@@ -221,14 +166,14 @@ function insertGraph(db_filepath::String, graph_type::String, graph_params_str::
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :graph_id]
-    SQLite.close(db)
+    # SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs]... INSERT STATUS: [$status] GRAPH_ID: [$insert_row]", insert_row_id = insert_row)
     return tuple_to_return
 end
 
-function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+function insertSimParams(db, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
+    # db = SQLite.DB("$db_filepath")
+    # SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_params
                                     (
@@ -255,7 +200,7 @@ function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
     insert_row = df[1, :sim_params_id]
-    SQLite.close(db)
+    # SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_params]... INSERT STATUS: [$status] SIM_PARAMS_ID: [$insert_row]", insert_row_id = insert_row)
     return tuple_to_return
 end
@@ -343,66 +288,7 @@ function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
 end
 
 
-function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
-    simulation_uuid = "$(uuid4())"
-    
-    #prepare simulation SQL
-    sim_group_id === nothing ? sim_group_id = "NULL" : nothing
-    prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
-
-    #prepare agents SQL
-    agent_values_string = "" #construct a values string to insert multiple agents into db table
-    for agent in agent_list
-        agent_values_string *= "('$simulation_uuid', '$agent'), "
-    end
-    agent_values_string = rstrip(values_string, [' ', ','])
-
-    #open DB connection
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-
-    #first insert simulation with simulation_uuid
-    simulation_status = SQLite.execute(db, "
-                                    INSERT INTO simulations
-                                    (
-                                        simulation_uuid,
-                                        sim_group_id,
-                                        prev_simulation_uuid,
-                                        game_id,
-                                        graph_id,
-                                        sim_params_id,
-                                        graph_adj_matrix,
-                                        rng_state,
-                                        periods_elapsed
-                                    )
-                                    VALUES
-                                    (
-                                        '$simulation_uuid',
-                                        $sim_group_id,
-                                        '$prev_simulation_uuid',
-                                        $game_id,
-                                        $graph_id,
-                                        $sim_params_id,
-                                        '$graph_adj_matrix_str',
-                                        '$rng_state',
-                                        $periods_elapsed
-                                );
-                            ")
-
-    #then insert agents with FK of simulation_uuid 
-    agents_status = SQLite.execute(db, "
-                                    INSERT INTO agents
-                                    (
-                                        simulation_uuid,
-                                        agent
-                                    )
-                                    VALUES
-                                        $agent_values_string;
-                            ")
-    SQLite.close(db)
-
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations & agents]... SIMULATION INSERT STATUS: [$simulation_status] AGENTS INSERT STATUS: [$agents_status] SIMULATION_UUID: [$simulation_uuid]", simulation_uuid = simulation_uuid)
-    return tuple_to_return
+function insertEverything(db_filepath::String)
 end
 
 
@@ -588,18 +474,6 @@ function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
     SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
-    SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
-    SQLite.execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
-    SQLite.execute(db, "DETACH DATABASE merge_db;")
-    SQLite.close(db)
-    return nothing
-end
-
-# Merge temp distributed DBs into master DB.
-function mergeTempDatabases(db_filepath_master::String, db_filepath_merger::String)
-    db = SQLite.DB("$db_filepath_master")
-    SQLite.busy_timeout(db, 5000)
-    SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     SQLite.execute(db, "DETACH DATABASE merge_db;")
