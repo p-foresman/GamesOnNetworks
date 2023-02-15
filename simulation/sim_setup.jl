@@ -1,6 +1,6 @@
 const sim_params_list = constructSimParamsList(
                 number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 10,
+                number_agents_end = 30,
                 number_agents_step = 10,
                 memory_length_start = 10, #creates iterator for multi-loop simulation
                 memory_length_end = 10,

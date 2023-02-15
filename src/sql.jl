@@ -355,7 +355,7 @@ function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Int
     for agent in agent_list
         agent_values_string *= "('$simulation_uuid', '$agent'), "
     end
-    agent_values_string = rstrip(values_string, [' ', ','])
+    agent_values_string = rstrip(agent_values_string, [' ', ','])
 
     #open DB connection
     db = SQLite.DB("$db_filepath")

@@ -259,13 +259,13 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushSimulationToDB(db_filepath, sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
             prev_simulation_uuid = db_status.simulation_uuid
         end
     end
     println(" --> periods elapsed: $periods_elapsed")
     if db_filepath !== nothing #push final results to DB at filepath
-        db_status = pushSimulationToDB(db_filepath, sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
         return (periods_elapsed, db_status)
     end
     return periods_elapsed
