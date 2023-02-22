@@ -17,7 +17,8 @@ export
     insertSimGroup,
     simulationIterator,
     simulateTransitionTime,
-    transitionTimesBoxPlot
+    transitionTimesBoxPlot,
+    memoryLengthTransitionTimeLinePlot
 
 using
     Graphs,
