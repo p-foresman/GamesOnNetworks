@@ -2,14 +2,14 @@
 
 ## 1: add processess if you want simulations to run in a distributed manner
 using Distributed
-# addprocs(3; exeflags="--project")
+addprocs(4; exeflags="--project")
 
 ## 2: import the main module on all processes
 @everywhere using GamesOnNetworks
 
 
 ## 3: initiallize sqlite file with proper schema if it doesn't already exist at the filepath
-const db_filepath = "./sqlite_test/test.sqlite"
+const db_filepath = "./sqlite/test.sqlite"
 # initDataBase(db_filepath)
 #NOTE: simulation groups must be created manually. Use insertSimGroup("description") to insert group. Returns the group_id in 'insert_row_id' field.
 # const sim_group_id = insertSimGroup(db_filepath, "description").insert_row_id

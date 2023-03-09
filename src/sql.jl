@@ -668,10 +668,10 @@ function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, numbe
 end
 
 
-function querySimulationsForMemoryLengthLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_lengths::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
+function querySimulationsForMemoryLengthLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
     memory_lengths_sql = ""
-    if memory_lengths !== nothing
-        length(memory_lengths) == 1 ? memory_lengths_sql *= "AND sim_params.memory_length = $(memory_lengths[1])" : memory_lengths_sql *= "AND sim_params.memory_length IN $(Tuple(memory_lengths))"
+    if memory_length_list !== nothing
+        length(memory_length_list) == 1 ? memory_lengths_sql *= "AND sim_params.memory_length = $(memory_length_list[1])" : memory_lengths_sql *= "AND sim_params.memory_length IN $(Tuple(memory_length_list))"
     end
     errors_sql = ""
     if errors !== nothing
@@ -713,7 +713,7 @@ function querySimulationsForMemoryLengthLinePlot(db_filepath::String; game_id::I
                                             $graph_ids_sql
                                             )
                                         WHERE RowNum <= $sample_size;
-                                ") #dont need ROW_NUMBER() above, keeping for future use reference
+                                ")
     df = DataFrame(query)
 
 
@@ -723,16 +723,101 @@ function querySimulationsForMemoryLengthLinePlot(db_filepath::String; game_id::I
     function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph_type FROM graphs")) end
     
     error_set = []
-    memory_lengths === nothing ? memory_lengths = Set([memory_length for memory_length in memoryLengthsDF()[:, :memory_length]]) : nothing
+    memory_length_list === nothing ? memory_length_list = Set([memory_length for memory_length in memoryLengthsDF()[:, :memory_length]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
     SQLite.close(db)
 
-    for memory_length in memory_lengths
+    for memory_length in memory_length_list
         for error in errors
             for graph_id in graph_ids
                 filtered_df = filter([:memory_length, :error, :graph_id] => (len, err, id) -> len == memory_length && err == error && id == graph_id, df)
+                if nrow(filtered_df) < sample_size
+                    push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id]\n")
+                end
+            end
+        end
+    end
+    if !isempty(error_set)
+        errors_formatted = ""
+        for err in error_set
+            errors_formatted *= err
+        end
+        throw(ErrorException("Not enough samples for the following simulations:\n$errors_formatted"))
+    else
+        return df
+    end
+end
+
+
+
+
+function querySimulationsForNumberAgentsLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
+    number_agents_sql = ""
+    if number_agents_list !== nothing
+        length(number_agents_list) == 1 ? number_agents_sql *= "AND sim_params.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND sim_params.number_agents IN $(Tuple(number_agents_list))"
+    end
+    errors_sql = ""
+    if errors !== nothing
+        length(errors) == 1 ? errors_sql *= "AND sim_params.error = $(errors[1])" : errors_sql *= "AND sim_params.error IN $(Tuple(errors))"
+    end
+    graph_ids_sql = ""
+    if graph_ids !== nothing
+        length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
+    end
+
+
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    query = DBInterface.execute(db, "
+                                        SELECT * FROM (
+                                            SELECT
+                                                ROW_NUMBER() OVER ( 
+                                                    PARTITION BY sim_params.number_agents, sim_params.error, simulations.graph_id
+                                                    ORDER BY sim_params.number_agents
+                                                ) RowNum,
+                                                simulations.simulation_id,
+                                                sim_params.sim_params,
+                                                sim_params.number_agents,
+                                                sim_params.memory_length,
+                                                sim_params.error,
+                                                simulations.periods_elapsed,
+                                                graphs.graph_id,
+                                                graphs.graph_type,
+                                                graphs.graph_params,
+                                                games.game_name
+                                            FROM simulations
+                                            INNER JOIN sim_params USING(sim_params_id)
+                                            INNER JOIN games USING(game_id)
+                                            INNER JOIN graphs USING(graph_id)
+                                            WHERE simulations.game_id = $game_id
+                                            AND sim_params.memory_length = $memory_length
+                                            $number_agents_sql
+                                            $errors_sql
+                                            $graph_ids_sql
+                                            )
+                                        WHERE RowNum <= $sample_size;
+                                ")
+    df = DataFrame(query)
+
+
+    #error handling
+    function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
+    function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
+    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph_type FROM graphs")) end
+    
+    error_set = []
+    number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
+    errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+
+    SQLite.close(db)
+
+    for number_agents in number_agents_list
+        for error in errors
+            for graph_id in graph_ids
+                filtered_df = filter([:number_agents, :error, :graph_id] => (num, err, id) -> num == number_agents && err == error && id == graph_id, df)
                 if nrow(filtered_df) < sample_size
                     push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id]\n")
                 end

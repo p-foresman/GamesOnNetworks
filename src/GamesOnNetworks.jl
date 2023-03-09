@@ -18,7 +18,8 @@ export
     simulationIterator,
     simulateTransitionTime,
     transitionTimesBoxPlot,
-    memoryLengthTransitionTimeLinePlot
+    memoryLengthTransitionTimeLinePlot,
+    numberAgentsTransitionTimeLinePlot
 
 using
     Graphs,
