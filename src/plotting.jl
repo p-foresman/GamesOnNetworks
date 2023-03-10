@@ -23,7 +23,7 @@ end
 
 
 
-function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_level::Union{AbstractFloat, Nothing} = nothing)
+function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000)
     memory_length_list !== nothing ? memory_length_list = sort(memory_length_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -51,32 +51,33 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
             # average_memory_lengths = zeros(length(memory_length_list))
             average_memory_lengths = Vector{Float64}([])
 
-            conf_level !== nothing ? confidence_interval_lower = Vector{Float64}([]) : nothing
-            conf_level !== nothing ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
             for (index, memory_length) in enumerate(memory_length_list)
                 filtered_df_per_len = filter(:memory_length => len -> len == memory_length, filtered_df)
-
+                # println(filtered_df_per_len.periods_elapsed)
                 # average_memory_lengths[index] = mean(filtered_df_per_len.periods_elapsed)
                 push!(average_memory_lengths, mean(filtered_df_per_len.periods_elapsed))
 
-                if conf_level !== nothing 
-                    confidence_interval = confint(OneSampleTTest(filtered_df_per_len.periods_elapsed), level=conf_level)
-                    confidence_interval_vec = Vector{Float64}([])
-                    for (index, val) in enumerate(confidence_interval)
-                        if val < 1.0
-                            val = 1.0
-                        end
-                        push!(confidence_interval_vec, val)
-                    end
-                    push!(confidence_interval_lower, confidence_interval_vec[1])
-                    push!(confidence_interval_upper, confidence_interval_vec[2])
-                    println(confidence_interval_vec)
+                if conf_intervals
+                    confidence_interval = confint(bootstrap(mean, filtered_df_per_len.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                    # confidence_interval = confint(OneSampleTTest(filtered_df_per_len.periods_elapsed), level=conf_level)
+                    # confidence_interval_vec = Vector{Float64}([])
+                    # for (index, val) in enumerate(confidence_interval)
+                    #     if val < 1.0
+                    #         val = 1.0
+                    #     end
+                    #     push!(confidence_interval_vec, val)
+                    # end
+                    push!(confidence_interval_lower, confidence_interval[2]) #first element is the mean
+                    push!(confidence_interval_upper, confidence_interval[3])
+                    # println(confidence_interval)
                 end
             end
 
             plot!(memory_length_list, average_memory_lengths, linestyle = :solid, markershape = :circle)
 
-            if conf_level !== nothing
+            if conf_intervals
                 plot!(memory_length_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0.2, fillalpha=0.2)
             end
 
@@ -89,7 +90,7 @@ end
 
 
 
-function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_level::Union{AbstractFloat, Nothing} = nothing)
+function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000)
     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -117,21 +118,24 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
 
             average_number_agents = zeros(length(number_agents_list))
 
-            confidence_interval_lower = Vector{Float64}([])
-            confidence_interval_upper = Vector{Float64}([])
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
             for (index, number_agents) in enumerate(number_agents_list)
                 filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
 
                 average_number_agents[index] = mean(filtered_df_per_num.periods_elapsed)
 
-                confidence_interval = confint(OneSampleTTest(filtered_df_per_num.periods_elapsed), level=conf_level)
-                push!(confidence_interval_lower, confidence_interval[1])
-                push!(confidence_interval_upper, confidence_interval[2])
+                if conf_intervals
+                    confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                    # confidence_interval = confint(OneSampleTTest(filtered_df_per_num.periods_elapsed), level=conf_level)
+                    push!(confidence_interval_lower, confidence_interval[2])
+                    push!(confidence_interval_upper, confidence_interval[3])
+                end
             end
 
             plot!(number_agents_list, average_number_agents, linestyle = :solid, markershape = :circle)
 
-            if conf_level !== nothing
+            if conf_intervals
                 plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0.2, fillalpha=0.2)
             end
 

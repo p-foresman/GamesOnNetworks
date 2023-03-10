@@ -31,13 +31,12 @@ using
     SQLite,
     UUIDs,
     Distributed,
-    Plots,
     GraphPlot,
     StatsPlots,
     Cairo,
     Fontconfig,
     Statistics,
-    HypothesisTests
+    Bootstrap
 
 include("types.jl")
 include("sql.jl")
