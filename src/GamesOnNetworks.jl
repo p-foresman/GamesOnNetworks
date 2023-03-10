@@ -36,7 +36,8 @@ using
     StatsPlots,
     Cairo,
     Fontconfig,
-    Statistics
+    Statistics,
+    HypothesisTests
 
 include("types.jl")
 include("sql.jl")
