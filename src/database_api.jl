@@ -23,6 +23,17 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
 end
 
 
+function collectDBFilesInDirectory(db_filepath::String, directory_path::String, cleanup_directory::Bool = false)
+    files_to_collect = readdir(directory_path)
+    for file in files_to_collect
+        temp_filepath = directory_path * file
+        mergeTempDatabases(db_filepath, temp_filepath)
+        cleanup_directory ? rm(temp_filepath) : nothing
+    end
+    cleanup_directory ? rm(directory_path) : nothing
+end
+
+
 
 function pushGameToDB(db_filepath::String, game::Game)
     game_name = game.name

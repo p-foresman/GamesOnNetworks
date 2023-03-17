@@ -15,6 +15,7 @@ export
     constructSimParamsList,
     initDataBase,
     insertSimGroup,
+    collectDBFilesInDirectory,
     simulationIterator,
     simulateTransitionTime,
     transitionTimesBoxPlot,
