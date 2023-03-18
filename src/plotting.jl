@@ -23,7 +23,7 @@ end
 
 
 
-function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000)
+function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [])
     memory_length_list !== nothing ? memory_length_list = sort(memory_length_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -32,6 +32,21 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
     x_label = "Memory Length"
     x_lims = (minimum(memory_length_list) - 1, maximum(memory_length_list) + 1)
     x_ticks = minimum(memory_length_list) - 1:1:maximum(memory_length_list) + 1
+
+    legend_labels_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        legend_labels_map[graph_id] = legend_labels[index]
+    end
+
+    colors_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        colors_map[graph_id] = colors[index]
+    end
+
+    error_styles_map = Dict()
+    for (index, error) in enumerate(errors)
+        error_styles_map[error] = error_styles[index]
+    end
 
     sim_plot = plot(xlabel = x_label,
                     xlims = x_lims,
@@ -44,11 +59,12 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
     #wrangle data
     df = querySimulationsForMemoryLengthLinePlot(db_filepath, game_id=game_id, number_agents=number_agents, memory_length_list=memory_length_list, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
+    graph_id_number = 1
     for graph_id in graph_ids
+        error_number = 1
         for error in errors
             filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
 
-            # average_memory_lengths = zeros(length(memory_length_list))
             average_memory_lengths = Vector{Float64}([])
 
             conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
@@ -63,14 +79,19 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                 push!(confidence_interval_upper, confidence_interval[3])
             end
 
-            plot!(memory_length_list, average_memory_lengths, linestyle = :solid, markershape = :circle)
+            # error_number == 1 ? legend_label = legend_labels_map[graph_id] : legend_label = nothing
+            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+
+            plot!(memory_length_list, average_memory_lengths, markershape = :circle, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id], linestyle=error_styles_map[error][1], label=legend_label)
 
             if conf_intervals
-                plot!(memory_length_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0.2, fillalpha=0.2)
+                plot!(memory_length_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, fillcolor=colors_map[graph_id], fillstyle=error_styles_map[error][2], label=nothing)
             end
 
             plot_line_number += 1
+            error_number += 1
         end
+        graph_id_number += 1
     end
     return sim_plot
 end
@@ -78,7 +99,7 @@ end
 
 
 
-function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000)
+function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [])
     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -88,6 +109,21 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
     x_label = "Number Agents"
     x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
     x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
+
+    legend_labels_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        legend_labels_map[graph_id] = legend_labels[index]
+    end
+
+    colors_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        colors_map[graph_id] = colors[index]
+    end
+
+    error_styles_map = Dict()
+    for (index, error) in enumerate(errors)
+        error_styles_map[error] = error_styles[index]
+    end
 
     sim_plot = plot(xlabel = x_label,
                     xlims = x_lims,
@@ -104,7 +140,7 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
         for error in errors
             filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
 
-            average_number_agents = zeros(length(number_agents_list))
+            average_number_agents = Vector{Float64}([])
 
             conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
             conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
@@ -118,10 +154,12 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                 push!(confidence_interval_upper, confidence_interval[3])
             end
 
-            plot!(number_agents_list, average_number_agents, linestyle = :solid, markershape = :circle)
+            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+
+            plot!(number_agents_list, average_number_agents, markershape = :circle, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id], linestyle=error_styles_map[error][1], label=legend_label)
 
             if conf_intervals
-                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0.2, fillalpha=0.2)
+                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, fillcolor=colors_map[graph_id], fillstyle=error_styles_map[error][2], label=nothing)
             end
 
             plot_line_number += 1
