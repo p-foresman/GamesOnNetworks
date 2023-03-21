@@ -15,7 +15,11 @@ function transitionTimesBoxPlot(db_filepath::String; game_id::Integer, number_ag
                     yscale = :log10,
                     xlabel = "Graph",
                     ylabel = "Transtition Time (periods)",
-                    fillcolor = colors)
+                    fillcolor = colors,
+                    size=(1800, 700),
+                    left_margin=10Plots.mm,
+                    right_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm)
 
     return sim_plot
 end
@@ -53,7 +57,10 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                     xticks = x_ticks,
                     ylabel = "Transition Time",
                     yscale = :log10,
-                    legend_position = :outertopright)
+                    legend_position = :outertopright,
+                    size=(1300, 700),
+                    left_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm)
     
 
     #wrangle data
@@ -130,7 +137,10 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                     xticks = x_ticks,
                     ylabel = "Transition Time",
                     yscale = :log10,
-                    legend_position = :outertopright)
+                    legend_position = :outertopright,
+                    size=(1300, 700),
+                    left_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm)
 
 
     #wrangle data
