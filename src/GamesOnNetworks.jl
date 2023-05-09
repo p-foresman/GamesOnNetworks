@@ -42,6 +42,7 @@ using
 include("types.jl")
 include("sql.jl")
 include("database_api.jl")
+include("functions.jl")
 include("construct_params.jl")
 include("simulation.jl")
 include("plotting.jl")

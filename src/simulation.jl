@@ -43,7 +43,7 @@ function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, A
 end
 
 
-
+#other player isn't even needed without tags. this could be simplified
 function calculateOpponentStrategyProbs!(player_memory, opponent_tag, opponent_strategy_recollection, opponent_strategy_probs)
     @inbounds for memory in player_memory
         if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
@@ -98,16 +98,48 @@ end
 
 #######################################################
 
+function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{<:Integer})
+    size = size(game)[1] #for symmetric games only
+    opponent_strategy_recollection = SVector{size, Int64}(zeros(Int64, size))
+    for memory in memory_set
+        opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+    end
+    opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+    return opponent_strategy_probs
+end
+
+
+function calculateExpectedUtilities(game::Game, opponent_probs)
+    size = size(game)[1] #for symmetric games only
+    player_expected_utilities = SVector{size, Float32}(zeros(Float32, size))
+    @inbounds for column in axes(game.payoff_matrix, 2) #column strategies
+        for row in axes(game.payoff_matrix, 1) #row strategies
+            player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
+        end
+    end
+    return player_expected_utilities
+end
+
+
+function determineAgentBehavior(game::Game, memory_set::Vector{<:Integer})
+    opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
+    expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
+    max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+    return max_strat
+end
+
+#######################################################
+
 
 
 ##### multiple dispatch for various graph parameter sets #####
-function initGraph(::CompleteParams, game::Game, sim_params::SimParams)
+function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     graph = complete_graph(sim_params.number_agents)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams)
+function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     edge_probability = graph_params.λ / sim_params.number_agents
     graph = nothing
     while true
@@ -117,23 +149,23 @@ function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimPa
         end
     end
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams)
+function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     graph = watts_strogatz(sim_params.number_agents, graph_params.κ, graph_params.β)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams)
+function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     m_count = Int64(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
     graph = static_scale_free(sim_params.number_agents, m_count, graph_params.α)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams)
+function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     community_size = Int64(sim_params.number_agents / graph_params.communities)
     # println(community_size)
     internal_edge_probability = graph_params.internal_λ / community_size
@@ -147,12 +179,12 @@ function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_par
     affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_edge_probability_vector, external_edge_probability, sizes_vector)
     graph = stochastic_block_model(affinity_matrix, sizes_vector)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 
 
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams)
+function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
     for (vertex, agent) in enumerate(agent_graph.agents)
         if rand() <= sim_params.tag1_proportion
             agent.tag = sim_params.tag1
@@ -161,23 +193,41 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
         end
 
         #set memory initialization
-        #initialize in strict fractious state for now
-        if vertex % 2 == 0
-            recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+        #NOTE: tag system needs to change when tags are implemented!!
+        if starting_condition == :fractious
+            if vertex % 2 == 0
+                recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+            else
+                recollection = game.strategies[1][3]
+            end
+            to_push = (agent.tag, recollection)
+            for i in 1:sim_params.memory_length
+                push!(agent.memory, to_push)
+            end
+        elseif starting_condition == :equity
+            recollection = game.strategies[1][2]
+            to_push = (agent.tag, recollection)
+            for i in 1:sim_params.memory_length
+                push!(agent.memory, to_push)
+            end
+        elseif starting_condition == :random
+            for i in 1:sim_params.memory_length
+                to_push - (agent.tag, rand(game.strategies[1]))
+                push!(agent.memory, to_push)
+            end
+        elseif starting_condition == :none 
+            continue
         else
-            recollection = game.strategies[1][3]
-        end
-        to_push = (agent.tag, recollection)
-        for i in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
+            throw(ArgumentError("The starting condition provided is invalid. Valid starting conditions are :fractious, :equity, and :random"))
         end
     end
     return nothing
 end
 
 
+
 #check whether transition has occured
-function checkTransition(agent_graph::AgentGraph, sim_params::SimParams)
+function checkTransition(agent_graph::AgentGraph, sim_params::SimParams, stopping_condition::Symbol=:equity)
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
     for (vertex, agent) in enumerate(agent_graph.agents)
@@ -186,10 +236,18 @@ function checkTransition(agent_graph::AgentGraph, sim_params::SimParams)
             continue
         end
 
-        if countStrats(agent.memory, 2) >= sim_params.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
-            number_transitioned += 1
+        if stopping_condition == :equity
+            if countStrats(agent.memory, 2) >= sim_params.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
+                number_transitioned += 1
+            end
+            # println(number_transitioned)
+        elseif stopping_condition == :fractious
+            if countStrats(agent.memory, 1) >= sim_params.sufficient_equity || countStrats(agent.memory, 3) >= sim_params.sufficient_equity
+                number_transitioned += 1
+            end
+        else
+            throw(ArgumentError("The stopping condition provided is invalid. Valid stopping conditions are :fractious and :equity"))
         end
-        # println(number_transitioned)
     end 
     if number_transitioned >= sim_params.number_agents - number_hermits
         return true
@@ -239,12 +297,12 @@ function runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_ar
 end
 
 
-function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :fractious, stopping_condition::Symbol = :equity, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-    agent_graph = initGraph(graph_params, game, sim_params)
+    agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
     graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
     #println(graph.fadjlist)
     #println(adjacency_matrix(graph)[1, 2])
@@ -254,7 +312,40 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
     # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
-    while !checkTransition(agent_graph, sim_params)
+    while !checkTransition(agent_graph, sim_params, stopping_condition)
+        #play a period worth of games
+        runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
+        periods_elapsed += 1
+        if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
+            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+            prev_simulation_uuid = db_status.simulation_uuid
+        end
+    end
+    println(" --> periods elapsed: $periods_elapsed")
+    if db_filepath !== nothing #push final results to DB at filepath
+        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+        return (periods_elapsed, db_status)
+    end
+    return periods_elapsed
+end
+
+
+function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :fractious, stopping_condition::Integer, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
+        Random.seed!(sim_params.random_seed)
+    end
+    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+    agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+    #println(graph.fadjlist)
+    #println(adjacency_matrix(graph)[1, 2])
+
+    #play game until transition occurs (sufficient equity is reached)
+    pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix) #construct these arrays outside of main loop to avoid excessive allocations
+    # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
+    # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
+    # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
+    while periods_elapsed < stopping_condition
         #play a period worth of games
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1

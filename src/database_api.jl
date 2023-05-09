@@ -27,6 +27,7 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
     files_to_collect = readdir(directory_path)
     for file in files_to_collect
         temp_filepath = directory_path * file
+        println(temp_filepath)
         mergeTempDatabases(db_filepath, temp_filepath)
         cleanup_directory ? rm(temp_filepath) : nothing
     end

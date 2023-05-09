@@ -217,3 +217,17 @@ FUTURE POSIBILITIES
 
 NOTES 1/12/23
 -write .bat script and run simulations this way
+
+
+
+
+
+FOR CONTINUED SLURM 
+Only 19 samples for [Number Agents: 10, Memory Length: 19, Error: 0.05, Graph: 2]
+Only 19 samples for [Number Agents: 10, Memory Length: 19, Error: 0.05, Graph: 3]
+Only 10 samples for [Number Agents: 10, Memory Length: 22, Error: 0.05, Graph: 8]
+
+Only 18 samples for [Number Agents: 70, Memory Length: 10, Error: 0.05, Graph: 3]
+Only 17 samples for [Number Agents: 70, Memory Length: 10, Error: 0.05, Graph: 4]
+Only 0 samples for [Number Agents: 80, Memory Length: 10, Error: 0.05, Graph: 1]
+Only 2 samples for [Number Agents: 80, Memory Length: 10, Error: 0.05, Graph: 7]
