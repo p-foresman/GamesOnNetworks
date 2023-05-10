@@ -1,6 +1,6 @@
 const sim_params_list = constructSimParamsList(
                 number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 30,
+                number_agents_end = 10,
                 number_agents_step = 10,
                 memory_length_start = 10, #creates iterator for multi-loop simulation
                 memory_length_end = 10,
@@ -42,12 +42,12 @@ Graph types available with relevant type constructors and parameters (structs fo
 =#
 
 const graph_params_list = [
-    #CompleteParams(),
-    ErdosRenyiParams(1.0),
-    ErdosRenyiParams(5.0),
-    SmallWorldParams(4, 0.6),
-    ScaleFreeParams(2.0),
-    ScaleFreeParams(4.0),
-    ScaleFreeParams(8.0),
-    StochasticBlockModelParams(2, 5.0, 0.5),
+    CompleteParams(),
+    # ErdosRenyiParams(1.0),
+    # ErdosRenyiParams(5.0),
+    # SmallWorldParams(4, 0.6),
+    # ScaleFreeParams(2.0),
+    # ScaleFreeParams(4.0),
+    # ScaleFreeParams(8.0),
+    # StochasticBlockModelParams(2, 5.0, 0.5),
 ]

@@ -96,7 +96,7 @@ function updateMemories!(players::Tuple{Agent, Agent}, sim_params::SimParams)
     return nothing
 end
 
-#######################################################
+######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
 function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{<:Integer})
     size = size(game)[1] #for symmetric games only
@@ -312,17 +312,21 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
     # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
+
+    already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
     while !checkTransition(agent_graph, sim_params, stopping_condition)
         #play a period worth of games
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
+        already_pushed = false
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
             db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
             prev_simulation_uuid = db_status.simulation_uuid
+            already_pushed = true
         end
     end
     println(" --> periods elapsed: $periods_elapsed")
-    if db_filepath !== nothing #push final results to DB at filepath
+    if db_filepath !== nothing && already_pushed == false #push final results to DB at filepath
         db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
         return (periods_elapsed, db_status)
     end
@@ -330,40 +334,7 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
 end
 
 
-function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :fractious, stopping_condition::Integer, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
-    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(sim_params.random_seed)
-    end
-    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-    agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
-    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
-    #println(graph.fadjlist)
-    #println(adjacency_matrix(graph)[1, 2])
-
-    #play game until transition occurs (sufficient equity is reached)
-    pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix) #construct these arrays outside of main loop to avoid excessive allocations
-    # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
-    # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
-    # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
-    while periods_elapsed < stopping_condition
-        #play a period worth of games
-        runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
-        periods_elapsed += 1
-        if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
-            prev_simulation_uuid = db_status.simulation_uuid
-        end
-    end
-    println(" --> periods elapsed: $periods_elapsed")
-    if db_filepath !== nothing #push final results to DB at filepath
-        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
-        return (periods_elapsed, db_status)
-    end
-    return periods_elapsed
-end
-
-
-function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; run_count::Integer = 1, starting_condition::Symbol = :fractious, stopping_condition::Symbol = :equity, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(uuid4())"
     
     if db_filepath === nothing && db_sim_group_id !== nothing
@@ -393,7 +364,7 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
             # run simulation (could have a parameter in simulationIterator that specifies the actual simulation function (in this case simulateTransitionTime) to run)
             @sync @distributed for run in 1:run_count
                 print("Run $run of $run_count")
-                simulateTransitionTime(game, sim_params, graph_params, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_game_id=db_game_id, db_graph_id=db_graph_id, db_sim_params_id=db_sim_params_id, distributed_uuid=distributed_uuid)
+                simulateTransitionTime(game, sim_params, graph_params, starting_condition=starting_condition, stopping_condition=stopping_condition, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_game_id=db_game_id, db_graph_id=db_graph_id, db_sim_params_id=db_sim_params_id, distributed_uuid=distributed_uuid)
             end
         end
     end
@@ -402,6 +373,87 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
         collectDistributedDB(db_filepath, distributed_uuid)
     end
 end
+
+
+########################### SIMULATE FOR A SPECIFIED NUMBER OF PERIODS (these should be combined with the functions above eventually) #####################
+
+function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; period_cutoff::Integer, periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :none, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
+        Random.seed!(sim_params.random_seed)
+    end
+    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+    agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+    #println(graph.fadjlist)
+    #println(adjacency_matrix(graph)[1, 2])
+
+    #play game until transition occurs (sufficient equity is reached)
+    pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix) #construct these arrays outside of main loop to avoid excessive allocations
+    # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
+    # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
+    # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
+
+    already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
+    while periods_elapsed < stopping_condition
+        #play a period worth of games
+        runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
+        periods_elapsed += 1
+        already_pushed = false
+        if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
+            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+            prev_simulation_uuid = db_status.simulation_uuid
+            already_pushed = true
+        end
+    end
+    println(" --> periods elapsed: $periods_elapsed")
+    if db_filepath !== nothing && already_pushed == false #push final results to DB at filepath
+        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+        return (periods_elapsed, db_status)
+    end
+    return periods_elapsed
+end
+
+
+function simulateIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; period_cutoff::Integer, run_count::Integer = 1, starting_condition::Symbol = :none, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
+    distributed_uuid = "$(uuid4())"
+    
+    if db_filepath === nothing && db_sim_group_id !== nothing
+        throw(ArgumentError("The dm_sim_group_id parameter was specified without a db_filepath. Provide a db_filepath to store to database"))
+    end
+
+    if db_filepath !== nothing && nworkers() > 1
+        initDistributedDB(distributed_uuid)
+    end
+
+    db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
+
+    for graph_params in graph_params_list
+        println("\n\n\n")
+        println(displayName(graph_params))
+        println(dump(graph_params))
+
+        db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
+
+        for sim_params in sim_params_list            
+            print("Number of agents: $(sim_params.number_agents), ")
+            print("Memory length: $(sim_params.memory_length), ")
+            println("Error: $(sim_params.error)")
+
+            db_sim_params_id = db_filepath !== nothing ? pushSimParamsToDB(db_filepath, sim_params, use_seed) : nothing
+
+            # run simulation (could have a parameter in simulationIterator that specifies the actual simulation function (in this case simulateTransitionTime) to run)
+            @sync @distributed for run in 1:run_count
+                print("Run $run of $run_count")
+                simulate(game, sim_params, graph_params, period_cutoff=period_cutoff, starting_condition=starting_condition, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_game_id=db_game_id, db_graph_id=db_graph_id, db_sim_params_id=db_sim_params_id, distributed_uuid=distributed_uuid)
+            end
+        end
+    end
+
+    if db_filepath !== nothing && nworkers() > 1
+        collectDistributedDB(db_filepath, distributed_uuid)
+    end
+end
+
 
 #used to continue a simulation
 function simGroupIterator(db_sim_group_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Int = 0)

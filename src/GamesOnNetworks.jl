@@ -18,6 +18,9 @@ export
     collectDBFilesInDirectory,
     simulationIterator,
     simulateTransitionTime,
+    simulateIterator, #** these two should be merged with the two above functions eventually
+    simulate, #**
+    determineAgentBehavior,
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
     numberAgentsTransitionTimeLinePlot
