@@ -105,15 +105,14 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
 
     simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
     #simulation_status = simulation_insert_result.status_message
-    simulation_uuid = simulation_insert_result.simulation_uuid
-
-    return (simulation_uuid = simulation_uuid)
+    # simulation_uuid = simulation_insert_result.simulation_uuid
+    return simulation_insert_result
 end
 
 
 
-
-
+function pullTimeSeriesDataFromDB(db_filepath, sim_group_id)
+end
 
 
 ################## old method ######################

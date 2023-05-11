@@ -133,13 +133,13 @@ end
 
 
 ##### multiple dispatch for various graph parameter sets #####
-function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
+function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::Symbol)
     graph = complete_graph(sim_params.number_agents)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
+function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::Symbol)
     edge_probability = graph_params.λ / sim_params.number_agents
     graph = nothing
     while true
@@ -152,20 +152,20 @@ function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimPa
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
+function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::Symbol)
     graph = watts_strogatz(sim_params.number_agents, graph_params.κ, graph_params.β)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
+function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::Symbol)
     m_count = Int64(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
     graph = static_scale_free(sim_params.number_agents, m_count, graph_params.α)
     agent_graph = AgentGraph{sim_params.number_agents}(graph)
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::Symbol=:fractious)
+function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::Symbol)
     community_size = Int64(sim_params.number_agents / graph_params.communities)
     # println(community_size)
     internal_edge_probability = graph_params.internal_λ / community_size
@@ -212,11 +212,11 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
             end
         elseif starting_condition == :random
             for i in 1:sim_params.memory_length
-                to_push - (agent.tag, rand(game.strategies[1]))
+                to_push = (agent.tag, rand(game.strategies[1]))
                 push!(agent.memory, to_push)
             end
-        elseif starting_condition == :none 
-            continue
+        # elseif starting_condition == :none need to fix makeChoices() to allow this
+        #     continue
         else
             throw(ArgumentError("The starting condition provided is invalid. Valid starting conditions are :fractious, :equity, and :random"))
         end
@@ -377,7 +377,7 @@ end
 
 ########################### SIMULATE FOR A SPECIFIED NUMBER OF PERIODS (these should be combined with the functions above eventually) #####################
 
-function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; period_cutoff::Integer, periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :none, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; period_cutoff::Integer, periods_elapsed::Int128 = Int128(0), starting_condition::Symbol = :random, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
     end
@@ -394,7 +394,7 @@ function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; 
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
 
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while periods_elapsed < stopping_condition
+    while periods_elapsed < period_cutoff
         #play a period worth of games
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
@@ -414,7 +414,7 @@ function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams; 
 end
 
 
-function simulateIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; period_cutoff::Integer, run_count::Integer = 1, starting_condition::Symbol = :none, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulateIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}; period_cutoff::Integer, run_count::Integer = 1, starting_condition::Symbol = :random, use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(uuid4())"
     
     if db_filepath === nothing && db_sim_group_id !== nothing
