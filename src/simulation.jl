@@ -34,6 +34,9 @@ function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, A
         end
     end
     # print("player_choices: ")
+    # print(players[1].choice)
+    # print(", ")
+    # println(players[2].choice)
     # println(player_choices)
     return nothing
 
@@ -98,20 +101,21 @@ end
 
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
-function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{<:Integer})
-    size = size(game)[1] #for symmetric games only
-    opponent_strategy_recollection = SVector{size, Int64}(zeros(Int64, size))
+function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{Tuple{Symbol, T}} where T <: Integer)
+    length = size(game.payoff_matrix, 1) #for symmetric games only
+    opponent_strategy_recollection = zeros(Int64, length)
     for memory in memory_set
         opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+    opponent_strategy_probs = opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
     return opponent_strategy_probs
 end
 
 
 function calculateExpectedUtilities(game::Game, opponent_probs)
-    size = size(game)[1] #for symmetric games only
-    player_expected_utilities = SVector{size, Float32}(zeros(Float32, size))
+    payoff_matrix = game.payoff_matrix
+    length = size(payoff_matrix, 1) #for symmetric games only
+    player_expected_utilities = zeros(Float32, length)
     @inbounds for column in axes(game.payoff_matrix, 2) #column strategies
         for row in axes(game.payoff_matrix, 1) #row strategies
             player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
@@ -121,7 +125,7 @@ function calculateExpectedUtilities(game::Game, opponent_probs)
 end
 
 
-function determineAgentBehavior(game::Game, memory_set::Vector{<:Integer})
+function determineAgentBehavior(game::Game, memory_set::Vector{Tuple{Symbol, T}} where T <: Integer)
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
     max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies

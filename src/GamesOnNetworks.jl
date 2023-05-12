@@ -40,7 +40,8 @@ using
     Cairo,
     Fontconfig,
     Statistics,
-    Bootstrap
+    Bootstrap,
+    DataStructures
 
 include("types.jl")
 include("sql.jl")

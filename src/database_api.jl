@@ -110,9 +110,20 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
 end
 
 
-
-function pullTimeSeriesDataFromDB(db_filepath, sim_group_id)
-end
+#taken care of in plotting.jl
+# function pullTimeSeriesDataFromDB(db_filepath::String; sim_group_id::Integer)
+#     sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
+#     agent_dict = OrderedDict()
+#     for row in eachrow(agent_df)
+#         if !haskey(agent_dict, row.periods_elapsed)
+#             agent_dict[row.periods_elapsed] = []
+#         end
+#         agent = JSON3.read(row.agent, Agent)
+#         agent_memory = agent.memory
+#         push!(agent_dict[row.periods_elapsed], agent_memory)
+#     end
+#     return sim_info_df, agent_dict
+# end
 
 
 ################## old method ######################

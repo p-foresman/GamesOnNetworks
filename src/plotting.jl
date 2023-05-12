@@ -180,6 +180,38 @@ end
 
 
 
+function timeSeriesPlot(db_filepath::String; sim_group_id::Integer)
+    sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
+    payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
+    payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
+    reproduced_game = JSON3.read(sim_info_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
+    agent_dict = OrderedDict()
+    for row in eachrow(agent_df)
+        if !haskey(agent_dict, row.periods_elapsed)
+            agent_dict[row.periods_elapsed] = []
+        end
+        agent = JSON3.read(row.agent, Agent)
+        agent_memory = agent.memory
+        agent_behavior = determineAgentBehavior(reproduced_game, agent_memory)
+        push!(agent_dict[row.periods_elapsed], agent_behavior)
+    end
+    period_counts = Vector()
+    fraction_L = Vector()
+    fraction_M = Vector()
+    fraction_H = Vector()
+    fractions = Vector()
+    for (periods_elapsed, agent_behaviors) in agent_dict
+        push!(period_counts, periods_elapsed)
+        subfractions = Vector()
+        push!(subfractions, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
+        push!(subfractions, count(action->(action==2), agent_behaviors) / sim_info_df[1, :number_agents])
+        push!(subfractions, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
+        println("$periods_elapsed: $subfractions")
+        push!(fractions, subfractions)
+    end
+    return fractions
+end
+
 
 
 

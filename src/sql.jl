@@ -834,3 +834,50 @@ function querySimulationsForNumberAgentsLinePlot(db_filepath::String; game_id::I
         return df
     end
 end
+
+
+
+
+function querySimulationsForTimeSeries(db_filepath::String;sim_group_id::Integer)
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+
+    #query the simulation info (only need one row since each entry in the timeseries group will have the same info)
+    #separate this from agent query to save memory, as this query could be very memory intensive
+    query_sim_info = DBInterface.execute(db, "
+                                                SELECT
+                                                    simulations.simulation_id,
+                                                    sim_params.sim_params,
+                                                    sim_params.number_agents,
+                                                    sim_params.memory_length,
+                                                    sim_params.error,
+                                                    graphs.graph_id,
+                                                    graphs.graph_type,
+                                                    graphs.graph_params,
+                                                    games.game_name,
+                                                    games.game,
+                                                    games.payoff_matrix_size
+                                                FROM simulations
+                                                INNER JOIN sim_params USING(sim_params_id)
+                                                INNER JOIN games USING(game_id)
+                                                INNER JOIN graphs USING(graph_id)
+                                                WHERE simulations.sim_group_id = $sim_group_id
+                                                LIMIT 1
+                                        ")
+    sim_info_df = DataFrame(query_sim_info)
+
+    #query agents at each periods elapsed interval in the time series group
+    query_agent_info = DBInterface.execute(db, "
+                                                    SELECT
+                                                        simulations.periods_elapsed,
+                                                        agents.agent
+                                                    FROM simulations
+                                                    INNER JOIN agents USING(simulation_uuid)
+                                                    WHERE simulations.sim_group_id = $sim_group_id
+                                                    ORDER BY simulations.periods_elapsed ASC
+                                                ")
+    agent_df = DataFrame(query_agent_info)
+    SQLite.close(db)
+
+    return (sim_info_df = sim_info_df, agent_df = agent_df)
+end
