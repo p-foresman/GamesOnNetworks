@@ -6,7 +6,7 @@ const sim_params_list = constructSimParamsList(
                 memory_length_end = 13,
                 memory_length_step = 1,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.1], #iterated over for multi-loop simulation
+                error_list = [0.05], #iterated over for multi-loop simulation
                 tag1 = :red,
                 tag2 = :blue,
                 tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
@@ -42,12 +42,12 @@ Graph types available with relevant type constructors and parameters (structs fo
 =#
 
 const graph_params_list = [
-    # CompleteParams(),
+    CompleteParams(),
     # ErdosRenyiParams(1.0),
     # ErdosRenyiParams(5.0),
     # SmallWorldParams(4, 0.6),
     # ScaleFreeParams(2.0),
     # ScaleFreeParams(4.0),
     # ScaleFreeParams(8.0),
-    StochasticBlockModelParams(2, 5.0, 0.5),
+    # StochasticBlockModelParams(2, 5.0, 0.5),
 ]

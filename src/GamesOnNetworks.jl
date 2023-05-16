@@ -23,7 +23,8 @@ export
     determineAgentBehavior,
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
-    numberAgentsTransitionTimeLinePlot
+    numberAgentsTransitionTimeLinePlot,
+    timeSeriesPlot
 
 using
     Graphs,
@@ -35,6 +36,7 @@ using
     SQLite,
     UUIDs,
     Distributed,
+    Plots,
     GraphPlot,
     StatsPlots,
     Cairo,

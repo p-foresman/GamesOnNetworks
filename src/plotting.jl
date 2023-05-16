@@ -199,17 +199,27 @@ function timeSeriesPlot(db_filepath::String; sim_group_id::Integer)
     fraction_L = Vector()
     fraction_M = Vector()
     fraction_H = Vector()
-    fractions = Vector()
+    # fractions = Vector()
     for (periods_elapsed, agent_behaviors) in agent_dict
         push!(period_counts, periods_elapsed)
-        subfractions = Vector()
-        push!(subfractions, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
-        push!(subfractions, count(action->(action==2), agent_behaviors) / sim_info_df[1, :number_agents])
-        push!(subfractions, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
-        println("$periods_elapsed: $subfractions")
-        push!(fractions, subfractions)
+        # subfractions = Vector()
+        push!(fraction_L, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
+        push!(fraction_M, count(action->(action==2), agent_behaviors) / sim_info_df[1, :number_agents])
+        push!(fraction_H, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
+        # println("$periods_elapsed: $subfractions")
+        # push!(fractions, subfractions)
     end
-    return fractions
+    time_series_plot = plot(period_counts,
+                            [fraction_H fraction_M fraction_L],
+                            ylims=(0.0, 1.0),
+                            layout=(3, 1),
+                            legend=false,
+                            # title=["High" "Medium" "Low"], 
+                            xlabel=["" "" "Periods Elapsed"],
+                            xticks=[:none :none :auto],
+                            ylabel=["Proportion H" "Proportion M" "Proportion L"],
+                            size=(700, 700))
+    return time_series_plot
 end
 
 
