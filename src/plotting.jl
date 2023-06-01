@@ -25,6 +25,62 @@ function transitionTimesBoxPlot(db_filepath::String; game_id::Integer, number_ag
 end
 
 
+#Plotting for violin plot (all network classes)
+function transitionTimesViolinPlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, x_labels, colors, sample_size::Integer)
+    df = querySimulationsForBoxPlot(db_filepath, game_id=game_id, number_agents=number_agents, memory_length=memory_length, error=error, graph_ids=graph_ids, sample_size=sample_size)
+    transition_times_matrix = zeros(sample_size, length(graph_ids))
+    println(df)
+    for (graph_number, graph_id) in enumerate(graph_ids)
+        filtered_df = filter(:graph_id => id -> id == graph_id, df)
+        transition_times_matrix[:, graph_number] = filtered_df[:, :periods_elapsed]
+    end
+    # colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2]] #palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]
+    # x_vals = ["Complete" "ER λ=1" "ER λ=5"] #"SW" "SF α=2" "SF α=4" "SF α=8" "SBM"
+    sim_plot = violin(x_labels,
+                    transition_times_matrix,
+                    leg = false,
+                    yscale = :log10,
+                    xlabel = "Graph",
+                    ylabel = "Transtition Time (periods)",
+                    fillcolor = colors,
+                    size=(1800, 700),
+                    left_margin=10Plots.mm,
+                    right_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm)
+    
+    boxplot!(x_labels, transition_times_matrix, fillcolor=palette(:default)[5], fillalpha=0.4)
+    dotplot!(x_labels, transition_times_matrix, markercolor=:black)
+
+    return sim_plot
+end
+
+
+#Plotting for violin plot (all network classes)
+function transitionTimesBoxPlot_populationSweep(db_filepath::String; game_id::Integer, graph_id::Integer, memory_length::Integer, number_agents::Union{Vector{<:Integer}, Nothing} = nothing, error::Float64, x_labels, colors, sample_size::Integer)
+    df = querySimulationsForBoxPlot(db_filepath, game_id=game_id, number_agents=number_agents, memory_length=memory_length, error=error, graph_ids=graph_ids, sample_size=sample_size)
+    transition_times_matrix = zeros(sample_size, length(graph_ids))
+    println(df)
+    for (graph_number, graph_id) in enumerate(graph_ids)
+        filtered_df = filter(:graph_id => id -> id == graph_id, df)
+        transition_times_matrix[:, graph_number] = filtered_df[:, :periods_elapsed]
+    end
+    # colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2]] #palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]
+    # x_vals = ["Complete" "ER λ=1" "ER λ=5"] #"SW" "SF α=2" "SF α=4" "SF α=8" "SBM"
+    sim_plot = boxplot(x_labels,
+                    transition_times_matrix,
+                    leg = false,
+                    yscale = :log10,
+                    xlabel = "Graph",
+                    ylabel = "Transtition Time (periods)",
+                    fillcolor = colors,
+                    size=(1800, 700),
+                    left_margin=10Plots.mm,
+                    right_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm)
+
+    return sim_plot
+end
+
 
 
 function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [])
@@ -180,7 +236,7 @@ end
 
 
 
-function timeSeriesPlot(db_filepath::String; sim_group_id::Integer)
+function timeSeriesPlot(db_filepath::String; sim_group_id::Integer, plot_title::String = "")
     sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
     payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
     payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
@@ -214,7 +270,7 @@ function timeSeriesPlot(db_filepath::String; sim_group_id::Integer)
                             ylims=(0.0, 1.0),
                             layout=(3, 1),
                             legend=false,
-                            # title=["High" "Medium" "Low"], 
+                            title=[plot_title "" ""], 
                             xlabel=["" "" "Periods Elapsed"],
                             xticks=[:none :none :auto],
                             ylabel=["Proportion H" "Proportion M" "Proportion L"],

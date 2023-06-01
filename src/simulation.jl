@@ -231,7 +231,7 @@ end
 
 
 #check whether transition has occured
-function checkTransition(agent_graph::AgentGraph, sim_params::SimParams, stopping_condition::Symbol=:equity)
+function checkTransition(agent_graph::AgentGraph, sim_params::SimParams, game::Game, stopping_condition::Symbol=:equity) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     number_hermits = 0 #ensure that hermit agents are not considered in transition determination
     for (vertex, agent) in enumerate(agent_graph.agents)
@@ -249,6 +249,10 @@ function checkTransition(agent_graph::AgentGraph, sim_params::SimParams, stoppin
             if countStrats(agent.memory, 1) >= sim_params.sufficient_equity || countStrats(agent.memory, 3) >= sim_params.sufficient_equity
                 number_transitioned += 1
             end
+        elseif stopping_condition == :equity_behavioral
+            if determineAgentBehavior(game, agent.memory) == 2 #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+                number_transitioned += 1
+            end
         else
             throw(ArgumentError("The stopping condition provided is invalid. Valid stopping conditions are :fractious and :equity"))
         end
@@ -259,6 +263,8 @@ function checkTransition(agent_graph::AgentGraph, sim_params::SimParams, stoppin
         return false
     end
 end
+
+
 
 function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
     count::Int64 = 0
@@ -318,7 +324,7 @@ function simulateTransitionTime(game::Game, sim_params::SimParams, graph_params:
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
 
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !checkTransition(agent_graph, sim_params, stopping_condition)
+    while !checkTransition(agent_graph, sim_params, game, stopping_condition)
         #play a period worth of games
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1
