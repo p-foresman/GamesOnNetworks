@@ -195,5 +195,30 @@ function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
     return nothing
 end
 
+
+
+abstract type StoppingCondition end
+
+struct EquityPsychological <: StoppingCondition
+    name::Symbol
+    game::Game
+    strategy::Int8
+
+    function EquityPsychological(game::Game, strategy::Integer)
+        return new(:equity_psychological, game, strategy)
+    end
+end
+
+struct EquityBehavioral <: StoppingCondition
+    name::Symbol
+    game::Game
+    strategy::Int8
+    
+
+    function EquityPsychological(game::Game, strategy::Integer)
+        return new(:equity_psychological, game, strategy)
+    end
+end
+
 #include the global definitions for StructTypes (more global definitions can be added in the file)
 include("settings/global_StructTypes.jl")

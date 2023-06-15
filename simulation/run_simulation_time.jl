@@ -9,10 +9,10 @@ addprocs(0; exeflags="--project")
 
 
 ## 3: initiallize sqlite file with proper schema if it doesn't already exist at the filepath
-const db_filepath = "./sqlite/test25.sqlite"
+const db_filepath = "./sqlite/test2.sqlite"
 initDataBase(db_filepath)
 #NOTE: simulation groups must be created manually. Use insertSimGroup("description") to insert group. Returns the group_id in 'insert_row_id' field.
-const sim_group_id = insertSimGroup(db_filepath, "test time data").insert_row_id
+const sim_group_id = insertSimGroup(db_filepath, "degeneration test 3").insert_row_id
 
 
 ## 4: include script that contains all globals for simulation
