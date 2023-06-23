@@ -72,7 +72,7 @@ struct SimParams
     memory_init_state::Symbol
     error::Float64
     matches_per_period::Int64 #defined within constructor
-    sufficient_equity::Float64 #defined within constructor
+    sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?)
     tag1::Symbol #could make tags a vararg to have any given number of tags
     tag2::Symbol
     tag1_proportion::Float64
@@ -196,6 +196,35 @@ function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
 end
 
 
+abstract type StartingCondition end
+
+struct FractiousState <: StartingCondition
+    name::Symbol
+    game::Game
+
+    function FractiousState(game::Game)
+        return new(:fractious, game)
+    end
+end
+
+struct EquityState <: StartingCondition
+    name::Symbol
+    game::Game
+
+    function EquityState(game::Game)
+        return new(:equity, game)
+    end
+end
+
+struct RandomState <: StartingCondition
+    name::Symbol
+    game::Game
+
+    function RandomState(game::Game)
+        return new(:random, game)
+    end
+end
+
 
 abstract type StoppingCondition end
 
@@ -205,18 +234,30 @@ struct EquityPsychological <: StoppingCondition
     strategy::Int8
 
     function EquityPsychological(game::Game, strategy::Integer)
-        return new(:equity_psychological, game, strategy)
+        return new(:equity_psychological, game, Int8(strategy))
     end
 end
 
-struct EquityBehavioral <: StoppingCondition
+mutable struct EquityBehavioral <: StoppingCondition
     name::Symbol
     game::Game
     strategy::Int8
+    # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
+    period_limit::Union{Nothing, Int64} #initialized to nothing (determine in simulation). DEFENITION: memory_length
+    period_count::Int64 #initialized at 0
     
 
-    function EquityPsychological(game::Game, strategy::Integer)
-        return new(:equity_psychological, game, strategy)
+    function EquityBehavioral(game::Game, strategy::Integer)
+        return new(:equity_behavioral, game, Int8(strategy), nothing, 0)
+    end
+end
+
+struct PeriodCutoff <: StoppingCondition
+    name::Symbol
+    period_cutoff::Int128
+
+    function PeriodCutoff(period_cutoff::Integer)
+        return new(:period_cutoff, period_cutoff)
     end
 end
 
