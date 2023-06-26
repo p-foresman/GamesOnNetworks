@@ -264,7 +264,7 @@ function insertSimGroup(db_filepath::String, description::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
-                                    INSERT INTO sim_groups
+                                    INSERT OR IGNORE INTO sim_groups
                                     (
                                         description
                                     )
@@ -273,7 +273,14 @@ function insertSimGroup(db_filepath::String, description::String)
                                         '$description'
                                 );
                             ")
-    insert_row = SQLite.last_insert_rowid(db)
+    
+    query = DBInterface.execute(db, "
+                                        SELECT sim_group_id
+                                        FROM sim_groups
+                                        WHERE description = '$description'
+                                ")
+    df = DataFrame(query)
+    insert_row = df[1, :sim_group_id]
     SQLite.close(db)
     tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_groups]... INSERT STATUS: [$status] SIM_GROUP_ID: [$insert_row]", insert_row_id = insert_row)
     return tuple_to_return
