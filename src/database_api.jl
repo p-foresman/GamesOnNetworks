@@ -41,9 +41,17 @@ function pushGameToDB(db_filepath::String, game::Game)
     game_json_str = JSON3.write(game)
     payoff_matrix_size = JSON3.write(size(game.payoff_matrix))
 
-    game_insert_result = insertGame(db_filepath, game_name, game_json_str, payoff_matrix_size)
+    game_row_id = nothing
+    while game_row_id === nothing
+        try
+            game_insert_result = insertGame(db_filepath, game_name, game_json_str, payoff_matrix_size)
+            game_row_id = game_insert_result.insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
+
     #game_status = game_insert_result.status_message
-    game_row_id = game_insert_result.insert_row_id
 
     return game_row_id
 end
@@ -59,9 +67,16 @@ function pushGraphToDB(db_filepath::String, graph_params::GraphParams)
         end
     end
 
-    graph_insert_result = insertGraph(db_filepath, graph_type, graph_params_string, db_params_dict)
-    #graph_status = graph_insert_result.status_message
-    graph_row_id = graph_insert_result.insert_row_id
+    graph_row_id = nothing
+    while graph_row_id === nothing
+        try
+            graph_insert_result = insertGraph(db_filepath, graph_type, graph_params_string, db_params_dict)
+            #graph_status = graph_insert_result.status_message
+            graph_row_id = graph_insert_result.insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
 
     return graph_row_id
 end
@@ -75,9 +90,16 @@ function pushSimParamsToDB(db_filepath::String, sim_params::SimParams, use_seed:
         seed_bool = 0
     end
 
-    sim_params_insert_result = insertSimParams(db_filepath, sim_params, sim_params_json_str, seed_bool)
-    #sim_params_status = sim_params_insert_result.status_message
-    sim_params_row_id = sim_params_insert_result.insert_row_id
+    sim_params_row_id = nothing
+    while sim_params_row_id === nothing
+        try
+            sim_params_insert_result = insertSimParams(db_filepath, sim_params, sim_params_json_str, seed_bool)
+            #sim_params_status = sim_params_insert_result.status_message
+            sim_params_row_id = sim_params_insert_result.insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
 
     return sim_params_row_id
 end
@@ -103,9 +125,16 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
     end
 
 
-    simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
-    #simulation_status = simulation_insert_result.status_message
-    # simulation_uuid = simulation_insert_result.simulation_uuid
+    simulation_insert_result = nothing
+    while simulation_insert_result === nothing
+        try
+            simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
+            #simulation_status = simulation_insert_result.status_message
+            # simulation_uuid = simulation_insert_result.simulation_uuid
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
     return simulation_insert_result
 end
 
