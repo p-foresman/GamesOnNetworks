@@ -406,8 +406,14 @@ function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams, 
     initStoppingCondition!(stopping_condition, sim_params)
 
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
-    agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
-    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+    graph_has_edges = false
+    while graph_has_edges == false
+        agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+        graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+        if length(graph_edges) > 0
+            graph_has_edges = true
+        end
+    end
     #println(graph.fadjlist)
     #println(adjacency_matrix(graph)[1, 2])
 

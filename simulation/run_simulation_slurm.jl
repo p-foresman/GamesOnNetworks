@@ -22,8 +22,8 @@ const db_filepath = "./sqlite/BehavioralSimulationSaves.sqlite"
 include("sim_setup_slurm.jl")
 
 const slurm_index = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-const three_index = slurm_index % 3
-const eight_index = slurm_index % 8
+const three_index = (slurm_index % 3) == 0 ? 3 : slurm_index % 3
+const eight_index = (slurm_index % 8) == 0 ? 8 : slurm_index % 8
 
 #const sim_group_id = sim_group_id_array[three_index]
 const sim_params_list = sim_params_list_array[three_index]
