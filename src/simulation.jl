@@ -282,11 +282,7 @@ function checkStoppingCondition(stopping_condition::EquityPsychological, agent_g
         end
 
     end 
-    if number_transitioned >= sim_params.number_agents - number_hermits
-        return true
-    else
-        return false
-    end
+    return number_transitioned >= sim_params.number_agents - number_hermits
 end
 
 function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
@@ -305,11 +301,7 @@ function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_grap
     end 
     if number_transitioned >= (1 - sim_params.error) * (sim_params.number_agents - number_hermits) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
         stopping_condition.period_count += 1
-        if stopping_condition.period_count < stopping_condition.period_limit
-            return false
-        else
-            return true
-        end
+        return stopping_condition.period_count >= stopping_condition.period_limit
     else
         stopping_condition.period_count = 0 #reset period count
         return false
@@ -318,11 +310,7 @@ end
 
 
 function checkStoppingCondition(stopping_condition::PeriodCutoff, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer)
-    if current_periods < stopping_condition.period_cutoff
-        return false
-    else
-        return true
-    end
+    return current_periods >= stopping_condition.period_cutoff
 end
 
 
