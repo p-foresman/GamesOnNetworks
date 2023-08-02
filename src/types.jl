@@ -90,7 +90,11 @@ struct SimParams
 end
 
 
-abstract type GraphParams end
+abstract type InteractionParams end
+
+abstract type GraphParams <: InteractionParams end #for static interaction models
+
+abstract type ABMParams <: InteractionParams end #for mobile interaction models
 
 struct CompleteParams <: GraphParams 
     graph_type::Symbol
@@ -152,6 +156,15 @@ struct LatticeParams <: GraphParams
         return new(:lattice, length(dim_lengths), dim_lengths)
     end
 end
+
+
+struct GridABMParams <: ABMParams
+    x_size::Int
+    y_size::Int
+end
+    
+
+
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
 function displayName(::CompleteParams) return "Complete" end
 function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
@@ -171,6 +184,10 @@ struct AgentGraph{N} #a simpler replacement for MetaGraphs
         return new{N}(graph, agents)
     end
 end
+
+
+
+
 
 struct PreAllocatedArrays{N} #N is number of players
     opponent_strategy_recollection::SVector{N, Vector{Int64}}

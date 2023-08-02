@@ -2,7 +2,7 @@
 
 ## 1: add processess if you want simulations to run in a distributed manner
 using Distributed
-addprocs(20; exeflags="--project")
+addprocs(5; exeflags="--project")
 
 ## 2: import the main module on all processes
 @everywhere using GamesOnNetworks
@@ -22,9 +22,9 @@ include("sim_setup.jl")
 
 ## 5: run simulation
 # simulationIterator(game, sim_params_list, graph_params_list; run_count=20, stopping_condition=:equity_behavioral, db_filepath=db_filepath, db_sim_group_id=1) # db_filepath=db_filepath, db_sim_group_id=1
-simulationIterator(game, sim_params_list, graph_params_list, starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id) # db_filepath=db_filepath, db_sim_group_id=1
-simulationIterator(game, sim_params_list_2, graph_params_list, starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id_2) # db_filepath=db_filepath, db_sim_group_id=1
-simulationIterator(game, sim_params_list_3, graph_params_list, starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id_3) # db_filepath=db_filepath, db_sim_group_id=1
+# simulationIterator(game, sim_params_list, graph_params_list, starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id) # db_filepath=db_filepath, db_sim_group_id=1
+simulationIterator(game, sim_params_list_2, [graph_params_list[2]], starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id_2) # db_filepath=db_filepath, db_sim_group_id=1
+# simulationIterator(game, sim_params_list_3, graph_params_list, starting_condition, stopping_condition; run_count=20, db_filepath=db_filepath, db_sim_group_id=sim_group_id_3) # db_filepath=db_filepath, db_sim_group_id=1
 
 
 ##6: remove worker cores
