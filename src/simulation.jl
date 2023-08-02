@@ -439,9 +439,6 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
     graph_params = graph_params_list[graph_index]
     
-
-    db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
-
     sim_params_count = length(sim_params_list)
     sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
     sim_params = sim_params_list[sim_params_index]
@@ -452,6 +449,7 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     print("Number of agents: $(sim_params.number_agents), ")
     print("Memory length: $(sim_params.memory_length), ")
     println("Error: $(sim_params.error)")
+    flush(stdout) #flush buffer
 
     distributed_uuid = "$(grap_params.graph_type)_$(sim_params.number_agens)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
     if db_filepath !== nothing && nworkers() > 1
@@ -459,6 +457,7 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     end
 
     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
+    db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
     db_sim_params_id = db_filepath !== nothing ? pushSimParamsToDB(db_filepath, sim_params, use_seed) : nothing
 
     @sync @distributed for run in 1:run_count
