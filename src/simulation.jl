@@ -451,7 +451,7 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     println("Error: $(sim_params.error)")
     flush(stdout) #flush buffer
 
-    distributed_uuid = "$(grap_params.graph_type)_$(sim_params.number_agens)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
+    distributed_uuid = "$(graph_params.graph_type)_$(sim_params.number_agens)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
     if db_filepath !== nothing && nworkers() > 1
         initDistributedDB(distributed_uuid)
     end
