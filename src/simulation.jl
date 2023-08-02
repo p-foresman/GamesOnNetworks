@@ -434,7 +434,7 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
     graph_params = graph_params_list[graph_index]
     # sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
-    sim_params_index = ceil(Int64, slurm_task_id % graph_count) #allows for iteration of graph_params over each sim_param
+    sim_params_index = ceil(Int64, slurm_task_id / graph_count) #allows for iteration of graph_params over each sim_param
     sim_params = sim_params_list[sim_params_index]
      
     println("\n\n\n")
