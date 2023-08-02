@@ -83,7 +83,7 @@ end
 
 
 
-function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [])
+function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [], plot_title::String=nothing)
     memory_length_list !== nothing ? memory_length_list = sort(memory_length_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -116,7 +116,8 @@ function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                     legend_position = :outertopright,
                     size=(1300, 700),
                     left_margin=10Plots.mm,
-                    bottom_margin=10Plots.mm)
+                    bottom_margin=10Plots.mm,
+                    title=plot_title)
     
 
     #wrangle data
@@ -162,7 +163,7 @@ end
 
 
 
-function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [])
+function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [], plot_title::String=nothing)
     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
@@ -196,7 +197,8 @@ function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Intege
                     legend_position = :outertopright,
                     size=(1300, 700),
                     left_margin=10Plots.mm,
-                    bottom_margin=10Plots.mm)
+                    bottom_margin=10Plots.mm,
+                    title=plot_title)
 
 
     #wrangle data

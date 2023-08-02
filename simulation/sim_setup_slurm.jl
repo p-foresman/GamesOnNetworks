@@ -36,14 +36,29 @@ const sim_params_list_3 = constructSimParamsList(
                 memory_length_end = 19,
                 memory_length_step = 3,
                 memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.05, 0.1], #iterated over for multi-loop simulation
+                error_list = [0.1], #iterated over for multi-loop simulation
                 tag1 = :red,
                 tag2 = :blue,
                 tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
                 random_seed = 1234 #sets random number generator
                 )
+
+const sim_params_list_4 = constructSimParamsList(
+                    number_agents_start = 50, #creates iterator for multi-loop simulation
+                    number_agents_end = 50,
+                    number_agents_step = 10,
+                    memory_length_start = 10, #creates iterator for multi-loop simulation
+                    memory_length_end = 19,
+                    memory_length_step = 3,
+                    memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
+                    error_list = [0.1], #iterated over for multi-loop simulation
+                    tag1 = :red,
+                    tag2 = :blue,
+                    tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
+                    random_seed = 1234 #sets random number generator
+                    )
                 
-const sim_params_list_array = [sim_params_list_1, sim_params_list_2, sim_params_list_3]
+const sim_params_list_array = [sim_params_list_1, sim_params_list_2, sim_params_list_3, sim_params_list_4]
 
 ################### Define Game Payoff Matrix and Strategies #######################
 
