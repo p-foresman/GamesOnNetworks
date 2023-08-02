@@ -428,26 +428,21 @@ end
 #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
 function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-    # distributed_uuid = "$(uuid4())"
-
-
     graph_count = length(graph_params_list)
+    # sim_params_count = length(sim_params_list)
+    # slurm_array_length = graph_count * sim_params_count
     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
     graph_params = graph_params_list[graph_index]
-    
-    sim_params_count = length(sim_params_list)
-    sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
+    # sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
+    sim_params_index = ceil(Int64, slurm_task_id % graph_count) #allows for iteration of graph_params over each sim_param
     sim_params = sim_params_list[sim_params_index]
      
     println("\n\n\n")
     println(displayName(graph_params))
-    println(dump(graph_params))
-    print("Number of agents: $(sim_params.number_agents), ")
-    print("Memory length: $(sim_params.memory_length), ")
-    println("Error: $(sim_params.error)")
+    println(displayName(sim_params))
     flush(stdout) #flush buffer
 
-    distributed_uuid = "$(graph_params.graph_type)_$(sim_params.number_agents)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
+    distributed_uuid = "$(displayName(graph_params))__$(displayName(sim_params))_TASKID=$slurm_task_id"
     initDistributedDB(distributed_uuid)
 
     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing

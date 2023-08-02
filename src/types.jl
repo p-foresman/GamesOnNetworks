@@ -89,6 +89,8 @@ struct SimParams
     end
 end
 
+function displayName(sim_params::SimParams) return "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)" end
+
 
 abstract type InteractionParams end
 
@@ -167,10 +169,10 @@ end
 
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
 function displayName(::CompleteParams) return "Complete" end
-function displayName(::ErdosRenyiParams) return "Erdos-Renyi" end
-function displayName(::SmallWorldParams) return "Small-World" end
-function displayName(::ScaleFreeParams) return "Scale-Free" end
-function displayName(::StochasticBlockModelParams) return "Stochastic Block Model" end
+function displayName(graph_params::ErdosRenyiParams) return "ErdosRenyi λ=$(graph_params.λ)" end
+function displayName(graph_params::SmallWorldParams) return "SmallWorld κ=$(graph_params.κ) β=$(graph_params.β)" end
+function displayName(graph_params::ScaleFreeParams) return "ScaleFree α=$(graph_params.α)" end
+function displayName(graph_params::StochasticBlockModelParams) return "StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)" end
 
 
 
