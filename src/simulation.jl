@@ -426,13 +426,9 @@ function simulationIterator(game::Game, sim_params_list::Vector{SimParams}, grap
 end
 
 #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
-function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, db_sim_group_id::Integer, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::Union{String, Nothing}, db_store_period::Union{Integer, Nothing} = nothing)
+function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
     # distributed_uuid = "$(uuid4())"
-    
-    if db_filepath === nothing && db_sim_group_id !== nothing
-        throw(ArgumentError("The dm_sim_group_id parameter was specified without a db_filepath. Provide a db_filepath to store to database"))
-    end
 
 
     graph_count = length(graph_params_list)
@@ -451,10 +447,8 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
     println("Error: $(sim_params.error)")
     flush(stdout) #flush buffer
 
-    distributed_uuid = "$(graph_params.graph_type)_$(sim_params.number_agens)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
-    if db_filepath !== nothing && nworkers() > 1
-        initDistributedDB(distributed_uuid)
-    end
+    distributed_uuid = "$(graph_params.graph_type)_$(sim_params.number_agents)_$(sim_params.memory_length)_$(sim_params.error)_$slurm_task_id"
+    initDistributedDB(distributed_uuid)
 
     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
     db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
