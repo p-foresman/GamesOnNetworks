@@ -9,13 +9,13 @@ addprocs(20; exeflags="--project")
 
 
 ## 3: initiallize sqlite file with proper schema if it doesn't already exist at the filepath
-const db_filepath = "./sqlite/BehavioralSimulationSaves_50.sqlite"
+const db_filepath = "./BehavioralSimulationSaves_50.sqlite"
 # initDataBase(db_filepath)
 #NOTE: simulation groups must be created manually. Use insertSimGroup("description") to insert group. Returns the group_id in 'insert_row_id' field.
 # const sim_group_id_1 = insertSimGroup(db_filepath, "Population Iteration").insert_row_id
 # const sim_group_id_2 = insertSimGroup(db_filepath, "Memory Length Iteration, N=10").insert_row_id
 #const sim_group_id_3 = insertSimGroup(db_filepath, "Memory Length Iteration, N=100").insert_row_id
-const sim_group_id = 4# insertSimGroup(db_filepath, "Memory Length Iteration, N=50").insert_row_id
+const sim_group_id = 4 # insertSimGroup(db_filepath, "Memory Length Iteration, N=50").insert_row_id
 
 
 #const sim_group_id_array = [sim_group_id_1, sim_group_id_2, sim_group_id_3]

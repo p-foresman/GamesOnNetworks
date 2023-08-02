@@ -24,6 +24,7 @@ export
     collectDBFilesInDirectory,
     simulationIterator,
     simulate,
+    distributedSimulationIterator,
     determineAgentBehavior,
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
