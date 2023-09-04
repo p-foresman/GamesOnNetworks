@@ -99,6 +99,76 @@ function updateMemories!(players::Tuple{Agent, Agent}, sim_params::SimParams)
     return nothing
 end
 
+
+
+
+
+
+
+
+
+
+#play the defined game
+function playGame!(game::Game, sim_params::SimParams, players::Tuple{ABMGridAgent, ABMGridAgent}, pre_allocated_arrays::PreAllocatedArrays)
+    resetArrays!(pre_allocated_arrays)
+    makeChoices!(game, sim_params, players, pre_allocated_arrays)
+    updateMemories!(players, sim_params)
+    return nothing
+end
+
+#choice algorithm for agents "deciding" on strategies (find max expected payoff)
+function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{ABMGridAgent, ABMGridAgent}, pre_allocated_arrays::PreAllocatedArrays) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
+    # player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
+    
+    #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
+    #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
+    #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
+
+    findOpponentStrategyProbs!(pre_allocated_arrays.opponent_strategy_recollection, pre_allocated_arrays.opponent_strategy_probs, players)
+    findExpectedUtilities!(pre_allocated_arrays.player_expected_utilities, game.payoff_matrix, pre_allocated_arrays.opponent_strategy_probs)
+    # print("player_expected_utilities: ")
+    # println(player_expected_utilities)
+    
+    for player in eachindex(players)
+        if rand() <= sim_params.error 
+            players[player].choice = rand(game.strategies[player])
+        else
+            players[player].choice = findMaximumStrats(pre_allocated_arrays.player_expected_utilities[player])
+        end
+    end
+    # print("player_choices: ")
+    # print(players[1].choice)
+    # print(", ")
+    # println(players[2].choice)
+    # println(player_choices)
+    return nothing
+
+    # outcome = game.payoff_matrix[player_choices[1], player_choices[2]] #don't need this right now (wealth is not being analyzed)
+    # players[1].wealth += outcome[1]
+    # players[2].wealth += outcome[2]
+end
+
+
+
+#update agent's memory vector
+function updateMemories!(players::Tuple{ABMGridAgent, ABMGridAgent}, sim_params::SimParams)
+    for player in players
+        if length(player.memory) == sim_params.memory_length
+            popfirst!(player.memory)
+        end
+    end
+    push!(players[1].memory, (players[2].tag, players[2].choice))
+    push!(players[2].memory, (players[1].tag, players[1].choice))
+    return nothing
+end
+
+
+
+
+
+
+
+
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
 function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{Tuple{Symbol, T}} where T <: Integer)
@@ -209,7 +279,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
             recollection = game.strategies[1][3]
         end
         to_push = (agent.tag, recollection)
-        for i in 1:sim_params.memory_length
+        for _ in 1:sim_params.memory_length
             push!(agent.memory, to_push)
         end
     end
@@ -228,7 +298,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
         #NOTE: tag system needs to change when tags are implemented!!
         recollection = game.strategies[1][2]
         to_push = (agent.tag, recollection)
-        for i in 1:sim_params.memory_length
+        for _ in 1:sim_params.memory_length
             push!(agent.memory, to_push)
         end
     end
@@ -245,7 +315,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
 
         #set memory initialization
         #NOTE: tag system needs to change when tags are implemented!!
-        for i in 1:sim_params.memory_length
+        for _ in 1:sim_params.memory_length
             to_push = (agent.tag, rand(game.strategies[1]))
             push!(agent.memory, to_push)
         end
@@ -253,6 +323,30 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     return nothing
 end
 
+function initABM(abm_params::ABMGridParams{D}, game::Game, sim_params::SimParams, starting_condition::FractiousState) where {D}
+    for agent_id in 1:sim_params.number_agents
+        agent = abm_params.agent_type(agent_id, NTuple{D, Int}([rand(1:size(abm_params.space)[i]) for i in 1:D]), "Agent $agent_id")
+        if rand() <= sim_params.tag1_proportion
+            agent.tag = sim_params.tag1
+        else
+            agent.tag = sim_params.tag2
+        end
+
+        #set memory initialization
+        #NOTE: tag system needs to change when tags are implemented!!
+        if agent_id % 2 == 0
+            recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+        else
+            recollection = game.strategies[1][3]
+        end
+        to_push = (agent.tag, recollection)
+        for _ in 1:sim_params.memory_length
+            push!(agent.memory, to_push)
+        end
+        add_agent!(agent, abm_params.model)
+    end
+    return abm_params.model #probably want to change how I'm doing all of this
+end
 
 
 function initStoppingCondition!(stopping_condition::EquityPsychological, sim_params::SimParams)
@@ -309,9 +403,45 @@ function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_grap
 end
 
 
+
 function checkStoppingCondition(stopping_condition::PeriodCutoff, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer)
     return current_periods >= stopping_condition.period_cutoff
 end
+
+
+
+
+
+function checkStoppingCondition(stopping_condition::EquityPsychological, abm_model::ABM, sim_params::SimParams, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+    number_transitioned = 0
+    for (agent_id, agent) in abm_model.agents
+        if countStrats(agent.memory, stopping_condition.strategy) >= (1 - sim_params.error) * sim_params.memory_length #this is hard coded to strategy 2 (M) for now. Should change later!
+            number_transitioned += 1
+        end
+
+    end 
+    return number_transitioned >= sim_params.number_agents
+end
+
+function checkStoppingCondition(stopping_condition::EquityBehavioral, abm_model::ABM, sim_params::SimParams, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+    number_transitioned = 0
+    for (agent_id, agent) in abm_model.agents
+        if determineAgentBehavior(stopping_condition.game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+            number_transitioned += 1
+        end
+
+    end 
+    if number_transitioned >= (1 - sim_params.error) * sim_params.number_agents # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+        stopping_condition.period_count += 1
+        return stopping_condition.period_count >= stopping_condition.period_limit
+    else
+        stopping_condition.period_count = 0 #reset period count
+        return false
+    end
+end
+
+
+
 
 
 function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
@@ -328,11 +458,28 @@ end
 
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
-function runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays::PreAllocatedArrays)
+function runPeriod!(agent_graph::AgentGraph, graph_edges, game::Game, sim_params::SimParams, pre_allocated_arrays::PreAllocatedArrays) #NOTE: what type are graph_edges ??
     for match in 1:sim_params.matches_per_period
         edge = rand(graph_edges) #get random edge
         vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
         players = Tuple{Agent, Agent}([agent_graph.agents[vertex] for vertex in vertex_list]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+        #println(players[1].name * " playing game with " * players[2].name)
+        playGame!(game, sim_params, players, pre_allocated_arrays)
+    end
+    return nothing
+end
+
+function runPeriod!(abm_model::ABM, game::Game, sim_params::SimParams, pre_allocated_arrays::PreAllocatedArrays)
+    for match in 1:sim_params.matches_per_period
+        agentStep!(rand(abm_model.agents)[2], abm_model, game, sim_params, pre_allocated_arrays)
+    end
+    return nothing
+end
+
+function agentStep!(agent, model, game, sim_params, pre_allocated_arrays)
+    randomwalk!(agent, model, ifempty=false)
+    for neighbor in nearby_agents(agent, model)
+        players = Tuple{ABMGridAgent, ABMGridAgent}([agent, neighbor]) #get the agents associated with these vertices and create a tuple => (player1, player2)
         #println(players[1].name * " playing game with " * players[2].name)
         playGame!(game, sim_params, players, pre_allocated_arrays)
     end
@@ -458,6 +605,59 @@ function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimPa
         collectDistributedDB(db_filepath, distributed_uuid)
     end
 end
+
+
+
+function simulateABM(game::Game, sim_params::SimParams, abm_params::ABMParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
+        Random.seed!(sim_params.random_seed)
+    end
+
+    #set up stopping condition sim_params specific fields
+    # stopping_condition.agent_threshold = (1 - sim_params.error) * sim_params.number_agents #this is now calculated within checkStoppingCondition() to factor in hermits
+    initStoppingCondition!(stopping_condition, sim_params)
+
+    #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
+    abm_model = initABM(abm_params, game, sim_params, starting_condition)
+    # graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+    #println(graph.fadjlist)
+    #println(adjacency_matrix(graph)[1, 2])
+
+    #play game until transition occurs (sufficient equity is reached)
+    pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix) #construct these arrays outside of main loop to avoid excessive allocations
+    # opponent_strategy_recollection = zeros.(Int64, size(game.payoff_matrix))
+    # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
+    # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
+
+    already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
+    while !checkStoppingCondition(stopping_condition, abm_model, sim_params, periods_elapsed)
+        #play a period worth of games
+        runPeriod!(abm_model, game, sim_params, pre_allocated_arrays)
+        
+        periods_elapsed += 1
+        already_pushed = false
+        if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
+            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+            prev_simulation_uuid = db_status.simulation_uuid
+            already_pushed = true
+        end
+    end
+    println(" --> periods elapsed: $periods_elapsed")
+    flush(stdout) #flush buffer
+    if db_filepath !== nothing && already_pushed == false #push final results to DB at filepath
+        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_game_id, db_graph_id, db_sim_params_id, agent_graph, periods_elapsed, distributed_uuid)
+        return (periods_elapsed, db_status)
+    end
+    return periods_elapsed
+end
+
+
+
+
+
+
+
+
 
 
 

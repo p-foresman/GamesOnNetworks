@@ -2,6 +2,7 @@ name = "GamesOnNetworks"
 uuid = "faa17b46-7aa6-11ed-2323-5da22855b170"
 
 [deps]
+Agents = "46ada45e-f475-11e8-01d0-f70cc89e6671"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
@@ -28,7 +29,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-julia = "1.8"
+julia = "1.9"
 
 [extras]
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"

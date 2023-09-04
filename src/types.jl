@@ -3,8 +3,8 @@
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
     name::String
-    tag::Symbol
-    wealth::Int #is this necessary?
+    tag::Symbol #NOTE: REMOVE
+    wealth::Int #is this necessary? #NOTE: REMOVE
     memory::Vector{Tuple{Symbol, Int8}}
     choice::Union{Int8, Nothing}
 
@@ -69,13 +69,13 @@ end
 struct SimParams
     number_agents::Int64
     memory_length::Int64
-    memory_init_state::Symbol
+    memory_init_state::Symbol #NOTE: REMOVE
     error::Float64
-    matches_per_period::Int64 #defined within constructor
-    sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?)
-    tag1::Symbol #could make tags a vararg to have any given number of tags
-    tag2::Symbol
-    tag1_proportion::Float64
+    matches_per_period::Int64 #defined within constructor #NOTE: REMOVE
+    sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
+    tag2::Symbol #NOTE: REMOVE
+    tag1_proportion::Float64 #NOTE: REMOVE
     random_seed::Int64 #probably don't need a random seed in every SimParams struct
 
     #all keyword arguments
@@ -160,9 +160,39 @@ struct LatticeParams <: GraphParams
 end
 
 
-struct GridABMParams <: ABMParams
-    x_size::Int
-    y_size::Int
+mutable struct ABMGridAgent{D} <: AbstractAgent
+    id::Int
+    pos::NTuple{D, Int}
+    name::String
+    tag::Symbol
+    wealth::Int #is this necessary?
+    memory::Vector{Tuple{Symbol, Int8}}
+    choice::Union{Int8, Nothing}
+
+    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing) where {D}
+        return new{D}(id, pos, name, tag, wealth, memory, choice)
+    end
+    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String, tag::Symbol) where {D}
+        return new{D}(id, pos, name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+    end
+    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String) where {D}
+        return new{D}(id, pos, name, Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+    end
+    function ABMGridAgent(id::Int, pos::NTuple{D, Int}) where {D}
+        return new{D}(id, pos, "", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+    end
+end
+
+struct ABMGridParams{D} <: ABMParams
+    space::GridSpace{D, true} #GridSpace of Dimension D, 
+    agent_type::Type
+    model::AgentBasedModel
+
+    function ABMGridParams(grid_sizes::Int...)
+        D = length(grid_sizes)
+        space = GridSpace(grid_sizes)
+        return new{D}(space, ABMGridAgent, AgentBasedModel(ABMGridAgent(1, (1, 1)), space; scheduler=Schedulers.randomly)) #initalize agent to show model agent type
+    end
 end
     
 

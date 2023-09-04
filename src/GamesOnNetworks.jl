@@ -11,6 +11,10 @@ export
     ScaleFreeParams,
     StochasticBlockModelParams,
     LatticeParams,
+
+    ABMGridAgent,
+    ABMGridParams,
+
     SimParams,
     FractiousState,
     EquityState,
@@ -24,6 +28,9 @@ export
     collectDBFilesInDirectory,
     simulationIterator,
     simulate,
+
+    simulateABM,
+
     distributedSimulationIterator,
     determineAgentBehavior,
     transitionTimesBoxPlot,
@@ -34,6 +41,7 @@ export
 using
     Graphs,
     MetaGraphs,
+    Agents,
     Random,
     StaticArrays,
     DataFrames,
