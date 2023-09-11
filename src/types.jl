@@ -96,7 +96,6 @@ abstract type InteractionParams end
 
 abstract type GraphParams <: InteractionParams end #for static interaction models
 
-abstract type ABMParams <: InteractionParams end #for mobile interaction models
 
 struct CompleteParams <: GraphParams 
     graph_type::Symbol
@@ -156,42 +155,6 @@ struct LatticeParams <: GraphParams
     dim_lengths::Vector{Int64}
     function LatticeParams(dim_lengths::Vector{Int64})
         return new(:lattice, length(dim_lengths), dim_lengths)
-    end
-end
-
-
-mutable struct ABMGridAgent{D} <: AbstractAgent
-    id::Int
-    pos::NTuple{D, Int}
-    name::String
-    tag::Symbol
-    wealth::Int #is this necessary?
-    memory::Vector{Tuple{Symbol, Int8}}
-    choice::Union{Int8, Nothing}
-
-    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing) where {D}
-        return new{D}(id, pos, name, tag, wealth, memory, choice)
-    end
-    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String, tag::Symbol) where {D}
-        return new{D}(id, pos, name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
-    end
-    function ABMGridAgent(id::Int, pos::NTuple{D, Int}, name::String) where {D}
-        return new{D}(id, pos, name, Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
-    end
-    function ABMGridAgent(id::Int, pos::NTuple{D, Int}) where {D}
-        return new{D}(id, pos, "", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
-    end
-end
-
-struct ABMGridParams{D} <: ABMParams
-    space::GridSpace{D, true} #GridSpace of Dimension D, 
-    agent_type::Type
-    model::AgentBasedModel
-
-    function ABMGridParams(grid_sizes::Int...)
-        D = length(grid_sizes)
-        space = GridSpace(grid_sizes)
-        return new{D}(space, ABMGridAgent, AgentBasedModel(ABMGridAgent(1, (1, 1)), space; scheduler=Schedulers.randomly)) #initalize agent to show model agent type
     end
 end
     

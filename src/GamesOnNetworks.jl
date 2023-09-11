@@ -11,10 +11,6 @@ export
     ScaleFreeParams,
     StochasticBlockModelParams,
     LatticeParams,
-
-    ABMGridAgent,
-    ABMGridParams,
-
     SimParams,
     FractiousState,
     EquityState,
@@ -28,9 +24,6 @@ export
     collectDBFilesInDirectory,
     simulationIterator,
     simulate,
-
-    simulateABM,
-
     distributedSimulationIterator,
     determineAgentBehavior,
     transitionTimesBoxPlot,
@@ -40,8 +33,7 @@ export
 
 using
     Graphs,
-    MetaGraphs,
-    Agents,
+    # MetaGraphs,
     Random,
     StaticArrays,
     DataFrames,
@@ -61,8 +53,6 @@ using
 include("types.jl")
 include("sql.jl")
 include("database_api.jl")
-include("functions.jl")
-include("construct_params.jl")
 include("simulation.jl")
 include("plotting.jl")
 
