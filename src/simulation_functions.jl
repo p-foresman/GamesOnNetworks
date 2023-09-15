@@ -2,12 +2,12 @@
 ############################### FUNCTIONS #######################################
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
-function constructSimParamsList(;number_agents_start::Int64, number_agents_end::Int64, number_agents_step::Int64, memory_length_start::Int64, memory_length_end::Int64, memory_length_step::Int64, memory_init_state::Symbol, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+function constructSimParamsList(;number_agents_start::Int64, number_agents_end::Int64, number_agents_step::Int64, memory_length_start::Int64, memory_length_end::Int64, memory_length_step::Int64, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_start:number_agents_step:number_agents_end
         for memory_length in memory_length_start:memory_length_step:memory_length_end
             for error in error_list
-                new_sim_params_set = SimParams(number_agents=number_agents, memory_length=memory_length, memory_init_state=memory_init_state, error=error, tag1=tag1, tag2=tag2, tag1_proportion=tag1_proportion, random_seed=random_seed)
+                new_sim_params_set = SimParams(number_agents=number_agents, memory_length=memory_length, error=error, tag1=tag1, tag2=tag2, tag1_proportion=tag1_proportion, random_seed=random_seed)
                 push!(sim_params_list, new_sim_params_set)
             end
         end
