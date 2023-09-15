@@ -1,7 +1,7 @@
 module GamesOnNetworks
 
 export
-    Model,
+    SimModel,
     Game,
     SimParams,
     Agent,

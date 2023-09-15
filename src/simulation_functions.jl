@@ -18,44 +18,51 @@ end
 
 ######################## game algorithm ####################
 
-function runPeriod!(agent_graph::AgentGraph, graph_edges, game::Game, sim_params::SimParams, pre_allocated_arrays::PreAllocatedArrays) #NOTE: what type are graph_edges ??
-    for match in 1:sim_params.matches_per_period
-        edge = rand(graph_edges) #get random edge
-        vertex_list = shuffle!([edge.src, edge.dst]) #shuffle (randomize) the nodes connected to the edge
-        players = Tuple{Agent, Agent}([agent_graph.agents[vertex] for vertex in vertex_list]) #get the agents associated with these vertices and create a tuple => (player1, player2)
+function setPlayers!(model::SimModel)
+    edge = rand(model.agent_graph.edges)
+    vertex_list = shuffle!([edge.src, edge.dst])
+    for player in eachindex(model.pre_allocated_arrays.players) #NOTE: this will always be 2. Should I just optimize for two player games?
+        model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
+    end
+end
+
+
+function runPeriod!(model::SimModel) #NOTE: what type are graph_edges ??
+    for match in 1:model.sim_params.matches_per_period
+        setPlayers!(model)
         #println(players[1].name * " playing game with " * players[2].name)
-        playGame!(game, sim_params, players, pre_allocated_arrays)
+        playGame!(model)
+        resetArrays!(model)
     end
     return nothing
 end
 
 
 #play the defined game
-function playGame!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}, pre_allocated_arrays::PreAllocatedArrays)
-    resetArrays!(pre_allocated_arrays)
-    makeChoices!(game, sim_params, players, pre_allocated_arrays)
-    updateMemories!(players, sim_params)
+function playGame!(model::SimModel)
+    makeChoices!(model)
+    updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
     return nothing
 end
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
-function makeChoices!(game::Game, sim_params::SimParams, players::Tuple{Agent, Agent}, pre_allocated_arrays::PreAllocatedArrays) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
+function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
     # player_choices::Vector{Int8} = [rand(game.strategies[1]), rand(game.strategies[2])]
     
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
 
-    findOpponentStrategyProbs!(pre_allocated_arrays.opponent_strategy_recollection, pre_allocated_arrays.opponent_strategy_probs, players)
-    findExpectedUtilities!(pre_allocated_arrays.player_expected_utilities, game.payoff_matrix, pre_allocated_arrays.opponent_strategy_probs)
+    findOpponentStrategyProbs!(model.pre_allocated_arrays.opponent_strategy_recollection, model.pre_allocated_arrays.opponent_strategy_probs, model.pre_allocated_arrays.players)
+    findExpectedUtilities!(model.pre_allocated_arrays.player_expected_utilities, model.game.payoff_matrix, model.pre_allocated_arrays.opponent_strategy_probs)
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
-    for player in eachindex(players)
+    for player in eachindex(models.pre_allocated_arrays.players)
         if rand() <= sim_params.error 
-            players[player].choice = rand(game.strategies[player])
+            model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
         else
-            players[player].choice = findMaximumStrats(pre_allocated_arrays.player_expected_utilities[player])
+            model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
         end
     end
     # print("player_choices: ")
@@ -175,7 +182,7 @@ function checkStoppingCondition(stopping_condition::EquityPsychological, agent_g
     return number_transitioned >= stopping_condition.sufficient_transitioned
 end
 
-function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agent_graph.agents
         if !agent.is_hermit

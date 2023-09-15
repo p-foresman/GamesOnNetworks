@@ -172,15 +172,16 @@ function displayName(graph_params::StochasticBlockModelParams) return "Stochasti
 
 
 
-struct AgentGraph{N} #a simpler replacement for MetaGraphs
+struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
     graph::SimpleGraph{Int64}
     agents::SVector{N, Agent}
-    # edges::Vector{SimpleEdge{Int64}}
+    edges::SVector{E, Graphs.SimpleEdge{Int64}}
     # number_agents::Int64
     number_hermits::Int64
     
     function AgentGraph(graph::SimpleGraph{Int64})
         N = nv(graph)
+        E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
         number_hermits = 0
         for vertex in 1:N #could make graph-type specific multiple dispatch so this only needs to happen for ER and SBM (otherwise num_hermits=0)
@@ -189,7 +190,8 @@ struct AgentGraph{N} #a simpler replacement for MetaGraphs
                 number_hermits += 1
             end
         end
-        return new{N}(graph, agents, number_hermits)
+        graph_edges = SVector{E, Graphs.SimpleEdge{Int64}}(collect(edges(graph)))
+        return new{N, E}(graph, agents, graph_edges, number_hermits)
     end
 end
 
@@ -198,6 +200,7 @@ end
 
 
 struct PreAllocatedArrays{N} #N is number of players
+    players::SizedVector{N, Union{Nothing, Agent}}
     opponent_strategy_recollection::SVector{N, Vector{Int64}}
     opponent_strategy_probs::SVector{N, Vector{Float64}}
     player_expected_utilities::SVector{N, Vector{Float32}}
@@ -205,14 +208,16 @@ struct PreAllocatedArrays{N} #N is number of players
     function PreAllocatedArrays(payoff_matrix)
         sizes = size(payoff_matrix)
         N = length(sizes)
+        players = SizedVector{N, Union{Nothing, Agent}}([nothing for _ in 1:N])
         opponent_strategy_recollection = SVector{N, Vector{Int64}}(zeros.(Int64, sizes))
         opponent_strategy_probs = SVector{N, Vector{Float64}}(zeros.(Float64, sizes))
         player_expected_utilities = SVector{N, Vector{Float32}}(zeros.(Float32, sizes))
-        return new{N}(opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
+        return new{N}(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
     end
 end
-function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
-    for player in eachindex(pre_allocated_arrays.opponent_strategy_recollection)
+function resetArrays!(pre_allocated_arrays::PreAllocatedArrays{N}) where {N}
+    for player in 1:N
+        pre_allocated_arrays.players[player] = nothing
         pre_allocated_arrays.opponent_strategy_recollection[player] .= Int64(0)
         pre_allocated_arrays.opponent_strategy_probs[player] .= Float64(0)
         pre_allocated_arrays.player_expected_utilities[player] .= Float32(0)
@@ -295,19 +300,26 @@ end
 ##### include functions for model initialization
 include("model_functions.jl")
 
-struct Model
+struct SimModel
     game::Game
     sim_params::SimParams
     graph_params::GraphParams
     starting_condition::StartingCondition
     stopping_condition::StoppingCondition
     agent_graph::AgentGraph
+    pre_allocated_arrays::PreAllocatedArrays
 
-    function Model(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) #if instanitate=true, agent_graph is instantiated
+    function SimModel(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) #if instanitate=true, agent_graph is instantiated
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
         initStoppingCondition!(stopping_condition, sim_params, agent_graph)
-        return new(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph)
+        pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
+        return new(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
+end
+
+function resetArrays!(model::SimModel)
+    resetArrays!(model.pre_allocated_arrays)
+    return nothing
 end
 
 

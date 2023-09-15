@@ -80,3 +80,6 @@ const graph_params_list = [
 
 const starting_condition = FractiousState(game)
 const stopping_condition = EquityBehavioral(game, 2)
+
+
+const model = SimModel(game, sim_params_list[1], graph_params_list[1], starting_condition, stopping_condition)
