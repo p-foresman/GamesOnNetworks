@@ -58,8 +58,8 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
-    for player in eachindex(models.pre_allocated_arrays.players)
-        if rand() <= sim_params.error 
+    for player in eachindex(model.pre_allocated_arrays.players)
+        if rand() <= model.sim_params.error 
             model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
         else
             model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
@@ -120,7 +120,7 @@ function findMaximumStrats(expected_utilities::Vector{Float32})
 end
 
 #update agent's memory vector
-function updateMemories!(players::Tuple{Agent, Agent}, sim_params::SimParams)
+function updateMemories!(players::SizedVector{2, Union{Nothing, Agent}}, sim_params::SimParams)
     for player in players
         if length(player.memory) == sim_params.memory_length
             popfirst!(player.memory)

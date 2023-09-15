@@ -5,7 +5,7 @@ include("simulation_functions.jl")
 #NOTE: UPDATE TO ACCEPT MODEL STRUCT ONLY!!!
 function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(sim_params.random_seed)
+        Random.seed!(model.sim_params.random_seed)
     end
 
     #set up stopping condition sim_params specific fields
