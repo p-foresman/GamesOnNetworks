@@ -162,171 +162,29 @@ end
 
 #######################################################
 
-
-##### multiple dispatch for various graph parameter sets #####
-function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = complete_graph(sim_params.number_agents)
-    agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
-end
-function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    edge_probability = graph_params.λ / sim_params.number_agents
-    graph = nothing
-    while true
-        graph = erdos_renyi(sim_params.number_agents, edge_probability)
-        if graph.ne >= 1 #simulation will break if graph has no edges
-            break
-        end
-    end
-    agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
-end
-function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = watts_strogatz(sim_params.number_agents, graph_params.κ, graph_params.β)
-    agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
-end
-function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    m_count = Int64(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
-    graph = static_scale_free(sim_params.number_agents, m_count, graph_params.α)
-    agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
-end
-function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    community_size = Int64(sim_params.number_agents / graph_params.communities)
-    # println(community_size)
-    internal_edge_probability = graph_params.internal_λ / community_size
-    internal_edge_probability_vector = Vector{Float64}([])
-    sizes_vector = Vector{Int64}([])
-    for community in 1:graph_params.communities
-        push!(internal_edge_probability_vector, internal_edge_probability)
-        push!(sizes_vector, community_size)
-    end
-    external_edge_probability = graph_params.external_λ / sim_params.number_agents
-    affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_edge_probability_vector, external_edge_probability, sizes_vector)
-    graph = nothing
-    while true
-        graph = stochastic_block_model(affinity_matrix, sizes_vector)
-        if graph.ne >= 1
-            break
-        end
-    end
-    agent_graph = AgentGraph{sim_params.number_agents}(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
-end
-
-
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
-        #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
-        if vertex % 2 == 0
-            recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
-        else
-            recollection = game.strategies[1][3]
-        end
-        to_push = (agent.tag, recollection)
-        for _ in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
-        end
-    end
-    return nothing
-end
-
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
-        #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
-        recollection = game.strategies[1][2]
-        to_push = (agent.tag, recollection)
-        for _ in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
-        end
-    end
-    return nothing
-end
-
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
-        #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
-        for _ in 1:sim_params.memory_length
-            to_push = (agent.tag, rand(game.strategies[1]))
-            push!(agent.memory, to_push)
-        end
-    end
-    return nothing
-end
-
-
-function initStoppingCondition!(stopping_condition::EquityPsychological, sim_params::SimParams)
-    return nothing
-end
-
-function initStoppingCondition!(stopping_condition::EquityBehavioral, sim_params::SimParams)
-    stopping_condition.period_limit = sim_params.memory_length
-    return nothing
-end
-
-function initStoppingCondition!(stopping_condition::PeriodCutoff, sim_params::SimParams)
-    return nothing
-end
-
-function checkStoppingCondition(stopping_condition::EquityPsychological, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+#NOTE: CAN REMOVE SIM_PARAMS FROM THESE! (ALL CALCULATIONS DONE IN MODEL INITIALIZATION)
+function checkStoppingCondition(stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    number_hermits = 0 #ensure that hermit agents are not considered in transition determination
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if degree(agent_graph.graph, vertex) == 0
-            number_hermits += 1
-            continue
+    for agent in agent_graph.agents
+        if !agent.is_hermit
+            if countStrats(agent.memory, stopping_condition.strategy) >= stopping_condition.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
+                number_transitioned += 1
+            end
         end
-
-        if countStrats(agent.memory, stopping_condition.strategy) >= (1 - sim_params.error) * sim_params.memory_length #this is hard coded to strategy 2 (M) for now. Should change later!
-            number_transitioned += 1
-        end
-
     end 
-    return number_transitioned >= sim_params.number_agents - number_hermits
+    return number_transitioned >= stopping_condition.sufficient_transitioned
 end
 
-function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, current_periods::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    number_hermits = 0 #ensure that hermit agents are not considered in transition determination
-    for (vertex, agent) in enumerate(agent_graph.agents)
-        if degree(agent_graph.graph, vertex) == 0
-            number_hermits += 1
-            continue
+    for agent in agent_graph.agents
+        if !agent.is_hermit
+            if determineAgentBehavior(stopping_condition.game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+                number_transitioned += 1
+            end
         end
-
-        if determineAgentBehavior(stopping_condition.game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
-            number_transitioned += 1
-        end
-
     end 
-    if number_transitioned >= (1 - sim_params.error) * (sim_params.number_agents - number_hermits) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+    if number_transitioned >= stopping_condition.sufficient_transitioned
         stopping_condition.period_count += 1
         return stopping_condition.period_count >= stopping_condition.period_limit
     else
@@ -337,7 +195,7 @@ end
 
 
 
-function checkStoppingCondition(stopping_condition::PeriodCutoff, agent_graph::AgentGraph, sim_params::SimParams, current_periods::Integer)
+function checkStoppingCondition(stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Integer)
     return current_periods >= stopping_condition.period_cutoff
 end
 

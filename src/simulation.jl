@@ -2,6 +2,7 @@
 include("simulation_functions.jl")
 
 
+#NOTE: UPDATE TO ACCEPT MODEL STRUCT ONLY!!!
 function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(sim_params.random_seed)
@@ -13,7 +14,7 @@ function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams, 
 
     #create graph and subsequent metagraph to hold node metadata (associate node with agent object)
     agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
-    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop)
+    graph_edges = collect(edges(agent_graph.graph)) #collect here to avoid excessive allocations in loop (collect() is DANGEROUS in loop) #NOTE: DO WE WANT THIS IN AGENTGRAPH STRUCT??
     #println(graph.fadjlist)
     #println(adjacency_matrix(graph)[1, 2])
 
@@ -24,7 +25,7 @@ function simulate(game::Game, sim_params::SimParams, graph_params::GraphParams, 
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
 
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !checkStoppingCondition(stopping_condition, agent_graph, sim_params, periods_elapsed)
+    while !checkStoppingCondition(stopping_condition, agent_graph, periods_elapsed)
         #play a period worth of games
         runPeriod!(agent_graph, graph_edges, game, sim_params, pre_allocated_arrays)
         periods_elapsed += 1

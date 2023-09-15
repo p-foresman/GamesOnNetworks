@@ -1,24 +1,29 @@
 # using Random, StaticArrays
 
+
 #constructor for individual agents with relevant fields (mutable to update object later)
 mutable struct Agent
     name::String
     tag::Symbol #NOTE: REMOVE
+    is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
     memory::Vector{Tuple{Symbol, Int8}}
     choice::Union{Int8, Nothing}
 
     function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing)
-        return new(name, tag, wealth, memory, choice)
+        return new(name, tag, false, wealth, memory, choice)
     end
     function Agent(name::String, tag::Symbol)
-        return new(name, tag, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new(name, tag, false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+    end
+    function Agent(name::String, is_hermit::Bool)
+        return new(name, Symbol(), is_hermit, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
     function Agent(name::String)
-        return new(name, Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new(name, Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
     function Agent()
-        return new("", Symbol(), 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new("", Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
     end
 end
 
@@ -69,10 +74,9 @@ end
 struct SimParams
     number_agents::Int64
     memory_length::Int64
-    memory_init_state::Symbol #NOTE: REMOVE
-    error::Float64
+    # error::Float64
     matches_per_period::Int64 #defined within constructor #NOTE: REMOVE
-    sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    # sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
     tag2::Symbol #NOTE: REMOVE
     tag1_proportion::Float64 #NOTE: REMOVE
@@ -81,7 +85,7 @@ struct SimParams
     #all keyword arguments
     function SimParams(;number_agents::Int64, memory_length::Int64, memory_init_state::Symbol, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
         matches_per_period = floor(number_agents / 2)
-        sufficient_equity = (1 - error) * memory_length
+        # sufficient_equity = (1 - error) * memory_length
         return new(number_agents, memory_length, memory_init_state, error, matches_per_period, sufficient_equity, tag1, tag2, tag1_proportion, random_seed)
     end
     function SimParams()
@@ -172,11 +176,21 @@ function displayName(graph_params::StochasticBlockModelParams) return "Stochasti
 struct AgentGraph{N} #a simpler replacement for MetaGraphs
     graph::SimpleGraph{Int64}
     agents::SVector{N, Agent}
+    # edges::Vector{SimpleEdge{Int64}}
+    # number_agents::Int64
+    number_hermits::Int64
     
-    function AgentGraph{N}(graph::SimpleGraph{Int64}) where {N}
-        # N = length(vertices(graph))
+    function AgentGraph(graph::SimpleGraph{Int64})
+        N = nv(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
-        return new{N}(graph, agents)
+        number_hermits = 0
+        for vertex in 1:N #could make graph-type specific multiple dispatch so this only needs to happen for ER and SBM (otherwise num_hermits=0)
+            if degree(graph, vertex) == 0
+                agents[vertex].is_hermit = true
+                number_hermits += 1
+            end
+        end
+        return new{N}(graph, agents, number_hermits)
     end
 end
 
@@ -240,13 +254,16 @@ end
 
 abstract type StoppingCondition end
 
-struct EquityPsychological <: StoppingCondition
+mutable struct EquityPsychological <: StoppingCondition
     name::Symbol
     game::Game
     strategy::Int8
+    sufficient_equity::Union{Nothing, Float64} #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    sufficient_transitioned::Union{Nothing, Float64}
+
 
     function EquityPsychological(game::Game, strategy::Integer)
-        return new(:equity_psychological, game, Int8(strategy))
+        return new(:equity_psychological, game, Int8(strategy), nothing, nothing)
     end
 end
 
@@ -254,13 +271,14 @@ mutable struct EquityBehavioral <: StoppingCondition
     name::Symbol
     game::Game
     strategy::Int8
+    sufficient_transitioned::Union{Nothing, Float64} #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
     period_limit::Union{Nothing, Int64} #initialized to nothing (determine in simulation). DEFENITION: memory_length
     period_count::Int64 #initialized at 0
     
 
     function EquityBehavioral(game::Game, strategy::Integer)
-        return new(:equity_behavioral, game, Int8(strategy), nothing, 0)
+        return new(:equity_behavioral, game, Int8(strategy), nothing, nothing, 0)
     end
 end
 
@@ -272,6 +290,28 @@ struct PeriodCutoff <: StoppingCondition
         return new(:period_cutoff, period_cutoff)
     end
 end
+
+
+
+##### include functions for model initialization
+include("model_functions.jl")
+
+struct Model
+    game::Game
+    sim_params::SimParams
+    graph_params::GraphParams
+    starting_condition::StartingCondition
+    stopping_condition::StoppingCondition
+    agent_graph::AgentGraph
+
+    function Model(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) #if instanitate=true, agent_graph is instantiated
+        agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+        initStoppingCondition!(stopping_condition, sim_params, agent_graph)
+        return new(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph)
+    end
+end
+
+
 
 #include the global definitions for StructTypes (more global definitions can be added in the file)
 include("settings/global_StructTypes.jl")
