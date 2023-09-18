@@ -83,4 +83,6 @@ const stopping_condition = EquityBehavioral(game, 2)
 
 const stopping_condition_test = PeriodCutoff(10000)
 
-# const model = SimModel(game, sim_params_list[1], graph_params_list[1], starting_condition, stopping_condition)
+const model = SimModel(game, sim_params_list[1], graph_params_list[1], starting_condition, stopping_condition_test)
+
+const timer = TimerOutput()

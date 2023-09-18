@@ -3,7 +3,7 @@ include("simulation_functions.jl")
 
 
 #NOTE: UPDATE TO ACCEPT MODEL STRUCT ONLY!!!
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(model::SimModel; to::TimerOutput, periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::Union{String, Nothing} = nothing, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Union{Integer, Nothing} = nothing, db_game_id::Union{Integer, Nothing} = nothing, db_graph_id::Union{Integer, Nothing} = nothing, db_sim_params_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(model.sim_params.random_seed)
     end
@@ -24,10 +24,11 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
     # opponent_strategy_probs = zeros.(Float64, size(game.payoff_matrix))
     # player_expected_utilities = zeros.(Float32, size(game.payoff_matrix))
 
+    @timeit to "simulate" begin
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
     while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
         #play a period worth of games
-        runPeriod!(model)
+        @timeit to "period" runPeriod!(model, to)
         periods_elapsed += 1
         already_pushed = false
         if db_filepath !== nothing && db_store_period !== nothing && periods_elapsed % db_store_period == 0 #push incremental results to DB
@@ -35,6 +36,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
             prev_simulation_uuid = db_status.simulation_uuid
             already_pushed = true
         end
+    end
     end
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer

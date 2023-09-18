@@ -49,7 +49,8 @@ using
     Fontconfig,
     Statistics,
     Bootstrap,
-    DataStructures
+    DataStructures,
+    TimerOutputs
 
 include("types.jl")
 include("sql.jl")

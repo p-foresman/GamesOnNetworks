@@ -18,21 +18,28 @@ end
 
 ######################## game algorithm ####################
 
-function setPlayers!(model::SimModel)
-    edge = rand(model.agent_graph.edges)
-    vertex_list = shuffle!([edge.src, edge.dst])
-    for player in eachindex(model.pre_allocated_arrays.players) #NOTE: this will always be 2. Should I just optimize for two player games?
-        model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
-    end
-end
+# function setPlayers!(model::SimModel)
+#     edge = rand(model.agent_graph.edges)
+#     vertex_list = shuffle!([edge.src, edge.dst])
+#     for player in eachindex(model.pre_allocated_arrays.players) #NOTE: this will always be 2. Should I just optimize for two player games?
+#         model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
+#     end
+# end
 
 
-function runPeriod!(model::SimModel) #NOTE: what type are graph_edges ??
+function runPeriod!(model::SimModel, to::TimerOutput) #NOTE: what type are graph_edges ??
     for match in 1:model.sim_params.matches_per_period
-        setPlayers!(model)
+        @timeit to "match" begin
+        # @timeit to "set players" setPlayers!(model)
+        @timeit to "set players" begin
+        edge = rand(model.agent_graph.edges)
+        vertex_list = shuffle!([edge.src, edge.dst])
+        
+        end
         #println(players[1].name * " playing game with " * players[2].name)
-        playGame!(model)
-        resetArrays!(model)
+        @timeit to "play game" playGame!(model)
+        @timeit to "reset arrays" resetArrays!(model)
+        end
     end
     return nothing
 end
