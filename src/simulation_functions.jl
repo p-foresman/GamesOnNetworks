@@ -18,28 +18,29 @@ end
 
 ######################## game algorithm ####################
 
-# function setPlayers!(model::SimModel)
-#     edge = rand(model.agent_graph.edges)
-#     vertex_list = shuffle!([edge.src, edge.dst])
-#     for player in eachindex(model.pre_allocated_arrays.players) #NOTE: this will always be 2. Should I just optimize for two player games?
-#         model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
-#     end
-# end
+function setPlayers!(model::SimModel)
+    edge::Graphs.SimpleEdge{Int64} = rand(model.agent_graph.edges)
+    vertex_list::Vector{Int64} = shuffle!([edge.src, edge.dst])
+    for player in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
+        model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
+    end
+    return nothing
+end
 
 
-function runPeriod!(model::SimModel, to::TimerOutput) #NOTE: what type are graph_edges ??
+function runPeriod!(model::SimModel) #NOTE: what type are graph_edges ??
     for match in 1:model.sim_params.matches_per_period
-        @timeit to "match" begin
+        # @timeit to "match" begin
         # @timeit to "set players" setPlayers!(model)
-        @timeit to "set players" begin
-        edge = rand(model.agent_graph.edges)
-        vertex_list = shuffle!([edge.src, edge.dst])
-        
-        end
+        # @timeit to "reset arrays" resetArrays!(model)
+        # @timeit to "set players" setPlayers!(model)
+        # #println(players[1].name * " playing game with " * players[2].name)
+        # @timeit to "play game" playGame!(model, to)
+        resetArrays!(model)
+        setPlayers!(model)
         #println(players[1].name * " playing game with " * players[2].name)
-        @timeit to "play game" playGame!(model)
-        @timeit to "reset arrays" resetArrays!(model)
-        end
+        playGame!(model)
+        # end
     end
     return nothing
 end
@@ -47,6 +48,8 @@ end
 
 #play the defined game
 function playGame!(model::SimModel)
+    # @timeit to "make choices" makeChoices!(model)
+    # @timeit to "update memories" updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
     makeChoices!(model)
     updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
     return nothing
@@ -65,7 +68,7 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
-    for player in eachindex(model.pre_allocated_arrays.players)
+    for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
         if rand() <= model.sim_params.error 
             model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
         else
@@ -127,7 +130,7 @@ function findMaximumStrats(expected_utilities::Vector{Float32})
 end
 
 #update agent's memory vector
-function updateMemories!(players::SizedVector{2, Union{Nothing, Agent}}, sim_params::SimParams)
+function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
     for player in players
         if length(player.memory) == sim_params.memory_length
             popfirst!(player.memory)
@@ -143,9 +146,9 @@ end
 
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
-function calculateExpectedOpponentProbs(game::Game, memory_set::Vector{Tuple{Symbol, T}} where T <: Integer)
-    length = size(game.payoff_matrix, 1) #for symmetric games only
-    opponent_strategy_recollection = zeros(Int64, length)
+function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::Vector{Tuple{Symbol, Int8}}) where {S1, S2, L}
+    # length = size(game.payoff_matrix, 1) #for symmetric games only
+    opponent_strategy_recollection = zeros(Int64, S1)
     for memory in memory_set
         opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
@@ -167,7 +170,7 @@ function calculateExpectedUtilities(game::Game, opponent_probs)
 end
 
 
-function determineAgentBehavior(game::Game, memory_set::Vector{Tuple{Symbol, T}} where T <: Integer)
+function determineAgentBehavior(game::Game, memory_set::Vector{Tuple{Symbol, Int8}})
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
     max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
@@ -177,7 +180,7 @@ end
 #######################################################
 
 #NOTE: CAN REMOVE SIM_PARAMS FROM THESE! (ALL CALCULATIONS DONE IN MODEL INITIALIZATION)
-function checkStoppingCondition(stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agent_graph.agents
         if !agent.is_hermit
@@ -189,7 +192,7 @@ function checkStoppingCondition(stopping_condition::EquityPsychological, agent_g
     return number_transitioned >= stopping_condition.sufficient_transitioned
 end
 
-function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Integer) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agent_graph.agents
         if !agent.is_hermit
@@ -209,7 +212,7 @@ end
 
 
 
-function checkStoppingCondition(stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Integer)
+function checkStoppingCondition(stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Int128)
     return current_periods >= stopping_condition.period_cutoff
 end
 

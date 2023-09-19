@@ -8,22 +8,22 @@ mutable struct Agent
     is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
     memory::Vector{Tuple{Symbol, Int8}}
-    choice::Union{Int8, Nothing}
+    choice::Int8
 
-    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Union{Int8, Nothing} = nothing)
+    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Int8 = Int8(0)) #initialize choice at 0 (representing no choice)
         return new(name, tag, false, wealth, memory, choice)
     end
     function Agent(name::String, tag::Symbol)
-        return new(name, tag, false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new(name, tag, false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
     end
     function Agent(name::String, is_hermit::Bool)
-        return new(name, Symbol(), is_hermit, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new(name, Symbol(), is_hermit, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
     end
     function Agent(name::String)
-        return new(name, Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new(name, Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
     end
     function Agent()
-        return new("", Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), nothing)
+        return new("", Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
     end
 end
 
@@ -199,24 +199,25 @@ end
 
 
 
-struct PreAllocatedArrays{N} #N is number of players
-    # players::SizedVector{N, Union{Nothing, Agent}}
-    opponent_strategy_recollection::SVector{N, Vector{Int64}}
-    opponent_strategy_probs::SVector{N, Vector{Float64}}
-    player_expected_utilities::SVector{N, Vector{Float32}}
+struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?)
+    players::Vector{Agent}
+    opponent_strategy_recollection::SVector{2, Vector{Int64}}
+    opponent_strategy_probs::SVector{2, Vector{Float64}}
+    player_expected_utilities::SVector{2, Vector{Float32}}
 
     function PreAllocatedArrays(payoff_matrix)
         sizes = size(payoff_matrix)
         N = length(sizes)
-        # players = SizedVector{N, Union{Nothing, Agent}}([nothing for _ in 1:N])
+        players = Vector{Agent}([Agent() for _ in 1:N]) #should always be 2
         opponent_strategy_recollection = SVector{N, Vector{Int64}}(zeros.(Int64, sizes))
         opponent_strategy_probs = SVector{N, Vector{Float64}}(zeros.(Float64, sizes))
         player_expected_utilities = SVector{N, Vector{Float32}}(zeros.(Float32, sizes))
-        return new{N}(opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
+        return new(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
     end
 end
-function resetArrays!(pre_allocated_arrays::PreAllocatedArrays{N}) where {N}
-    for player in 1:N
+
+function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
+    for player in 1:2
         # pre_allocated_arrays.players[player] = nothing
         pre_allocated_arrays.opponent_strategy_recollection[player] .= Int64(0)
         pre_allocated_arrays.opponent_strategy_probs[player] .= Float64(0)
@@ -230,28 +231,28 @@ abstract type StartingCondition end
 
 struct FractiousState <: StartingCondition
     name::Symbol
-    game::Game
+    # game::Game
 
-    function FractiousState(game::Game)
-        return new(:fractious, game)
+    function FractiousState()
+        return new(:fractious)
     end
 end
 
 struct EquityState <: StartingCondition
     name::Symbol
-    game::Game
+    # game::Game
 
-    function EquityState(game::Game)
-        return new(:equity, game)
+    function EquityState()
+        return new(:equity)
     end
 end
 
 struct RandomState <: StartingCondition
     name::Symbol
-    game::Game
+    # game::Game
 
-    function RandomState(game::Game)
-        return new(:random, game)
+    function RandomState()
+        return new(:random)
     end
 end
 
@@ -260,29 +261,29 @@ abstract type StoppingCondition end
 
 mutable struct EquityPsychological <: StoppingCondition
     name::Symbol
-    game::Game
+    # game::Game
     strategy::Int8
-    sufficient_equity::Union{Nothing, Float64} #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
-    sufficient_transitioned::Union{Nothing, Float64}
+    sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    sufficient_transitioned::Float64
 
 
-    function EquityPsychological(game::Game, strategy::Integer)
-        return new(:equity_psychological, game, Int8(strategy), nothing, nothing)
+    function EquityPsychological(strategy::Integer)
+        return new(:equity_psychological, Int8(strategy), 0.0, 0.0)
     end
 end
 
 mutable struct EquityBehavioral <: StoppingCondition
     name::Symbol
-    game::Game
+    # game::Game
     strategy::Int8
-    sufficient_transitioned::Union{Nothing, Float64} #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
-    period_limit::Union{Nothing, Int64} #initialized to nothing (determine in simulation). DEFENITION: memory_length
+    period_limit::Int64 #initialized to nothing (determine in simulation). DEFENITION: memory_length
     period_count::Int64 #initialized at 0
     
 
-    function EquityBehavioral(game::Game, strategy::Integer)
-        return new(:equity_behavioral, game, Int8(strategy), nothing, nothing, 0)
+    function EquityBehavioral(strategy::Integer)
+        return new(:equity_behavioral, Int8(strategy), 0.0, 0, 0)
     end
 end
 
@@ -300,20 +301,22 @@ end
 ##### include functions for model initialization
 include("model_functions.jl")
 
-struct SimModel
-    game::Game
+struct SimModel{S1, S2, L, N, E}
+    game::Game{S1, S2, L}
     sim_params::SimParams
     graph_params::GraphParams
     starting_condition::StartingCondition
     stopping_condition::StoppingCondition
-    agent_graph::AgentGraph
+    agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) #if instanitate=true, agent_graph is instantiated
+    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) where {S1, S2, L}
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+        N = nv(agent_graph.graph)
+        E = ne(agent_graph.graph)
         initStoppingCondition!(stopping_condition, sim_params, agent_graph)
         pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
-        return new(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
+        return new{S1, S2, L, N, E}(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
 end
 

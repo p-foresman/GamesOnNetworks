@@ -78,11 +78,11 @@ const graph_params_list = [
     StochasticBlockModelParams(2, 5.0, 0.5)
 ]
 
-const starting_condition = FractiousState(game)
-const stopping_condition = EquityBehavioral(game, 2)
+const starting_condition = FractiousState()
+const stopping_condition = EquityBehavioral(2)
 
 const stopping_condition_test = PeriodCutoff(10000)
 
 const model = SimModel(game, sim_params_list[1], graph_params_list[1], starting_condition, stopping_condition_test)
 
-const timer = TimerOutput()
+# const timer = TimerOutput()
