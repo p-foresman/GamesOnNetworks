@@ -2,10 +2,10 @@
 ############################### FUNCTIONS #######################################
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
-function constructSimParamsList(;number_agents_start::Int64, number_agents_end::Int64, number_agents_step::Int64, memory_length_start::Int64, memory_length_end::Int64, memory_length_step::Int64, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+function constructSimParamsList(;number_agents_list::Vector{Integer}, memory_length_list::Vector{Integer}, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
     sim_params_list = Vector{SimParams}([])
-    for number_agents in number_agents_start:number_agents_step:number_agents_end
-        for memory_length in memory_length_start:memory_length_step:memory_length_end
+    for number_agents in number_agents_list
+        for memory_length in memory_length_list
             for error in error_list
                 new_sim_params_set = SimParams(number_agents=number_agents, memory_length=memory_length, error=error, tag1=tag1, tag2=tag2, tag1_proportion=tag1_proportion, random_seed=random_seed)
                 push!(sim_params_list, new_sim_params_set)
@@ -14,6 +14,48 @@ function constructSimParamsList(;number_agents_start::Int64, number_agents_end::
     end
     return sim_params_list
 end
+
+
+function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer=nothing)
+    model_list = Vector{SimModel}([])
+    model_number = 1
+    for game in game_list
+        for sim_params in sim_params_list
+            for graph_params in graph_params_list
+                for starting_condition in starting_condition_list
+                    for stopping_condition in stopping_condition_list
+                        if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
+                            push!(model_list, SimModel(game, sim_params, graph_params, starting_condition, stopping_condition))
+                        end
+                        model_number += 1
+                    end
+                end
+            end
+        end
+    end
+    return model_list
+end
+
+function selectAndConstructDistributedModel(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer)
+   #add validation here??  
+    model_number = 1
+    for game in game_list
+        for sim_params in sim_params_list
+            for graph_params in graph_params_list
+                for starting_condition in starting_condition_list
+                    for stopping_condition in stopping_condition_list
+                        if model_number == slurm_task_id
+                            return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition)
+                        end
+                        model_number += 1
+                    end
+                end
+            end
+        end
+    end
+end
+
+
 
 
 ######################## game algorithm ####################
@@ -129,24 +171,38 @@ function findMaximumStrats(expected_utilities::Vector{Float32})
     return rand(max_strats)
 end
 
-#update agent's memory vector
-function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
-    for player in players
-        if length(player.memory) == sim_params.memory_length
-            popfirst!(player.memory)
-        end
+# update agent's memory vector
+function pushMemory!(agent::Agent, percept::Percept, sim_params::SimParams)
+    if length(agent.memory) == sim_params.memory_length
+        popfirst!(agent.memory)
     end
-    push!(players[1].memory, (players[2].tag, players[2].choice))
-    push!(players[2].memory, (players[1].tag, players[1].choice))
+    push!(agent.memory, percept)
     return nothing
 end
+
+function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
+    pushMemory!(players[1], (players[2].tag, players[2].choice), sim_params)
+    pushMemory!(players[2], (players[1].tag, players[1].choice), sim_params)
+    return nothing
+end
+
+# function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
+#     for player in players
+#         if length(player.memory) == sim_params.memory_length
+#             popfirst!(player.memory)
+#         end
+#     end
+#     push!(players[1].memory, (players[2].tag, players[2].choice))
+#     push!(players[2].memory, (players[1].tag, players[1].choice))
+#     return nothing
+# end
 
 
 
 
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
-function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::Vector{Tuple{Symbol, Int8}}) where {S1, S2, L}
+function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
     # length = size(game.payoff_matrix, 1) #for symmetric games only
     opponent_strategy_recollection = zeros(Int64, S1)
     for memory in memory_set
@@ -203,7 +259,7 @@ function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_grap
     end 
     if number_transitioned >= stopping_condition.sufficient_transitioned
         stopping_condition.period_count += 1
-        return stopping_condition.period_count >= stopping_condition.period_limit
+        return stopping_condition.period_count >= stopping_condition.period_cutoff
     else
         stopping_condition.period_count = 0 #reset period count
         return false

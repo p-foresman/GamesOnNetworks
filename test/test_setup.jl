@@ -40,3 +40,5 @@ const graph_params_sbm = StochasticBlockModelParams(2, 5.0, 0.5)
 
 const starting_condition_fractious = FractiousState(game)
 const stopping_condition_equity_psychological = EquityPsychological(game, 2)
+
+model

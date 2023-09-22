@@ -25,6 +25,25 @@ StructTypes.StructType(::Type{StochasticBlockModelParams}) = StructTypes.Struct(
 StructTypes.subtypekey(::Type{GraphParams}) = :graph_type
 StructTypes.subtypes(::Type{GraphParams}) = (complete=CompleteParams, er=ErdosRenyiParams, sw=SmallWorldParams, sf=ScaleFreeParams, sbm=StochasticBlockModelParams)
 
+
+############################# StartingCondition Types ###############################
+StructTypes.StructType(::Type{StartingCondition}) = StructTypes.AbstractType()
+StructTypes.StructType(::Type{FractiousState}) = StructTypes.Struct()
+StructTypes.StructType(::Type{EquityState}) = StructTypes.Struct()
+StructTypes.StructType(::Type{RandomState}) = StructTypes.Struct()
+StructTypes.subtypekey(::Type{StartingCondition}) = :name
+StructTypes.subtypes(::Type{StartingCondition}) = (fractious=FractiousState, equity=EquityState, random=RandomState)
+
+
+############################# StoppingCondition Types ###############################
+StructTypes.StructType(::Type{StoppingCondition}) = StructTypes.AbstractType()
+StructTypes.StructType(::Type{EquityPsychological}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{EquityBehavioral}) = StructTypes.Mutable()
+StructTypes.StructType(::Type{PeriodCutoff}) = StructTypes.Struct()
+StructTypes.subtypekey(::Type{StoppingCondition}) = :name
+StructTypes.subtypes(::Type{StoppingCondition}) = (equity_psychological=EquityPsychological, equity_behavioral=EquityBehavioral, period_cutoff=PeriodCutoff)
+
+
 ####################### Xoshiro random number generator type ########################
 #Needed to read and write the state of the Xoshiro RNG with JSON3 package
 StructTypes.StructType(::Type{Random.Xoshiro}) = StructTypes.Mutable()

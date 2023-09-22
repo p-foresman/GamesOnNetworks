@@ -125,7 +125,7 @@ end
 
 function initStoppingCondition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
     stopping_condition.sufficient_transitioned = (1 - sim_params.error) * (sim_params.number_agents - agent_graph.number_hermits) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
-    stopping_condition.period_limit = sim_params.memory_length
+    stopping_condition.period_cutoff = sim_params.memory_length
     return nothing
 end
 

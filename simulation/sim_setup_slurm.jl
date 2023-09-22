@@ -1,65 +1,3 @@
-const sim_params_list_1 = constructSimParamsList(
-                number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 200,
-                number_agents_step = 10,
-                memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 10,
-                memory_length_step = 3,
-                memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.05, 0.1], #iterated over for multi-loop simulation
-                tag1 = :red,
-                tag2 = :blue,
-                tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
-                random_seed = 1234 #sets random number generator
-                )
-
-const sim_params_list_2 = constructSimParamsList(
-                number_agents_start = 10, #creates iterator for multi-loop simulation
-                number_agents_end = 10,
-                number_agents_step = 10,
-                memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 19,
-                memory_length_step = 3,
-                memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.05, 0.1], #iterated over for multi-loop simulation
-                tag1 = :red,
-                tag2 = :blue,
-                tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
-                random_seed = 1234 #sets random number generator
-                )
-
-const sim_params_list_3 = constructSimParamsList(
-                number_agents_start = 100, #creates iterator for multi-loop simulation
-                number_agents_end = 100,
-                number_agents_step = 10,
-                memory_length_start = 10, #creates iterator for multi-loop simulation
-                memory_length_end = 19,
-                memory_length_step = 3,
-                memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                error_list = [0.1], #iterated over for multi-loop simulation
-                tag1 = :red,
-                tag2 = :blue,
-                tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
-                random_seed = 1234 #sets random number generator
-                )
-
-const sim_params_list_4 = constructSimParamsList(
-                    number_agents_start = 50, #creates iterator for multi-loop simulation
-                    number_agents_end = 50,
-                    number_agents_step = 10,
-                    memory_length_start = 10, #creates iterator for multi-loop simulation
-                    memory_length_end = 19,
-                    memory_length_step = 3,
-                    memory_init_state = :fractious, #specifies initialization state. Choose between :fractious, :equity, and :custom (:custom will initialize from a separate dataframe)
-                    error_list = [0.1], #iterated over for multi-loop simulation
-                    tag1 = :red,
-                    tag2 = :blue,
-                    tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
-                    random_seed = 1234 #sets random number generator
-                    )
-                
-const sim_params_list_array = [sim_params_list_1, sim_params_list_2, sim_params_list_3, sim_params_list_4]
-
 ################### Define Game Payoff Matrix and Strategies #######################
 
 const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
@@ -71,7 +9,19 @@ const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
 # s2 = size(payoff_matrix, 2)
 
 #create bargaining game type (players will be slotted in)
-const game = Game{3, 3}("Bargaining Game", payoff_matrix) # would game::Game{s1, s2} improve performance?
+const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::Game{s1, s2} improve performance?
+
+
+
+const sim_params_list = constructSimParamsList(
+                number_agents_list = [i for i in 10:10:200], #creates iterator for multi-loop simulation
+                memory_length_list = [i for i in 10:3:19], #creates iterator for multi-loop simulation
+                error_list = [0.05, 0.1], #iterated over for multi-loop simulation
+                tag1 = :red,
+                tag2 = :blue,
+                tag1_proportion = 1.0, #1.0 for effectively "no tags" (all agents get tag1)
+                random_seed = 1234 #sets random number generator
+                )
 
 
 
@@ -97,5 +47,5 @@ const graph_params_list = [
     StochasticBlockModelParams(2, 5.0, 0.5)
 ]
 
-const starting_condition = FractiousState(game)
-const stopping_condition = EquityBehavioral(game, 2)
+const starting_condition_list = [FractiousState(game)]
+const stopping_condition_list = [EquityBehavioral(game, 2)]

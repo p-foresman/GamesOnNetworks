@@ -2,12 +2,15 @@
 
 
 #constructor for individual agents with relevant fields (mutable to update object later)
+const Percept = Tuple{Symbol, Int8}
+const PerceptSequence = Vector{Percept}
+
 mutable struct Agent
     name::String
     tag::Symbol #NOTE: REMOVE
     is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
-    memory::Vector{Tuple{Symbol, Int8}}
+    memory::PerceptSequence
     choice::Int8
 
     function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Int8 = Int8(0)) #initialize choice at 0 (representing no choice)
@@ -29,10 +32,13 @@ end
 
 
 #constructor for specific game to be played
+const PayoffMatrix{S1, S2, L} = SMatrix{S1, S2, Tuple{Int8, Int8}, L}
+const StrategySet{L} = SVector{L, Int8}
+
 struct Game{S1, S2, L}
     name::String
-    payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
-    strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES
+    payoff_matrix::PayoffMatrix{S1, S2, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+    strategies::Tuple{StrategySet{S1}, StrategySet{S2}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES #NOTE: REMOVE THIS (strategies are inherent in payoff_matrix)
 
     function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}}) where {S1, S2}
         L = S1 * S2
@@ -171,11 +177,14 @@ function displayName(graph_params::ScaleFreeParams) return "ScaleFree α=$(graph
 function displayName(graph_params::StochasticBlockModelParams) return "StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)" end
 
 
-
+const Graph = SimpleGraph{Int64}
+const AgentSet{N} = SVector{N, Agent}
+const Relationship = Graphs.SimpleEdge{Int64}
+const RelationshipSet{E} = SVector{E, Relationship}
 struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
-    graph::SimpleGraph{Int64}
-    agents::SVector{N, Agent}
-    edges::SVector{E, Graphs.SimpleEdge{Int64}}
+    graph::Graph
+    agents::AgentSet{N}
+    edges::RelationshipSet{E}
     # number_agents::Int64
     number_hermits::Int64
     
@@ -278,7 +287,7 @@ mutable struct EquityBehavioral <: StoppingCondition
     strategy::Int8
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
-    period_limit::Int64 #initialized to nothing (determine in simulation). DEFENITION: memory_length
+    period_cutoff::Int64 #initialized to nothing (determine in simulation). DEFENITION: memory_length.
     period_count::Int64 #initialized at 0
     
 

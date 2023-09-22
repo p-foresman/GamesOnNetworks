@@ -47,6 +47,26 @@ function initDataBase(db_filepath::String)
                             );
                     ")
 
+    SQLite.execute(db, "
+                            CREATE TABLE IF NOT EXISTS starting_conditions
+                            (
+                                starting_condition_id INTEGER PRIMARY KEY,
+                                name TEXT NOT NULL,
+                                starting_condition TEXT NOT NULL,
+                                UNIQUE(name, starting_condition)
+                            );
+                    ")
+
+    SQLite.execute(db, "
+                            CREATE TABLE IF NOT EXISTS stopping_conditions
+                            (
+                                stopping_condition_id INTEGER PRIMARY KEY,
+                                name TEXT NOT NULL,
+                                stopping_condition TEXT NOT NULL,
+                                UNIQUE(name, stopping_condition)
+                            );
+                    ")
+
     #create 'sim_groups' table to group simulations and give the groups an easy-access description (version control is handled with the prev_simulation_id column in the individual simulation saves)
     SQLite.execute(db, "
                             CREATE TABLE IF NOT EXISTS sim_groups
@@ -68,6 +88,8 @@ function initDataBase(db_filepath::String)
                                 game_id INTEGER NOT NULL,
                                 graph_id INTEGER NOT NULL,
                                 sim_params_id INTEGER NOT NULL,
+                                starting_condition_id INTEGER NOT NULL,
+                                stopping_condition_id INTEGER NOT NULL,
                                 graph_adj_matrix TEXT DEFAULT NULL,
                                 rng_state TEXT NOT NULL,
                                 periods_elapsed INTEGER NOT NULL,
@@ -138,6 +160,12 @@ function initTempSimulationDB(db_filepath::String)
                                 FOREIGN KEY (sim_params_id)
                                     REFERENCES sim_params (sim_params_id)
                                     ON DELETE CASCADE,
+                                FOREIGN KEY (starting_condition_id)
+                                    REFERENCES starting_conditions (starting_condition_id)
+                                    ON DELETE CASCADE,
+                                FOREIGN KEY (stopping_condition_id)
+                                    REFERENCES stopping_conditions (stopping_condition_id)
+                                    ON DELETE CASCADE
                                 UNIQUE(simulation_uuid)
                             );
                     ")
@@ -260,6 +288,60 @@ function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_
     return tuple_to_return
 end
 
+function insertStartingCondition(db_filepath::String, starting_condition_name::String, starting_condition_str::String)
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    status = SQLite.execute(db, "
+                                    INSERT OR IGNORE INTO sim_params
+                                    (
+                                        name,
+                                        starting_condition
+                                    )
+                                    VALUES
+                                    (
+                                        '$starting_condition_name',
+                                        '$(starting_condition_str)'
+                                );
+                            ")
+    query = DBInterface.execute(db, "
+                                        SELECT starting_condition_id
+                                        FROM starting_conditions
+                                        WHERE starting_condition = '$starting_condition_str';
+                                ")
+    df = DataFrame(query) #must create a DataFrame to acces query data
+    insert_row = df[1, :starting_condition_id]
+    SQLite.close(db)
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: starting_conditions]... INSERT STATUS: [$status] STARTING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
+    return tuple_to_return
+end
+
+function insertStoppingCondition(db_filepath::String, stopping_condition_name::String, stopping_condition_str::String)
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    status = SQLite.execute(db, "
+                                    INSERT OR IGNORE INTO sim_params
+                                    (
+                                        name,
+                                        stopping_condition
+                                    )
+                                    VALUES
+                                    (
+                                        '$stopping_condition_name',
+                                        '$(stopping_condition_str)'
+                                );
+                            ")
+    query = DBInterface.execute(db, "
+                                        SELECT stopping_condition_id
+                                        FROM stopping_conditions
+                                        WHERE stopping_condition = '$stopping_condition_str';
+                                ")
+    df = DataFrame(query) #must create a DataFrame to acces query data
+    insert_row = df[1, :stopping_condition_id]
+    SQLite.close(db)
+    tuple_to_return = (status_message = "SQLite [SimulationSaves: stopping_conditions]... INSERT STATUS: [$status] STOPPING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
+    return tuple_to_return
+end
+
 function insertSimGroup(db_filepath::String, description::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
@@ -286,7 +368,7 @@ function insertSimGroup(db_filepath::String, description::String)
     return tuple_to_return
 end
 
-function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
     uuid = "$(uuid4())"
     
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
@@ -303,6 +385,8 @@ function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simula
                                         game_id,
                                         graph_id,
                                         sim_params_id,
+                                        starting_condition_id,
+                                        stopping_condition_id,
                                         graph_adj_matrix,
                                         rng_state,
                                         periods_elapsed
@@ -312,9 +396,11 @@ function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simula
                                         '$uuid',
                                         $sim_group_id,
                                         '$prev_simulation_uuid',
-                                        $game_id,
-                                        $graph_id,
-                                        $sim_params_id,
+                                        $(db_id_tuple.game_id),
+                                        $(db_id_tuple.graph_id),
+                                        $(db_id_tuple.sim_params_id),
+                                        $(db_id_tuple.starting_condition_id),
+                                        $(db_id_tuple.stopping_condition_id),
                                         '$graph_adj_matrix_str',
                                         '$rng_state',
                                         $periods_elapsed
@@ -350,7 +436,7 @@ function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
 end
 
 
-function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
     simulation_uuid = "$(uuid4())"
     
     #prepare simulation SQL
@@ -378,6 +464,8 @@ function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Int
                                         game_id,
                                         graph_id,
                                         sim_params_id,
+                                        starting_condition_id,
+                                        stopping_condition_id,
                                         graph_adj_matrix,
                                         rng_state,
                                         periods_elapsed
@@ -387,9 +475,11 @@ function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Int
                                         '$simulation_uuid',
                                         $sim_group_id,
                                         '$prev_simulation_uuid',
-                                        $game_id,
-                                        $graph_id,
-                                        $sim_params_id,
+                                        $(db_id_tuple.game_id),
+                                        $(db_id_tuple.graph_id),
+                                        $(db_id_tuple.sim_params_id),
+                                        $(db_id_tuple.starting_condition_id),
+                                        $(db_id_tuple.stopping_condition_id),
                                         '$graph_adj_matrix_str',
                                         '$rng_state',
                                         $periods_elapsed
@@ -452,6 +542,32 @@ function querySimParams(db_filepath::String, sim_params_id::Integer)
     return df
 end
 
+function queryStartingCondition(db_filepath::String, starting_condition_id::Integer)
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM starting_conditions
+                                        WHERE starting_condition_id = $starting_condition_id;
+                                ")
+    df = DataFrame(query) #must create a DataFrame to acces query data
+    SQLite.close(db)
+    return df
+end
+
+function queryStoppingCondition(db_filepath::String, stopping_condition_id::Integer)
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    query = DBInterface.execute(db, "
+                                        SELECT *
+                                        FROM stopping_conditions
+                                        WHERE stopping_condition_id = $stopping_condition_id;
+                                ")
+    df = DataFrame(query) #must create a DataFrame to acces query data
+    SQLite.close(db)
+    return df
+end
+
 function querySimGroups(db_filepath::String, sim_group_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
@@ -506,11 +622,15 @@ function querySimulationForRestore(db_filepath::String, simulation_id::Integer)
                                             simulations.graph_adj_matrix,
                                             graphs.graph_params,
                                             games.game,
-                                            games.payoff_matrix_size
+                                            games.payoff_matrix_size,
+                                            starting_conditions.starting_condition,
+                                            stopping_conditions.stopping_condition
                                         FROM simulations
                                         INNER JOIN games USING(game_id)
                                         INNER JOIN graphs USING(graph_id)
                                         INNER JOIN sim_params USING(sim_params_id)
+                                        INNER JOIN starting_conditions USING(starting_condition_id)
+                                        INNER JOIN stopping_conditions USING(stopping_condition_id)
                                         WHERE simulations.simulation_id = $simulation_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
@@ -533,32 +653,32 @@ function queryAgentsForRestore(db_filepath::String, simulation_id::Integer)
 end
 
 
-
-function querySimulationsByGroup(db_filepath::String, sim_group_id::Int)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    query = DBInterface.execute(db, "
-                                        SELECT
-                                            simulations.simulation_id,
-                                            simulations.sim_group_id,
-                                            simulations.sim_params,
-                                            simulations.graph_adj_matrix,
-                                            simulations.use_seed,
-                                            simulations.rng_state,
-                                            simulations.periods_elapsed,
-                                            games.game,
-                                            games.payoff_matrix_size,
-                                            graphs.graph_params,
-                                        FROM simulations
-                                        INNER JOIN games USING(game_id)
-                                        INNER JOIN graphs USING(graph_id)
-                                        INNER JOIN sim_params USING(sim_params_id)
-                                        WHERE simulations.sim_group_id = $sim_group_id
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    SQLite.close(db)
-    return df
-end
+#NOTE: FIX
+# function querySimulationsByGroup(db_filepath::String, sim_group_id::Int)
+#     db = SQLite.DB("$db_filepath")
+#     SQLite.busy_timeout(db, 3000)
+#     query = DBInterface.execute(db, "
+#                                         SELECT
+#                                             simulations.simulation_id,
+#                                             simulations.sim_group_id,
+#                                             simulations.sim_params_id,
+#                                             simulations.graph_adj_matrix,
+#                                             simulations.use_seed,
+#                                             simulations.rng_state,
+#                                             simulations.periods_elapsed,
+#                                             games.game,
+#                                             games.payoff_matrix_size,
+#                                             graphs.graph_params
+#                                         FROM simulations
+#                                         INNER JOIN games USING(game_id)
+#                                         INNER JOIN graphs USING(graph_id)
+#                                         INNER JOIN sim_params USING(sim_params_id)
+#                                         WHERE simulations.sim_group_id = $sim_group_id
+#                                 ")
+#     df = DataFrame(query) #must create a DataFrame to acces query data
+#     SQLite.close(db)
+#     return df
+# end
 
 #this function allows for RAM space savings during large iterative simulations
 function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
@@ -594,6 +714,8 @@ function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
     SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
     SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
     SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
