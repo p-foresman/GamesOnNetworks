@@ -173,6 +173,17 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
 end
 
 
+function constructIDTuple(model::SimModel, db_filepath::String)
+    db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Integer}} = (
+                    game_id = pushGameToDB(db_filepath, model.game),
+                    graph_id = pushGraphToDB(db_filepath, model.graph_params),
+                    sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
+                    starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
+                    stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.starting_condition)
+                    )
+    return db_id_tuple
+end
+
 #taken care of in plotting.jl
 # function pullTimeSeriesDataFromDB(db_filepath::String; sim_group_id::Integer)
 #     sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)

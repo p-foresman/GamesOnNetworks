@@ -36,7 +36,7 @@ function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{S
     return model_list
 end
 
-function selectAndConstructDistributedModel(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer)
+function selectAndConstructModel(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer)
    #add validation here??  
     model_number = 1
     for game in game_list
@@ -54,7 +54,6 @@ function selectAndConstructDistributedModel(;game_list::Vector{Game} , sim_param
         end
     end
 end
-
 
 
 

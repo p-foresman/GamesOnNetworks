@@ -239,29 +239,29 @@ end
 abstract type StartingCondition end
 
 struct FractiousState <: StartingCondition
-    name::Symbol
+    name::String
     # game::Game
 
     function FractiousState()
-        return new(:fractious)
+        return new("fractious")
     end
 end
 
 struct EquityState <: StartingCondition
-    name::Symbol
+    name::String
     # game::Game
 
     function EquityState()
-        return new(:equity)
+        return new("equity")
     end
 end
 
 struct RandomState <: StartingCondition
-    name::Symbol
+    name::String
     # game::Game
 
     function RandomState()
-        return new(:random)
+        return new("random")
     end
 end
 
@@ -269,7 +269,7 @@ end
 abstract type StoppingCondition end
 
 mutable struct EquityPsychological <: StoppingCondition
-    name::Symbol
+    name::String
     # game::Game
     strategy::Int8
     sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
@@ -277,12 +277,12 @@ mutable struct EquityPsychological <: StoppingCondition
 
 
     function EquityPsychological(strategy::Integer)
-        return new(:equity_psychological, Int8(strategy), 0.0, 0.0)
+        return new("equity_psychological", Int8(strategy), 0.0, 0.0)
     end
 end
 
 mutable struct EquityBehavioral <: StoppingCondition
-    name::Symbol
+    name::String
     # game::Game
     strategy::Int8
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
@@ -292,16 +292,16 @@ mutable struct EquityBehavioral <: StoppingCondition
     
 
     function EquityBehavioral(strategy::Integer)
-        return new(:equity_behavioral, Int8(strategy), 0.0, 0, 0)
+        return new("equity_behavioral", Int8(strategy), 0.0, 0, 0)
     end
 end
 
 struct PeriodCutoff <: StoppingCondition
-    name::Symbol
+    name::String
     period_cutoff::Int128
 
     function PeriodCutoff(period_cutoff::Integer)
-        return new(:period_cutoff, period_cutoff)
+        return new("period_cutoff", period_cutoff)
     end
 end
 

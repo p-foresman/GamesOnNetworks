@@ -49,3 +49,6 @@ const graph_params_list = [
 
 const starting_condition_list = [FractiousState(game)]
 const stopping_condition_list = [EquityBehavioral(game, 2)]
+
+
+# const model = 
