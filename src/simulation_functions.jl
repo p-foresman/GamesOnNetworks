@@ -18,14 +18,14 @@ end
 
 function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer=nothing)
     model_list = Vector{SimModel}([])
-    model_number = 1
+    model_number::Int64 = 1
     for game in game_list
         for sim_params in sim_params_list
             for graph_params in graph_params_list
                 for starting_condition in starting_condition_list
                     for stopping_condition in stopping_condition_list
                         if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
-                            push!(model_list, SimModel(game, sim_params, graph_params, starting_condition, stopping_condition))
+                            push!(model_list, SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number))
                         end
                         model_number += 1
                     end
@@ -38,14 +38,14 @@ end
 
 function selectAndConstructModel(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer)
    #add validation here??  
-    model_number = 1
+    model_number::Int64 = 1
     for game in game_list
         for sim_params in sim_params_list
             for graph_params in graph_params_list
                 for starting_condition in starting_condition_list
                     for stopping_condition in stopping_condition_list
                         if model_number == slurm_task_id
-                            return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition)
+                            return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number)
                         end
                         model_number += 1
                     end

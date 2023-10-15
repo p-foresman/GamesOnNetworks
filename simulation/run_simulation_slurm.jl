@@ -19,7 +19,8 @@ const sim_group_id = insertSimGroup(db_filepath, "Memory Length Iteration, N=100
 include("sim_setup_slurm.jl")
 
 #select and construct model based on slurm array task id
-const model = selectAndConstructModel(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, slurm_task_id=parse(Int64, ENV["SLURM_ARRAY_TASK_ID"]))
+const slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+const model = selectAndConstructModel(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, slurm_task_id=slurm_task_id)
 
 ## 5: run simulation
 simulateDistributed(model, run_count=nworkers(), db_filepath=db_filepath, db_sim_group_id=sim_group_id)

@@ -311,6 +311,7 @@ end
 include("model_functions.jl")
 
 struct SimModel{S1, S2, L, N, E}
+    id::Union{Nothing, Int64}
     game::Game{S1, S2, L}
     sim_params::SimParams
     graph_params::GraphParams
@@ -319,13 +320,13 @@ struct SimModel{S1, S2, L, N, E}
     agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int64} = nothing) where {S1, S2, L}
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
         N = nv(agent_graph.graph)
         E = ne(agent_graph.graph)
         initStoppingCondition!(stopping_condition, sim_params, agent_graph)
         pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
-        return new{S1, S2, L, N, E}(game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
+        return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
 end
 

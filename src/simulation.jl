@@ -19,6 +19,22 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
     return periods_elapsed
 end
 
+function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false)
+    println("\n\n\n")
+    println(displayName(model.graph_params))
+    println(dump(model.graph_params))
+    print("Number of agents: $(model.sim_params.number_agents), ")
+    print("Memory length: $(model.sim_params.memory_length), ")
+    println("Error: $(model.sim_params.error)")
+    flush(stdout) #flush buffer
+
+    @sync @distributed for run in 1:run_count
+        print("Run $run of $run_count")
+        flush(stout)
+        simulate(model, use_seed=use_seed)
+    end
+end
+
 function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false)
     for model in model_list
         println("\n\n\n")
@@ -66,8 +82,8 @@ end
 
 
 function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(uuid4())"
-    
+    distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
+
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
         initDistributedDB(distributed_uuid)
@@ -97,7 +113,7 @@ end
 
 function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(uuid4())"
-    
+
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
         initDistributedDB(distributed_uuid)
@@ -163,6 +179,37 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
         db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, model.agent_graph, periods_elapsed, distributed_uuid)
     end
     return (periods_elapsed, db_status)
+end
+
+
+function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Integer, db_sim_group_id::Union{Integer, Nothing} = nothing)
+    distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
+
+    
+    if nworkers() > 1
+        println("\nSimulation Distributed UUID: $distributed_uuid")
+        initDistributedDB(distributed_uuid)
+    end
+
+    db_id_tuple = constructIDTuple(model, db_filepath)
+
+    println("\n\n\n")
+    println(displayName(model.graph_params))
+    println(dump(model.graph_params))
+    print("Number of agents: $(model.sim_params.number_agents), ")
+    print("Memory length: $(model.sim_params.memory_length), ")
+    println("Error: $(model.sim_params.error)")
+    flush(stdout) #flush buffer
+
+    @sync @distributed for run in 1:run_count
+        print("Run $run of $run_count")
+        flush(stout)
+        simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+    end
+
+    if nworkers() > 1
+        collectDistributedDB(db_filepath, distributed_uuid)
+    end
 end
 
 
