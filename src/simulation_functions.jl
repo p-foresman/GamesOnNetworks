@@ -2,12 +2,12 @@
 ############################### FUNCTIONS #######################################
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
-function constructSimParamsList(;number_agents_list::Vector{Integer}, memory_length_list::Vector{Integer}, error_list::Vector{Float64}, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+function constructSimParamsList(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int64} = nothing)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_list
         for memory_length in memory_length_list
             for error in error_list
-                new_sim_params_set = SimParams(number_agents=number_agents, memory_length=memory_length, error=error, tag1=tag1, tag2=tag2, tag1_proportion=tag1_proportion, random_seed=random_seed)
+                new_sim_params_set = SimParams(number_agents, memory_length, error, tags=tags, random_seed=random_seed)
                 push!(sim_params_list, new_sim_params_set)
             end
         end
@@ -36,18 +36,18 @@ function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{S
     return model_list
 end
 
-function selectAndConstructModel(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{StartingCondition}, stopping_condition_list::Vector{StoppingCondition}, slurm_task_id::Integer)
+function selectAndConstructModel(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
    #add validation here??  
-    model_number::Int64 = 1
+    current_model_number::Int64 = 1
     for game in game_list
         for sim_params in sim_params_list
             for graph_params in graph_params_list
                 for starting_condition in starting_condition_list
                     for stopping_condition in stopping_condition_list
-                        if model_number == slurm_task_id
+                        if current_model_number == model_number
                             return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number)
                         end
-                        model_number += 1
+                        current_model_number += 1
                     end
                 end
             end
@@ -130,22 +130,45 @@ end
 
 
 #other player isn't even needed without tags. this could be simplified
-function calculateOpponentStrategyProbs!(player_memory, opponent_tag, opponent_strategy_recollection, opponent_strategy_probs)
+function calculateOpponentStrategyProbs!(player_memory, opponent_strategy_recollection, opponent_strategy_probs)
     @inbounds for memory in player_memory
-        if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
-            opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
-        end
+        opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
     opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
     return nothing
 end
 
-
 function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
-    calculateOpponentStrategyProbs!(players[1].memory, players[2].tag, opponent_strategy_recollection[1], opponent_strategy_probs[1])
-    calculateOpponentStrategyProbs!(players[2].memory, players[1].tag, opponent_strategy_recollection[2], opponent_strategy_probs[2])
+    for player in 1:2
+        calculateOpponentStrategyProbs!(players[player].memory, opponent_strategy_recollection[player], opponent_strategy_probs[player])
+    end
     return nothing
 end
+
+# with tag functionality
+# function calculateOpponentStrategyProbs!(player_memory, opponent_tag, opponent_strategy_recollection, opponent_strategy_probs)
+#     @inbounds for memory in player_memory
+#         if memory[1] == opponent_tag #if the opponent's tag is not present, no need to count strategies
+#             opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+#         end
+#     end
+#     opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+#     return nothing
+# end
+
+# function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
+#     calculateOpponentStrategyProbs!(players[1].memory, players[2].tag, opponent_strategy_recollection[1], opponent_strategy_probs[1])
+#     calculateOpponentStrategyProbs!(players[2].memory, players[1].tag, opponent_strategy_recollection[2], opponent_strategy_probs[2])
+#     return nothing
+# end
+
+# function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
+#     pushMemory!(players[1], (players[2].tag, players[2].choice), sim_params)
+#     pushMemory!(players[2], (players[1].tag, players[1].choice), sim_params)
+#     return nothing
+# end
+
+
 
 function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
     @inbounds for column in axes(payoff_matrix, 2) #column strategies
@@ -180,21 +203,10 @@ function pushMemory!(agent::Agent, percept::Percept, sim_params::SimParams)
 end
 
 function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
-    pushMemory!(players[1], (players[2].tag, players[2].choice), sim_params)
-    pushMemory!(players[2], (players[1].tag, players[1].choice), sim_params)
+    pushMemory!(players[1], players[2].choice, sim_params)
+    pushMemory!(players[2], players[1].choice, sim_params)
     return nothing
 end
-
-# function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
-#     for player in players
-#         if length(player.memory) == sim_params.memory_length
-#             popfirst!(player.memory)
-#         end
-#     end
-#     push!(players[1].memory, (players[2].tag, players[2].choice))
-#     push!(players[2].memory, (players[1].tag, players[1].choice))
-#     return nothing
-# end
 
 
 
@@ -205,17 +217,16 @@ function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSe
     # length = size(game.payoff_matrix, 1) #for symmetric games only
     opponent_strategy_recollection = zeros(Int64, S1)
     for memory in memory_set
-        opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+        opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
     opponent_strategy_probs = opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
     return opponent_strategy_probs
 end
 
 
-function calculateExpectedUtilities(game::Game, opponent_probs)
+function calculateExpectedUtilities(game::Game{S1, S2, L}, opponent_probs) where {S1, S2, L} #for symmetric games only!
     payoff_matrix = game.payoff_matrix
-    length = size(payoff_matrix, 1) #for symmetric games only
-    player_expected_utilities = zeros(Float32, length)
+    player_expected_utilities = zeros(Float32, S1)
     @inbounds for column in axes(game.payoff_matrix, 2) #column strategies
         for row in axes(game.payoff_matrix, 1) #row strategies
             player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
@@ -225,17 +236,35 @@ function calculateExpectedUtilities(game::Game, opponent_probs)
 end
 
 
-function determineAgentBehavior(game::Game, memory_set::Vector{Tuple{Symbol, Int8}})
+function determineAgentBehavior(game::Game, memory_set::PerceptSequence)
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
     max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
     return max_strat
 end
 
+########### tagged memory stuff #####
+# function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
+#     # length = size(game.payoff_matrix, 1) #for symmetric games only
+#     opponent_strategy_recollection = zeros(Int64, S1)
+#     for memory in memory_set
+#         opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+#     end
+#     opponent_strategy_probs = opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+#     return opponent_strategy_probs
+# end
+
+# function determineAgentBehavior(game::Game, memory_set::Vector{Tuple{Symbol, Int8}})
+#     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
+#     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
+#     max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+#     return max_strat
+# end
+
 #######################################################
 
 #NOTE: CAN REMOVE SIM_PARAMS FROM THESE! (ALL CALCULATIONS DONE IN MODEL INITIALIZATION)
-function checkStoppingCondition(stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(::Game, stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agent_graph.agents
         if !agent.is_hermit
@@ -247,11 +276,11 @@ function checkStoppingCondition(stopping_condition::EquityPsychological, agent_g
     return number_transitioned >= stopping_condition.sufficient_transitioned
 end
 
-function checkStoppingCondition(stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(game::Game, stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agent_graph.agents
         if !agent.is_hermit
-            if determineAgentBehavior(stopping_condition.game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+            if determineAgentBehavior(game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
             end
         end
@@ -267,20 +296,31 @@ end
 
 
 
-function checkStoppingCondition(stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Int128)
+function checkStoppingCondition(::Game, stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Int128)
     return current_periods >= stopping_condition.period_cutoff
 end
 
 
 
 
-function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
+function countStrats(memory_set::PerceptSequence, desired_strat::Int8)
     count::Int64 = 0
     for memory in memory_set
-        if memory[2] == desired_strat
+        if memory == desired_strat
             count += 1
         end
     end
     return count
 end
+
+#tagged functionality
+# function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
+#     count::Int64 = 0
+#     for memory in memory_set
+#         if memory[2] == desired_strat
+#             count += 1
+#         end
+#     end
+#     return count
+# end
 

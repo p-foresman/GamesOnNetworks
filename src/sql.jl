@@ -107,6 +107,12 @@ function initDataBase(db_filepath::String)
                                 FOREIGN KEY (sim_params_id)
                                     REFERENCES sim_params (sim_params_id)
                                     ON DELETE CASCADE,
+                                FOREIGN KEY (starting_condition_id)
+                                    REFERENCES starting_conditions (starting_condition_id)
+                                    ON DELETE CASCADE,
+                                FOREIGN KEY (stopping_condition_id)
+                                    REFERENCES stopping_conditions (stopping_condition_id)
+                                    ON DELETE CASCADE,
                                 UNIQUE(simulation_uuid)
                             );
                     ")
@@ -143,6 +149,8 @@ function initTempSimulationDB(db_filepath::String)
                                 game_id INTEGER NOT NULL,
                                 graph_id INTEGER NOT NULL,
                                 sim_params_id INTEGER NOT NULL,
+                                starting_condition_id INTEGER NOT NULL,
+                                stopping_condition_id INTEGER NOT NULL,
                                 graph_adj_matrix TEXT DEFAULT NULL,
                                 rng_state TEXT NOT NULL,
                                 periods_elapsed INTEGER NOT NULL,
@@ -165,7 +173,7 @@ function initTempSimulationDB(db_filepath::String)
                                     ON DELETE CASCADE,
                                 FOREIGN KEY (stopping_condition_id)
                                     REFERENCES stopping_conditions (stopping_condition_id)
-                                    ON DELETE CASCADE
+                                    ON DELETE CASCADE,
                                 UNIQUE(simulation_uuid)
                             );
                     ")
@@ -292,7 +300,7 @@ function insertStartingCondition(db_filepath::String, starting_condition_name::S
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO sim_params
+                                    INSERT OR IGNORE INTO starting_conditions
                                     (
                                         name,
                                         starting_condition
@@ -319,7 +327,7 @@ function insertStoppingCondition(db_filepath::String, stopping_condition_name::S
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO sim_params
+                                    INSERT OR IGNORE INTO stopping_conditions
                                     (
                                         name,
                                         stopping_condition

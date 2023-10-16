@@ -10,7 +10,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
         Random.seed!(model.sim_params.random_seed)
     end
 
-    while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
         runPeriod!(model)
         periods_elapsed += 1
     end
@@ -30,12 +30,12 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
 
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
-        flush(stout)
+        flush(stdout)
         simulate(model, use_seed=use_seed)
     end
 end
 
-function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false)
+function simulationIterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false)
     for model in model_list
         println("\n\n\n")
         println(displayName(graph_params))
@@ -46,7 +46,7 @@ function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1
 
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
-            flush(stout)
+            flush(stdout)
             simulate(model, use_seed=use_seed)
         end
     end
@@ -57,17 +57,17 @@ end
 
 ################################# simulate with db_filepath and no db_store_period #####################################
 
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::String, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Integer}}}, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(model.sim_params.random_seed)
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = constructIDTuple(model, db_filepath)
+        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
-    while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)
@@ -81,7 +81,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
 end
 
 
-function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulateDistributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
 
     if nworkers() > 1
@@ -89,7 +89,7 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
         initDistributedDB(distributed_uuid)
     end
 
-    db_id_tuple = constructIDTuple(model, db_filepath)
+    db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
     println("\n\n\n")
     println(displayName(model.graph_params))
@@ -101,8 +101,8 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
 
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
-        flush(stout)
-        simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+        flush(stdout)
+        simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
     if nworkers() > 1
@@ -111,7 +111,7 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
 end
 
 
-function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulationIterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(uuid4())"
 
     if nworkers() > 1
@@ -120,7 +120,7 @@ function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1
     end
 
     for model in model_list
-        db_id_tuple = constructIDTuple(model, db_filepath)
+        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
         println("\n\n\n")
         println(displayName(model.graph_params))
@@ -132,8 +132,8 @@ function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1
 
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
-            flush(stout)
-            simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+            flush(stdout)
+            simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
         end
     end
 
@@ -148,19 +148,19 @@ end
 
 ################################ simulate with db_filepath and db_store_period ##################################
 
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_filepath::String, db_store_period::Integer, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Integer}}}, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(model.sim_params.random_seed)
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = constructIDTuple(model, db_filepath)
+        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
     db_status = nothing #NOTE: THIS SHOULD BE TYPED
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)
@@ -182,7 +182,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
 end
 
 
-function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Integer, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulateDistributed(model::SimModel, db_filepath::String, db_store_period::Integer,; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
 
     
@@ -191,7 +191,7 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
         initDistributedDB(distributed_uuid)
     end
 
-    db_id_tuple = constructIDTuple(model, db_filepath)
+    db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
     println("\n\n\n")
     println(displayName(model.graph_params))
@@ -203,8 +203,8 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
 
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
-        flush(stout)
-        simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+        flush(stdout)
+        simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
     if nworkers() > 1
@@ -213,7 +213,7 @@ function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::
 end
 
 
-function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Integer, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulationIterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(uuid4())"
 
     if nworkers() > 1
@@ -222,7 +222,7 @@ function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1
     end
 
     for model in model_list
-        db_id_tuple = constructIDTuple(model, db_filepath)
+        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
         println("\n\n\n")
         println(displayName(model.graph_params))
@@ -234,8 +234,8 @@ function simulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1
 
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
-            flush(stout)
-            simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+            flush(stdout)
+            simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
         end
     end
 
@@ -246,41 +246,41 @@ end
 
 
 
-#NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
-function distributedSimulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
-    slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+# #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
+# function distributedSimulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
+#     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
 
-    if length(model_list) != parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"])
-        throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
-    end
+#     if length(model_list) != parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"])
+#         throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
+#     end
 
-    model = model_list[slurm_task_id]
+#     model = model_list[slurm_task_id]
      
-    println("\n\n\n")
-    println(displayName(model.graph_params))
-    println(displayName(model.sim_params))
-    flush(stdout) #flush buffer
+#     println("\n\n\n")
+#     println(displayName(model.graph_params))
+#     println(displayName(model.sim_params))
+#     flush(stdout) #flush buffer
 
-    distributed_uuid = "$(displayName(graph_params))__$(displayName(sim_params))_TASKID=$slurm_task_id"
-    initDistributedDB(distributed_uuid)
+#     distributed_uuid = "$(displayName(graph_params))__$(displayName(sim_params))_TASKID=$slurm_task_id"
+#     initDistributedDB(distributed_uuid)
 
-    db_id_tuple = (
-                   game_id = pushGameToDB(db_filepath, model.game),
-                   graph_id = pushGraphToDB(db_filepath, model.graph_params),
-                   sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
-                   starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
-                   stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.starting_condition)
-                  )
+#     db_id_tuple = (
+#                    game_id = pushGameToDB(db_filepath, model.game),
+#                    graph_id = pushGraphToDB(db_filepath, model.graph_params),
+#                    sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
+#                    starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
+#                    stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.starting_condition)
+#                   )
 
-    @sync @distributed for run in 1:run_count
-        print("Run $run of $run_count")
-        simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
-    end
+#     @sync @distributed for run in 1:run_count
+#         print("Run $run of $run_count")
+#         simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+#     end
 
-    if nworkers() > 1
-        collectDistributedDB(db_filepath, distributed_uuid)
-    end
-end
+#     if nworkers() > 1
+#         collectDistributedDB(db_filepath, distributed_uuid)
+#     end
+# end
 
 
 

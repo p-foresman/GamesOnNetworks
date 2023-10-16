@@ -56,24 +56,17 @@ function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_par
 end
 
 
+
 function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
     for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
         #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
         if vertex % 2 == 0
             recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
         else
             recollection = game.strategies[1][3]
         end
-        to_push = (agent.tag, recollection)
         for _ in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
+            push!(agent.memory, recollection)
         end
     end
     return nothing
@@ -81,18 +74,10 @@ end
 
 function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
     for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
         #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
         recollection = game.strategies[1][2]
-        to_push = (agent.tag, recollection)
         for _ in 1:sim_params.memory_length
-            push!(agent.memory, to_push)
+            push!(agent.memory, recollection)
         end
     end
     return nothing
@@ -100,21 +85,78 @@ end
 
 function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
     for (vertex, agent) in enumerate(agent_graph.agents)
-        if rand() <= sim_params.tag1_proportion
-            agent.tag = sim_params.tag1
-        else
-            agent.tag = sim_params.tag2
-        end
-
         #set memory initialization
-        #NOTE: tag system needs to change when tags are implemented!!
         for _ in 1:sim_params.memory_length
-            to_push = (agent.tag, rand(game.strategies[1]))
-            push!(agent.memory, to_push)
+            push!(agent.memory, rand(game.strategies[1]))
         end
     end
     return nothing
 end
+
+
+############################ tagged versions (not currently using) ##############################
+
+# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
+#     for (vertex, agent) in enumerate(agent_graph.agents)
+#         if sim_params.tags
+#             if rand() <= sim_params.tag1_proportion
+#                 agent.tag = sim_params.tag1
+#             else
+#                 agent.tag = sim_params.tag2
+#             end
+#         end
+
+#         #set memory initialization
+#         #NOTE: tag system needs to change when tags are implemented!!
+#         if vertex % 2 == 0
+#             recollection = game.strategies[1][1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+#         else
+#             recollection = game.strategies[1][3]
+#         end
+#         to_push = (agent.tag, recollection)
+#         for _ in 1:sim_params.memory_length
+#             push!(agent.memory, to_push)
+#         end
+#     end
+#     return nothing
+# end
+
+# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
+#     for (vertex, agent) in enumerate(agent_graph.agents)
+#         if rand() <= sim_params.tag1_proportion
+#             agent.tag = sim_params.tag1
+#         else
+#             agent.tag = sim_params.tag2
+#         end
+
+#         #set memory initialization
+#         #NOTE: tag system needs to change when tags are implemented!!
+#         recollection = game.strategies[1][2]
+#         to_push = (agent.tag, recollection)
+#         for _ in 1:sim_params.memory_length
+#             push!(agent.memory, to_push)
+#         end
+#     end
+#     return nothing
+# end
+
+# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
+#     for (vertex, agent) in enumerate(agent_graph.agents)
+#         if rand() <= sim_params.tag1_proportion
+#             agent.tag = sim_params.tag1
+#         else
+#             agent.tag = sim_params.tag2
+#         end
+
+#         #set memory initialization
+#         #NOTE: tag system needs to change when tags are implemented!!
+#         for _ in 1:sim_params.memory_length
+#             to_push = (agent.tag, rand(game.strategies[1]))
+#             push!(agent.memory, to_push)
+#         end
+#     end
+#     return nothing
+# end
 
 
 function initStoppingCondition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)

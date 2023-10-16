@@ -2,33 +2,61 @@
 
 
 #constructor for individual agents with relevant fields (mutable to update object later)
-const Percept = Tuple{Symbol, Int8}
+const Percept = Int8
 const PerceptSequence = Vector{Percept}
+const TaggedPercept = Tuple{Symbol, Int8}
+const TaggedPerceptSequence = Vector{TaggedPercept}
+const Choice = Int8
 
-mutable struct Agent
+# abstract type Agent end
+
+mutable struct Agent #could make a TaggedAgent as well to separate tags
     name::String
-    tag::Symbol #NOTE: REMOVE
+    # tag::Union{Nothing, Symbol} #NOTE: REMOVE
     is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
     memory::PerceptSequence
-    choice::Int8
+    choice::Choice
 
-    function Agent(name::String, tag::Symbol, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, choice::Int8 = Int8(0)) #initialize choice at 0 (representing no choice)
-        return new(name, tag, false, wealth, memory, choice)
-    end
-    function Agent(name::String, tag::Symbol)
-        return new(name, tag, false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+    function Agent(name::String, wealth::Int, memory::PerceptSequence, choice::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, false, wealth, memory, choice)
     end
     function Agent(name::String, is_hermit::Bool)
-        return new(name, Symbol(), is_hermit, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0))
     end
     function Agent(name::String)
-        return new(name, Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+        return new(name, false, 0, PerceptSequence([]), Choice(0))
     end
     function Agent()
-        return new("", Symbol(), false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+        return new("", false, 0, PerceptSequence([]), Choice(0))
     end
 end
+
+
+# mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags
+#     name::String
+#     tag::Union{Nothing, Symbol} #NOTE: REMOVE
+#     is_hermit::Bool
+#     wealth::Int #is this necessary? #NOTE: REMOVE
+#     memory::PerceptSequence
+#     choice::Int8
+
+#     function Agent(name::String, wealth::Int, memory::Vector{Tuple{Symbol, Int8}}, tag::Union{Nothing, Symbol} = nothing, choice::Int8 = Int8(0)) #initialize choice at 0 (representing no choice)
+#         return new(name, tag, false, wealth, memory, choice)
+#     end
+#     function Agent(name::String, tag::Union{Nothing, Symbol} = nothing)
+#         return new(name, tag, false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+#     end
+#     function Agent(name::String, is_hermit::Bool)
+#         return new(name, nothing, is_hermit, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+#     end
+#     function Agent(name::String)
+#         return new(name, nothing, false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+#     end
+#     function Agent()
+#         return new("", nothing, false, 0, Vector{Tuple{Symbol, Int8}}([]), Int8(0))
+#     end
+# end
 
 
 #constructor for specific game to be played
@@ -81,17 +109,24 @@ struct SimParams
     number_agents::Int64
     memory_length::Int64
     error::Float64
-    matches_per_period::Int64 #defined within constructor #NOTE: REMOVE
-    tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
-    tag2::Symbol #NOTE: REMOVE
-    tag1_proportion::Float64 #NOTE: REMOVE
+    matches_per_period::Int64
+    tags::Union{Nothing, Tuple{Symbol, Symbol, Float64}}
+    # tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
+    # tag2::Symbol #NOTE: REMOVE
+    # tag1_proportion::Float64 #NOTE: REMOVE
     random_seed::Int64 #probably don't need a random seed in every SimParams struct
 
     #all keyword arguments
-    function SimParams(;number_agents::Int64, memory_length::Int64, error::Float64, tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+    # function SimParams(number_agents::Int64, memory_length::Int64, error::Float64; tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+    #     matches_per_period = floor(number_agents / 2)
+    #     # sufficient_equity = (1 - error) * memory_length
+    #     return new(number_agents, memory_length, error, matches_per_period, tag1, tag2, tag1_proportion, random_seed)
+    # end
+    function SimParams(number_agents::Int64, memory_length::Int64, error::Float64; tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int64} = nothing)
+        if random_seed === nothing random_seed = 1234 end
         matches_per_period = floor(number_agents / 2)
         # sufficient_equity = (1 - error) * memory_length
-        return new(number_agents, memory_length, error, matches_per_period, tag1, tag2, tag1_proportion, random_seed)
+        return new(number_agents, memory_length, error, matches_per_period, tags, random_seed)
     end
     function SimParams()
         return new()
@@ -208,7 +243,7 @@ end
 
 
 
-struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?)
+struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents???
     players::Vector{Agent}
     opponent_strategy_recollection::SVector{2, Vector{Int64}}
     opponent_strategy_probs::SVector{2, Vector{Float64}}
