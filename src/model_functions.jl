@@ -5,6 +5,7 @@ function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
+
 function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     edge_probability = graph_params.λ / sim_params.number_agents
     graph = nothing
@@ -65,6 +66,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
         else
             recollection = game.strategies[1][3]
         end
+        empty!(agent.memory)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, recollection)
         end
@@ -76,6 +78,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     for (vertex, agent) in enumerate(agent_graph.agents)
         #set memory initialization
         recollection = game.strategies[1][2]
+        empty!(agent.memory)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, recollection)
         end
@@ -86,6 +89,7 @@ end
 function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
     for (vertex, agent) in enumerate(agent_graph.agents)
         #set memory initialization
+        empty!(agent.memory)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, rand(game.strategies[1]))
         end
@@ -93,6 +97,11 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     return nothing
 end
 
+
+function resetAgentGraph!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    return nothing
+end
 
 ############################ tagged versions (not currently using) ##############################
 

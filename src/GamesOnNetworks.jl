@@ -22,6 +22,7 @@ export
     constructSimParamsList,
     constructModelList,
     selectAndConstructModel,
+    resetModel!,
     initDataBase,
     insertSimGroup,
     collectDBFilesInDirectory,
@@ -53,6 +54,7 @@ using
     Statistics,
     Bootstrap,
     DataStructures,
+    Memoize,
     TimerOutputs
 
 include("types.jl")

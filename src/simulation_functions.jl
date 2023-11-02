@@ -180,6 +180,17 @@ function findExpectedUtilities!(player_expected_utilities, payoff_matrix, oppone
     return nothing
 end
 
+
+# function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
+#     @inbounds for column in axes(payoff_matrix, 2) #column strategies
+#         for row in axes(payoff_matrix, 1) #row strategies
+#             player_expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs[1][column]
+#             player_expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs[2][row]
+#         end
+#     end
+#     return nothing
+# end
+
 function findMaximumStrats(expected_utilities::Vector{Float32})
     max_strats::Vector{Int8} = []
     max = maximum(expected_utilities)

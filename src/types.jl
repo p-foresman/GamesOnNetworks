@@ -240,6 +240,13 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
 end
 
 
+# function resetAgentGraph!(agent_graph::AgentGraph)
+#     for agent in agent_graph.agents
+#         resetAgent!(agent)
+#     end
+#     return nothing
+# end
+
 
 
 
@@ -364,6 +371,13 @@ struct SimModel{S1, S2, L, N, E}
         return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
 end
+
+function resetModel!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
+    resetAgentGraph!(model.agent_graph, model.game, model.sim_params, model.starting_condition)
+    initStoppingCondition!(model.stopping_condition, model.sim_params, model.agent_graph)
+    resetArrays!(model.pre_allocated_arrays)
+end
+
 
 function resetArrays!(model::SimModel)
     resetArrays!(model.pre_allocated_arrays)
