@@ -1,6 +1,7 @@
 module GamesOnNetworks
 
-export 
+export
+    SimModel,
     Game,
     SimParams,
     Agent,
@@ -19,12 +20,16 @@ export
     EquityBehavioral,
     PeriodCutoff,
     constructSimParamsList,
+    constructModelList,
+    selectAndConstructModel,
+    resetModel!,
     initDataBase,
     insertSimGroup,
     collectDBFilesInDirectory,
     simulationIterator,
     simulate,
-    distributedSimulationIterator,
+    simulateDistributed,
+    # distributedSimulationIterator,
     determineAgentBehavior,
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
@@ -48,7 +53,9 @@ using
     Fontconfig,
     Statistics,
     Bootstrap,
-    DataStructures
+    DataStructures,
+    Memoize,
+    TimerOutputs
 
 include("types.jl")
 include("sql.jl")

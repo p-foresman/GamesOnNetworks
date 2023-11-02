@@ -1,6 +1,5 @@
 const sim_params_1 = SimParams(number_agents = 10,
                             memory_length = 10,
-                            memory_init_state = :fractious,
                             error = 0.1,
                             tag1 = :red,
                             tag2 = :blue,
@@ -9,7 +8,6 @@ const sim_params_1 = SimParams(number_agents = 10,
 
 const sim_params_2 = SimParams(number_agents = 30,
                             memory_length = 13,
-                            memory_init_state = :fractious,
                             error = 0.1,
                             tag1 = :red,
                             tag2 = :blue,
@@ -18,7 +16,6 @@ const sim_params_2 = SimParams(number_agents = 30,
 
 const sim_params_3 = SimParams(number_agents = 100,
                             memory_length = 10,
-                            memory_init_state = :fractious,
                             error = 0.1,
                             tag1 = :red,
                             tag2 = :blue,
@@ -39,3 +36,9 @@ const graph_params_er = ErdosRenyiParams(3.0)
 const graph_params_sw = SmallWorldParams(4, 0.6)
 const graph_params_sf = ScaleFreeParams(4.0)
 const graph_params_sbm = StochasticBlockModelParams(2, 5.0, 0.5)
+
+
+const starting_condition_fractious = FractiousState(game)
+const stopping_condition_equity_psychological = EquityPsychological(game, 2)
+
+model

@@ -9,15 +9,11 @@ const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
 # s2 = size(payoff_matrix, 2)
 
 #create bargaining game type (players will be slotted in)
-const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::Game{s1, s2} improve performance?
+const game = Game{3, 3}("Bargaining Game", payoff_matrix) # would game::Game{s1, s2} improve performance?
 
 
 
-const sim_params_list = constructSimParamsList(
-                number_agents_list = [i for i in 10:10:200], #creates iterator for multi-loop simulation
-                memory_length_list = [i for i in 10:3:19], #creates iterator for multi-loop simulation
-                error_list = [0.05, 0.1] #iterated over for multi-loop simulation
-                )
+const sim_params = SimParams(50, 19, 0.05)
 
 
 
@@ -32,17 +28,7 @@ Graph types available with relevant type constructors and parameters (structs fo
     Stochastic Block Model: StochasticBlockModelParams(communities, internal_λ, external_λ)
 =#
 
-const graph_params_list = [
-    CompleteParams(),
-    ErdosRenyiParams(1.0),
-    ErdosRenyiParams(5.0),
-    SmallWorldParams(4, 0.6),
-    ScaleFreeParams(2.0),
-    ScaleFreeParams(4.0),
-    ScaleFreeParams(8.0),
-    StochasticBlockModelParams(2, 5.0, 0.5)
-]
+const graph_params = CompleteParams()
 
-const starting_condition_list = [FractiousState()]
-const stopping_condition_list = [EquityBehavioral(2)]
-
+const starting_condition = FractiousState()
+const stopping_condition = EquityBehavioral(2)

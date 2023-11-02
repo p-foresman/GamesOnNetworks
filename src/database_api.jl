@@ -104,7 +104,41 @@ function pushSimParamsToDB(db_filepath::String, sim_params::SimParams, use_seed:
     return sim_params_row_id
 end
 
-function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, game_id::Integer, graph_id::Integer, sim_params_id::Integer, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+function pushStartingConditionToDB(db_filepath::String, starting_condition::StartingCondition)
+    starting_condition_json_str = JSON3.write(starting_condition)
+
+    starting_condition_row_id = nothing
+    while starting_condition_row_id === nothing
+        try
+            starting_condition_insert_result = insertStartingCondition(db_filepath, starting_condition.name, starting_condition_json_str)
+            #starting_condition_status = starting_condition_insert_result.status_message
+            starting_condition_row_id = starting_condition_insert_result.insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
+
+    return starting_condition_row_id
+end
+
+function pushStoppingConditionToDB(db_filepath::String, stopping_condition::StoppingCondition)
+    stopping_condition_json_str = JSON3.write(stopping_condition)
+
+    stopping_condition_row_id = nothing
+    while stopping_condition_row_id === nothing
+        try
+            stopping_condition_insert_result = insertStoppingCondition(db_filepath, stopping_condition.name, stopping_condition_json_str)
+            #stopping_condition_status = stopping_condition_insert_result.status_message
+            stopping_condition_row_id = stopping_condition_insert_result.insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
+
+    return stopping_condition_row_id
+end
+
+function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
     rng_state = copy(Random.default_rng())
@@ -128,7 +162,7 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
     simulation_insert_result = nothing
     while simulation_insert_result === nothing
         try
-            simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
+            simulation_insert_result = insertSimulationWithAgents(db_filepath, sim_group_id, prev_simulation_uuid, db_id_tuple, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch
@@ -138,6 +172,17 @@ function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, 
     return simulation_insert_result
 end
 
+
+function constructIDTuple(model::SimModel, db_filepath::String; use_seed::Bool = false)
+    db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}} = (
+                    game_id = pushGameToDB(db_filepath, model.game),
+                    graph_id = pushGraphToDB(db_filepath, model.graph_params),
+                    sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
+                    starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
+                    stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.stopping_condition)
+                    )
+    return db_id_tuple
+end
 
 #taken care of in plotting.jl
 # function pullTimeSeriesDataFromDB(db_filepath::String; sim_group_id::Integer)
@@ -245,7 +290,7 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     return nothing #(game_status=game_insert_result, graph_status=graph_insert_result, sim_params_status=sim_params_insert_result, simulation_status=simulation_insert_result, agents_status=agents_status)
 end
 
-
+#NOTE: FIX
 function restoreFromDatabase(db_filepath::String, simulation_id::Integer) #MUST FIX TO USE UUID
     simulation_df = querySimulationForRestore(db_filepath, simulation_id)
     agents_df = queryAgentsForRestore(db_filepath, simulation_id)
