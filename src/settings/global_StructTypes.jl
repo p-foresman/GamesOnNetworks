@@ -52,4 +52,8 @@ StructTypes.StructType(::Type{Random.Xoshiro}) = StructTypes.Mutable()
 
 ################################## Game Type ########################################
 #Enter any new payoff matrix sizes here in the format: StructTypes.StructType(::Type{Game{rows, cols, length}}) = StructTypes.Struct()
-StructTypes.StructType(::Type{Game{3, 3, 9}}) = StructTypes.Struct()
+# StructTypes.StructType(::Type{Game}) = StructTypes.AbstractType()
+# StructTypes.StructType(::Type{SymmetricGame}) = StructTypes.Struct()
+# StructTypes.subtypekey(::Type{Game}) = :type
+# StructTypes.subtypes(::Type{Game}) = (symmetric=SymmetricGame,)
+StructTypes.StructType(::Type{SymmetricGame{3}}) = StructTypes.Struct()

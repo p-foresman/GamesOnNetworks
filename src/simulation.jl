@@ -5,18 +5,20 @@ include("simulation_functions.jl")
 
 ############################### simulate with no db ################################
 
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false)
+function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, to::TimerOutput)
+    @timeit to "simulate" begin
     if use_seed == true
         Random.seed!(model.sim_params.random_seed)
     end
 
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
-        runPeriod!(model)
+    while @timeit to "checkStoppingCondition" !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
+        runPeriod!(model, to)
         periods_elapsed += 1
     end
 
     println(" --> periods elapsed: $periods_elapsed")
     return periods_elapsed
+    end
 end
 
 function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false)
@@ -67,7 +69,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     end
 
     # @timeit to "simulate" begin
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)
@@ -160,7 +162,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     # @timeit to "simulate" begin
     db_status = nothing #NOTE: THIS SHOULD BE TYPED
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model.stopping_condition, model.agent_graph, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)

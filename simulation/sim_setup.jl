@@ -1,15 +1,16 @@
+using GamesOnNetworks, BenchmarkTools, TimerOutputs
 ################### Define Game Payoff Matrix and Strategies #######################
 
-const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
-                                            (0, 0) (50, 50) (50, 30);
-                                            (30, 70) (30, 50) (30, 30)])
+const payoff_matrix = Matrix{Int8}([0 0 70;
+                                    0 50 50;
+                                    30 30 30])
 #Check "global_StructTypes.jl" file and ensure that the size of this payoff matrix is listed under the "Game type" section
 
 # s1 = size(payoff_matrix, 1)
 # s2 = size(payoff_matrix, 2)
 
 #create bargaining game type (players will be slotted in)
-const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::Game{s1, s2} improve performance?
+const game_list = [SymmetricGame{3}("Bargaining Game", payoff_matrix)] # would game::Game{s1, s2} improve performance?
 
 
 
@@ -35,6 +36,9 @@ Graph types available with relevant type constructors and parameters (structs fo
 const graph_params_list = [
     CompleteParams(),
     ErdosRenyiParams(1.0),
+    ErdosRenyiParams(2.0),
+    ErdosRenyiParams(3.0),
+    ErdosRenyiParams(4.0),
     ErdosRenyiParams(5.0),
     SmallWorldParams(4, 0.6),
     ScaleFreeParams(2.0),
@@ -44,5 +48,9 @@ const graph_params_list = [
 ]
 
 const starting_condition_list = [FractiousState()]
-const stopping_condition_list = [EquityBehavioral(2)]
+const stopping_condition_list = [EquityBehavioral(2), PeriodCutoff(10000)]
+
+const to = TimerOutput()
+const model = SimModel(game_list[1], sim_params_list[2], graph_params_list[1], starting_condition_list[1], stopping_condition_list[2], to)
+reset_timer!(to)
 

@@ -13,24 +13,31 @@ const Choice = Int8
 mutable struct Agent #could make a TaggedAgent as well to separate tags
     name::String
     # tag::Union{Nothing, Symbol} #NOTE: REMOVE
+    # memory_length::Int
     is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
     memory::PerceptSequence
+    expected_behavior::Choice
     choice::Choice
+    
 
-    function Agent(name::String, wealth::Int, memory::PerceptSequence, choice::Choice) #initialize choice at 0 (representing no choice)
-        return new(name, false, wealth, memory, choice)
+    function Agent(name::String, wealth::Int, memory::PerceptSequence, choice::Choice, expected_behavior::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, false, wealth, memory, choice, expected_behavior)
     end
     function Agent(name::String, is_hermit::Bool)
-        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0))
+        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent(name::String)
-        return new(name, false, 0, PerceptSequence([]), Choice(0))
+        return new(name, false, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent()
-        return new("", false, 0, PerceptSequence([]), Choice(0))
+        return new("", false, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
 end
+
+
+
+
 
 
 # mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags
@@ -61,47 +68,72 @@ end
 
 #constructor for specific game to be played
 const PayoffMatrix{S1, S2, L} = SMatrix{S1, S2, Tuple{Int8, Int8}, L}
+const SymmetricPayoffMatrix{S} = SMatrix{S, S, Int8}
 const StrategySet{L} = SVector{L, Int8}
 
-struct Game{S1, S2, L}
-    name::String
-    payoff_matrix::PayoffMatrix{S1, S2, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
-    strategies::Tuple{StrategySet{S1}, StrategySet{S2}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES #NOTE: REMOVE THIS (strategies are inherent in payoff_matrix)
+abstract type Game end
 
-    function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}}) where {S1, S2}
-        L = S1 * S2
-        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
-        strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2))
-        return new{S1, S2, L}(name, static_payoff_matrix, strategies)
+struct SymmetricGame{S} <: Game #add p1 and p2 payoff matrix representations as well???
+    name::String
+    type::String
+    payoff_matrix::SymmetricPayoffMatrix{S} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+    # strategies::Tuple{StrategySet{S1}, StrategySet{S2}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES #NOTE: REMOVE THIS (strategies are inherent in payoff_matrix)
+
+    function SymmetricGame{S}(name::String, payoff_matrix::Matrix{Int8}) where {S}
+        static_payoff_matrix = SMatrix{S, S, Int8, S^2}(payoff_matrix)
+        # strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2))
+        return new{S}(name, "symmetric", static_payoff_matrix)
     end
-    function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
-        matrix_size = size(payoff_matrix)
-        S1 = matrix_size[1]
-        S2 = matrix_size[2]
-        L = S1 * S2
-        static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
-        strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        return new{S1, S2, L}(name, static_payoff_matrix, strategies)
+    function SymmetricGame(name::String, payoff_matrix::Matrix{Int8})
+        S = size(payoff_matrix, 1)
+        static_payoff_matrix = SMatrix{S, S, Int8, S^2}(payoff_matrix)
+        # strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
+        return new{S}(name, "symmetric", static_payoff_matrix)
     end
-    function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
-        matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
-        S1 = matrix_size[1]
-        S2 = matrix_size[2]
-        L = S1 * S2
-        strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
-        indices = CartesianIndices(payoff_matrix)
-        tuple_vector = Vector{Tuple{Int8, Int8}}([])
-        for index in indices
-            new_tuple = Tuple{Int8, Int8}([payoff_matrix[index], -payoff_matrix[index]])
-            push!(tuple_vector, new_tuple)
-        end
-        new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new{S1, S2, L}(name, new_payoff_matrix, strategies)
-    end
-    function Game{S1, S2, L}(name::String, payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}}, strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}) where {S1, S2, L} ##this method needed for reconstructing with JSON3
-        return new{S1, S2, L}(name, payoff_matrix, strategies)
+    function SymmetricGame{S}(name::String, payoff_matrix::SymmetricPayoffMatrix{S}) where {S} #this method needed for reconstructing with JSON3
+        return new{S}(name, "symmetric", payoff_matrix)
     end
 end
+
+# struct Game{S1, S2, L} #add p1 and p2 payoff matrix representations as well???
+#     name::String
+#     payoff_matrix::PayoffMatrix{S1, S2, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
+#     strategies::Tuple{StrategySet{S1}, StrategySet{S2}}                #NEED TO MAKE PLAYER 1 STRATEGIES AND PLAYER 2 STRATEGIES TO ACCOUNT FOR VARYING SIZED PAYOFF MATRICES #NOTE: REMOVE THIS (strategies are inherent in payoff_matrix)
+
+#     function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}}) where {S1, S2}
+#         L = S1 * S2
+#         static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
+#         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2))
+#         return new{S1, S2, L}(name, static_payoff_matrix, strategies)
+#     end
+#     function Game(name::String, payoff_matrix::Matrix{Tuple{Int8, Int8}})
+#         matrix_size = size(payoff_matrix)
+#         S1 = matrix_size[1]
+#         S2 = matrix_size[2]
+#         L = S1 * S2
+#         static_payoff_matrix = SMatrix{S1, S2, Tuple{Int8, Int8}, L}(payoff_matrix)
+#         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
+#         return new{S1, S2, L}(name, static_payoff_matrix, strategies)
+#     end
+#     function Game(name::String, payoff_matrix::Matrix{Int8}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
+#         matrix_size = size(payoff_matrix) #need to check size of each dimension bc payoff matrices don't have to be perfect squares
+#         S1 = matrix_size[1]
+#         S2 = matrix_size[2]
+#         L = S1 * S2
+#         strategies = (Tuple(Int8(n) for n in 1:S1), Tuple(Int8(n) for n in 1:S2)) #create integer strategies that correspond to row/column indices of payoff_matrix
+#         indices = CartesianIndices(payoff_matrix)
+#         tuple_vector = Vector{Tuple{Int8, Int8}}([])
+#         for index in indices
+#             new_tuple = Tuple{Int8, Int8}([payoff_matrix[index], -payoff_matrix[index]])
+#             push!(tuple_vector, new_tuple)
+#         end
+#         new_payoff_matrix = reshape(tuple_vector, matrix_size)
+#         return new{S1, S2, L}(name, new_payoff_matrix, strategies)
+#     end
+#     function Game{S1, S2, L}(name::String, payoff_matrix::SMatrix{S1, S2, Tuple{Int8, Int8}}, strategies::Tuple{SVector{S1, Int8}, SVector{S2, Int8}}) where {S1, S2, L} ##this method needed for reconstructing with JSON3
+#         return new{S1, S2, L}(name, payoff_matrix, strategies)
+#     end
+# end
 
 
 
@@ -249,33 +281,54 @@ end
 
 
 
-
 struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents???
     players::Vector{Agent}
-    opponent_strategy_recollection::SVector{2, Vector{Int64}}
-    opponent_strategy_probs::SVector{2, Vector{Float64}}
-    player_expected_utilities::SVector{2, Vector{Float32}}
+    int_array::Vector{Int64}
+    float_array::Vector{Float64}
 
-    function PreAllocatedArrays(payoff_matrix)
-        sizes = size(payoff_matrix)
+    function PreAllocatedArrays(game::SymmetricGame)
+        sizes = size(game.payoff_matrix)
         N = length(sizes)
         players = Vector{Agent}([Agent() for _ in 1:N]) #should always be 2
-        opponent_strategy_recollection = SVector{N, Vector{Int64}}(zeros.(Int64, sizes))
-        opponent_strategy_probs = SVector{N, Vector{Float64}}(zeros.(Float64, sizes))
-        player_expected_utilities = SVector{N, Vector{Float32}}(zeros.(Float32, sizes))
-        return new(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
+        int_array = zeros(Int64, sizes[1]) #symmectric games only for now
+        float_array = zeros(Float64, sizes[1])
+        return new(players, int_array, float_array)
     end
 end
 
 function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
-    for player in 1:2
-        # pre_allocated_arrays.players[player] = nothing
-        pre_allocated_arrays.opponent_strategy_recollection[player] .= Int64(0)
-        pre_allocated_arrays.opponent_strategy_probs[player] .= Float64(0)
-        pre_allocated_arrays.player_expected_utilities[player] .= Float32(0)
-    end
+    pre_allocated_arrays.int_array .= 0
+    pre_allocated_arrays.float_array .= 0.0
     return nothing
 end
+
+
+# struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents???
+#     players::Vector{Agent}
+#     opponent_strategy_recollection::SVector{2, Vector{Int64}}
+#     opponent_strategy_probs::SVector{2, Vector{Float64}}
+#     player_expected_utilities::SVector{2, Vector{Float32}}
+
+#     function PreAllocatedArrays(payoff_matrix)
+#         sizes = size(payoff_matrix)
+#         N = length(sizes)
+#         players = Vector{Agent}([Agent() for _ in 1:N]) #should always be 2
+#         opponent_strategy_recollection = SVector{N, Vector{Int64}}(zeros.(Int64, sizes))
+#         opponent_strategy_probs = SVector{N, Vector{Float64}}(zeros.(Float64, sizes))
+#         player_expected_utilities = SVector{N, Vector{Float32}}(zeros.(Float32, sizes))
+#         return new(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
+#     end
+# end
+
+# function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
+#     for player in 1:2
+#         # pre_allocated_arrays.players[player] = nothing
+#         pre_allocated_arrays.opponent_strategy_recollection[player] .= Int64(0)
+#         pre_allocated_arrays.opponent_strategy_probs[player] .= Float64(0)
+#         pre_allocated_arrays.player_expected_utilities[player] .= Float32(0)
+#     end
+#     return nothing
+# end
 
 
 abstract type StartingCondition end
@@ -352,9 +405,9 @@ end
 ##### include functions for model initialization
 include("model_functions.jl")
 
-struct SimModel{S1, S2, L, N, E}
+struct SimModel{N, E}
     id::Union{Nothing, Int64}
-    game::Game{S1, S2, L}
+    game::Game
     sim_params::SimParams
     graph_params::GraphParams
     starting_condition::StartingCondition
@@ -362,13 +415,17 @@ struct SimModel{S1, S2, L, N, E}
     agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int64} = nothing) where {S1, S2, L}
+    function SimModel(game::Game, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, to::TimerOutput, id::Union{Nothing, Int64} = nothing)
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
         N = nv(agent_graph.graph)
         E = ne(agent_graph.graph)
         initStoppingCondition!(stopping_condition, sim_params, agent_graph)
-        pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
-        return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
+        pre_allocated_arrays = PreAllocatedArrays(game)
+        for agent in agent_graph.agents
+            updateChoice!(agent, game, sim_params, pre_allocated_arrays, to)
+            resetArrays!(pre_allocated_arrays)
+        end
+        return new{N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
 end
 

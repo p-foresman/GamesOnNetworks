@@ -2,7 +2,7 @@ module GamesOnNetworks
 
 export
     SimModel,
-    Game,
+    SymmetricGame,
     SimParams,
     Agent,
     GraphParams,
