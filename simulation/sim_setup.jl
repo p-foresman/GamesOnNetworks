@@ -44,5 +44,6 @@ const graph_params_list = [
 ]
 
 const starting_condition_list = [FractiousState()]
-const stopping_condition_list = [EquityBehavioral(2)]
+const stopping_condition_list = [EquityBehavioral(2), PeriodCutoff(10000)]
 
+const model = SimModel(game_list[1], sim_params_list[2], graph_params_list[1], starting_condition_list[1], stopping_condition_list[2])
