@@ -231,3 +231,34 @@ Only 18 samples for [Number Agents: 70, Memory Length: 10, Error: 0.05, Graph: 3
 Only 17 samples for [Number Agents: 70, Memory Length: 10, Error: 0.05, Graph: 4]
 Only 0 samples for [Number Agents: 80, Memory Length: 10, Error: 0.05, Graph: 1]
 Only 2 samples for [Number Agents: 80, Memory Length: 10, Error: 0.05, Graph: 7]
+
+
+
+
+
+
+
+
+12/21/2023 START RUNS
+
+RUN 1:
+    const sim_params_list = constructSimParamsList(
+                    number_agents_list = [N for N in 10:10:200], #creates iterator for multi-loop simulation
+                    memory_length_list = [10], #creates iterator for multi-loop simulation
+                    error_list = [0.05, 0.1] #iterated over for multi-loop simulation
+                    )
+
+    append!(sim_params_list, constructSimParamsList(
+        number_agents_list = [10], #creates iterator for multi-loop simulation
+        memory_length_list = [7, 13, 16, 18, 19], #creates iterator for multi-loop simulation
+        error_list = [0.05, 0.1]
+    ))
+
+    NOTES:
+
+
+
+
+
+
+-switch simple if statements and ternary opperators whose : clauses return nothing to using && shorthand

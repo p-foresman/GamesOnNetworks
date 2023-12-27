@@ -17,15 +17,15 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
         success = false
-        while !success
+        while !success #should i create a database lock before iterating through workers?
             try
                 mergeTempDatabases(db_filepath, temp_filepath)
+                rm(temp_filepath)
                 success = true
             catch
                 sleep(rand(0.1:0.1:4.0))
             end
         end
-        rm(temp_filepath)
     end
     rm(temp_dirpath)
 end
@@ -40,12 +40,12 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
         while !success
             try
                 mergeTempDatabases(db_filepath, temp_filepath)
+                cleanup_directory ? rm(temp_filepath) : nothing #would cleanup_directory && rm(temp_filepath) work for this?
                 success = true
             catch
                 sleep(rand(0.1:0.1:4.0))
             end
         end
-        cleanup_directory ? rm(temp_filepath) : nothing
     end
     cleanup_directory ? rm(directory_path) : nothing
 end

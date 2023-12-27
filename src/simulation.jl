@@ -3,7 +3,7 @@ include("simulation_functions.jl")
 
 
 function printModel(model::SimModel)
-    println("\n\n\n")
+    println("\n")
     println(model.game.name)
     println(displayName(model.graph_params))
     print("Number of agents: $(model.sim_params.number_agents), ")
