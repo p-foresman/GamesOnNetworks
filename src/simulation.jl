@@ -2,6 +2,16 @@
 include("simulation_functions.jl")
 
 
+function printModel(model::SimModel)
+    println("\n\n\n")
+    println(model.game.name)
+    println(displayName(model.graph_params))
+    print("Number of agents: $(model.sim_params.number_agents), ")
+    print("Memory length: $(model.sim_params.memory_length), ")
+    println("Error: $(model.sim_params.error)")
+    print("Start: $(model.starting_condition.name), ")
+    println("Stop: $(model.stopping_condition.name)\n")
+end
 
 ############################### simulate with no db ################################
 
@@ -20,12 +30,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
 end
 
 function simulateDistributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false)
-    println("\n\n\n")
-    println(displayName(model.graph_params))
-    println(dump(model.graph_params))
-    print("Number of agents: $(model.sim_params.number_agents), ")
-    print("Memory length: $(model.sim_params.memory_length), ")
-    println("Error: $(model.sim_params.error)")
+    printModel(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -37,12 +42,8 @@ end
 
 function simulationIterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false)
     for model in model_list
-        println("\n\n\n")
-        println(displayName(graph_params))
-        println(dump(graph_params))
-        print("Number of agents: $(model.sim_params.number_agents), ")
-        print("Memory length: $(model.sim_params.memory_length), ")
-        println("Error: $(model.sim_params.error)")
+        printModel(model)
+        flush(stdout)
 
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
@@ -82,7 +83,7 @@ end
 
 
 function simulateDistributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
+    distributed_uuid = "$(model.game.name)__$(displayName(model.graph_params))__$(displayName(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
@@ -91,12 +92,7 @@ function simulateDistributed(model::SimModel, db_filepath::String; run_count::In
 
     db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-    println("\n\n\n")
-    println(displayName(model.graph_params))
-    println(dump(model.graph_params))
-    print("Number of agents: $(model.sim_params.number_agents), ")
-    print("Memory length: $(model.sim_params.memory_length), ")
-    println("Error: $(model.sim_params.error)")
+    printModel(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -122,12 +118,7 @@ function simulationIterator(model_list::Vector{<:SimModel}, db_filepath::String;
     for model in model_list
         db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-        println("\n\n\n")
-        println(displayName(model.graph_params))
-        println(dump(model.graph_params))
-        print("Number of agents: $(model.sim_params.number_agents), ")
-        print("Memory length: $(model.sim_params.memory_length), ")
-        println("Error: $(model.sim_params.error)")
+        printModel(model)
         flush(stdout) #flush buffer
 
         @sync @distributed for run in 1:run_count
@@ -183,7 +174,7 @@ end
 
 
 function simulateDistributed(model::SimModel, db_filepath::String, db_store_period::Integer,; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(displayName(model.graph_params))__$(displayName(model.sim_params))_TASKID=$(model.id)"
+    distributed_uuid = "$(model.game.name)__$(displayName(model.graph_params))__$(displayName(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
 
     
     if nworkers() > 1
@@ -193,12 +184,7 @@ function simulateDistributed(model::SimModel, db_filepath::String, db_store_peri
 
     db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-    println("\n\n\n")
-    println(displayName(model.graph_params))
-    println(dump(model.graph_params))
-    print("Number of agents: $(model.sim_params.number_agents), ")
-    print("Memory length: $(model.sim_params.memory_length), ")
-    println("Error: $(model.sim_params.error)")
+    printModel(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -224,12 +210,7 @@ function simulationIterator(model_list::Vector{<:SimModel}, db_filepath::String,
     for model in model_list
         db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-        println("\n\n\n")
-        println(displayName(model.graph_params))
-        println(dump(model.graph_params))
-        print("Number of agents: $(model.sim_params.number_agents), ")
-        print("Memory length: $(model.sim_params.memory_length), ")
-        println("Error: $(model.sim_params.error)")
+        printModel(model)
         flush(stdout) #flush buffer
 
         @sync @distributed for run in 1:run_count

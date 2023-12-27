@@ -308,6 +308,7 @@ struct RandomState <: StartingCondition
 end
 
 
+
 abstract type StoppingCondition end
 
 mutable struct EquityPsychological <: StoppingCondition
