@@ -20,14 +20,14 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
         while !success #should i create a database lock before iterating through workers?
             try
                 mergeTempDatabases(db_filepath, temp_filepath)
-                rm(temp_filepath)
+                # rm(temp_filepath)
                 success = true
             catch
                 sleep(rand(0.1:0.1:4.0))
             end
         end
     end
-    rm(temp_dirpath)
+    rm(temp_dirpath, recursive=true)
 end
 
 
@@ -40,14 +40,14 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
         while !success
             try
                 mergeTempDatabases(db_filepath, temp_filepath)
-                cleanup_directory ? rm(temp_filepath) : nothing #would cleanup_directory && rm(temp_filepath) work for this?
+                # cleanup_directory ? rm(temp_filepath) : nothing #would cleanup_directory && rm(temp_filepath) work for this?
                 success = true
             catch
                 sleep(rand(0.1:0.1:4.0))
             end
         end
     end
-    cleanup_directory ? rm(directory_path) : nothing
+    cleanup_directory ? rm(directory_path, recursive=true) : nothing
 end
 
 
