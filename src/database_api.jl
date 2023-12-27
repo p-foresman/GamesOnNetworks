@@ -16,7 +16,15 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
     temp_dirpath = distributed_uuid * "/"
     for worker in workers()
         temp_filepath = temp_dirpath * "$worker.sqlite"
-        mergeTempDatabases(db_filepath, temp_filepath)
+        success = false
+        while !success
+            try
+                mergeTempDatabases(db_filepath, temp_filepath)
+                success = true
+            catch
+                sleep(rand(0.1:0.1:4.0))
+            end
+        end
         rm(temp_filepath)
     end
     rm(temp_dirpath)
@@ -27,8 +35,16 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
     files_to_collect = readdir(directory_path)
     for file in files_to_collect
         temp_filepath = directory_path * file
-        println(temp_filepath)
-        mergeTempDatabases(db_filepath, temp_filepath)
+        # println(temp_filepath)
+        success = false
+        while !success
+            try
+                mergeTempDatabases(db_filepath, temp_filepath)
+                success = true
+            catch
+                sleep(rand(0.1:0.1:4.0))
+            end
+        end
         cleanup_directory ? rm(temp_filepath) : nothing
     end
     cleanup_directory ? rm(directory_path) : nothing
