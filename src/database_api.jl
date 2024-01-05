@@ -27,7 +27,20 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
             end
         end
     end
-    rm(temp_dirpath, recursive=true)
+
+    #remove temporary distributed directory (this whole thing shouldnt be necessary, but rm() is erroring for some reason. See if this works)
+    success = false
+    count = 0
+    while !success
+        if count == 10 break end #arbitrary, but if 10 tries doesnt do it, i not sure what will
+        try
+            rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty")
+            success = true
+        catch
+            sleep(rand(0.1:0.1:4.0)) #see if this solves the issue below (might have to do with multiple rm() calls happening in the same directory from various processes?)
+        end
+        count += 1
+    end
 end
 
 
