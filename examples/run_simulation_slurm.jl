@@ -2,7 +2,7 @@
 
 ## 1: add processess if you want simulations to run in a distributed manner
 using Distributed
-addprocs(20; exeflags="--project") #defines the run count
+addprocs(20; exeflags="--project") #defines the run count (each run will run on a different CPU core)
 
 ## 2: import the main module on all processes
 @everywhere using GamesOnNetworks
