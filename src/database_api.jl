@@ -1,3 +1,15 @@
+function initDB(db_filepath::String)
+    success = false
+    while !success
+        try
+            initDataBase(db_filepath)
+            success = true
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
+end
+
 function createTempDirPath(db_filepath::String) rsplit(db_filepath, ".", limit=2)[1] * "/" end
 
 function initDistributedDB(distributed_uuid::String) #creates a sparate sqlite file for each worker to prevent database locking conflicts (to later be collected).

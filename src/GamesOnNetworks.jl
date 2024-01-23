@@ -1,6 +1,7 @@
 module GamesOnNetworks
 
 export
+    #types
     SimModel,
     Game,
     SimParams,
@@ -23,7 +24,7 @@ export
     constructModelList,
     selectAndConstructModel,
     resetModel!,
-    initDataBase,
+    initDB,
     insertSimGroup,
     collectDBFilesInDirectory,
     simulationIterator,
@@ -34,7 +35,10 @@ export
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
     numberAgentsTransitionTimeLinePlot,
-    timeSeriesPlot
+    timeSeriesPlot,
+
+    #utility
+    resetprocs
 
 using
     Graphs,
@@ -57,10 +61,39 @@ using
     Memoize,
     TimerOutputs
 
-include("types.jl")
+#basic utility functions
+include("utility_functions.jl")
+
+#custom types and their methods
+include("games.jl")
+include("simulation_params.jl")
+include("graph_params.jl")
+include("agents.jl")
+include("starting_conditions.jl")
+include("stopping_conditions.jl")
+include("agent_graph.jl")
+include("pre_allocated_arrays.jl")
+
+#functions which require a combination of types
+include("simulation_functions.jl")
+
+#simulation functions should go here and model barrier functions should be in the simulation_model.jl file
+#basically, make sure to delagate any functions pertaining to individual types to that file, then add
+#combined type functions after all in a separate file, then define the SimModel and then the mode function barriers.
+#essentially, barriers need to be build from the bottom up ****
+
+#SimModel type and methods/barriers
+include("simulation_model.jl")
+# include("types.jl") #depreciated
+
+#sql functions and api to sql functions
 include("sql.jl")
 include("database_api.jl")
+
+#simulation functions
 include("simulation.jl")
+
+#plotting functions
 include("plotting.jl")
 
 end
