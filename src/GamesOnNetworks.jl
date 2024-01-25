@@ -91,7 +91,7 @@ include("sql.jl")
 include("database_api.jl")
 
 #simulation functions
-include("simulation_functions.jl") #this might need to be heigher
+# include("simulation_functions.jl") #this might need to be heigher
 include("simulation.jl")
 
 #plotting functions
