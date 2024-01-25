@@ -49,11 +49,7 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
     contents = readdir(directory_path)
     for item in contents
         item_path = directory_path * "/" * item
-        println("here we go...")
-        println(item_path)
-        println(isfile(item_path))
-        if isfile(item)
-            println("merging file: $(item_path)")
+        if isfile(item_path)
             success = false
             while !success
                 try
@@ -64,7 +60,6 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
                 end
             end
         else
-            println("collecting recursively: $(item_path)")
             collectDBFilesInDirectory(db_filepath, item_path, cleanup_directory=cleanup_directory)
         end
     end
