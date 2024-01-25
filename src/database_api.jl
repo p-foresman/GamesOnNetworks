@@ -23,6 +23,8 @@ function initDistributedDB(distributed_uuid::String) #creates a sparate sqlite f
     return nothing
 end
 
+
+#NOTE: probably don't actually need this function (can be handled by the following function)
 function collectDistributedDB(db_filepath::String, distributed_uuid::String) #collects distributed db files into the db_filepath 
     # temp_dirpath = createTempDirPath(db_filepath)
     temp_dirpath = distributed_uuid * "/"
@@ -39,40 +41,29 @@ function collectDistributedDB(db_filepath::String, distributed_uuid::String) #co
             end
         end
     end
-
-    #remove temporary distributed directory (this whole thing shouldnt be necessary, but rm() is erroring for some reason. See if this works)
-    success = false
-    count = 0
-    while !success
-        if count == 10 break end #arbitrary, but if 10 tries doesnt do it, i not sure what will
-        try
-            rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty")
-            success = true
-        catch
-            sleep(rand(0.1:0.1:4.0)) #see if this solves the issue below (might have to do with multiple rm() calls happening in the same directory from various processes?)
-        end
-        count += 1
-    end
+    rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty")
 end
 
 
 function collectDBFilesInDirectory(db_filepath::String, directory_path::String; cleanup_directory::Bool = false)
-    files_to_collect = readdir(directory_path)
-    for file in files_to_collect
-        temp_filepath = directory_path * file
-        # println(temp_filepath)
-        success = false
-        while !success
-            try
-                mergeTempDatabases(db_filepath, temp_filepath)
-                # cleanup_directory ? rm(temp_filepath) : nothing #would cleanup_directory && rm(temp_filepath) work for this?
-                success = true
-            catch
-                sleep(rand(0.1:0.1:4.0))
+    contents = readdir(directory_path)
+    for item in contents
+        item_path = directory_path * "/" * item
+        if isfile(item)
+            success = false
+            while !success
+                try
+                    mergeTempDatabases(db_filepath, item_path)
+                    success = true
+                catch
+                    sleep(rand(0.1:0.1:4.0))
+                end
             end
+        else
+            collectDBFilesInDirectory(db_filepath, item_path, cleanup_directory=cleanup_directory)
         end
     end
-    cleanup_directory ? rm(directory_path, recursive=true) : nothing
+    cleanup_directory && rm(directory_path, recursive=true)
 end
 
 
@@ -179,7 +170,7 @@ function pushStoppingConditionToDB(db_filepath::String, stopping_condition::Stop
     return stopping_condition_row_id
 end
 
-function pushSimulationToDB(db_filepath, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+function pushSimulationToDB(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
     rng_state = copy(Random.default_rng())

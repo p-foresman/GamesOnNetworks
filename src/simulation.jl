@@ -173,7 +173,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
 end
 
 
-function simulateDistributed(model::SimModel, db_filepath::String, db_store_period::Integer,; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulateDistributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
     distributed_uuid = "$(model.game.name)__$(displayName(model.graph_params))__$(displayName(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
 
     

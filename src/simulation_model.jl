@@ -28,6 +28,16 @@ end
 SimModel function barriers
     -allows for multiple dispatch functionality based on model fields with only the model as an argument
 """
+function printModel(model::SimModel) #should override show() instead for pretty printing
+    println("\n")
+    println(model.game.name)
+    println(displayName(model.graph_params))
+    print("Number of agents: $(model.sim_params.number_agents), ")
+    print("Memory length: $(model.sim_params.memory_length), ")
+    println("Error: $(model.sim_params.error)")
+    print("Start: $(model.starting_condition.name), ")
+    println("Stop: $(model.stopping_condition.name)\n")
+end
 
 function resetModel!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
     resetAgentGraph!(model.agent_graph, model.game, model.sim_params, model.starting_condition)
