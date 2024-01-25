@@ -734,6 +734,11 @@ end
 
 # Merge temp distributed DBs into master DB.
 function mergeTempDatabases(db_filepath_master::String, db_filepath_merger::String)
+    print("master: ")
+    println(db_filepath_master)
+    print("merger: ")
+    println(db_filepath_merger)
+    println(SQLite.tables(SQLite.DB("$db_filepath_merger")))
     db = SQLite.DB("$db_filepath_master")
     SQLite.busy_timeout(db, 5000)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")

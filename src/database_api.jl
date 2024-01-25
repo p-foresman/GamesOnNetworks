@@ -53,6 +53,8 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
             success = false
             while !success
                 try
+                    println("lets gooo...")
+                    println(item_path)
                     mergeTempDatabases(db_filepath, item_path)
                     success = true
                 catch
