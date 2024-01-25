@@ -63,6 +63,7 @@ function collectDBFilesInDirectory(db_filepath::String, directory_path::String; 
             collectDBFilesInDirectory(db_filepath, item_path, cleanup_directory=cleanup_directory)
         end
     end
+    close(stout)
     cleanup_directory && rm(directory_path, recursive=true)
 end
 
