@@ -1,17 +1,4 @@
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
-#include("simulation_functions.jl")
-
-
-function printModel(model::SimModel)
-    println("\n")
-    println(model.game.name)
-    println(displayName(model.graph_params))
-    print("Number of agents: $(model.sim_params.number_agents), ")
-    print("Memory length: $(model.sim_params.memory_length), ")
-    println("Error: $(model.sim_params.error)")
-    print("Start: $(model.starting_condition.name), ")
-    println("Stop: $(model.stopping_condition.name)\n")
-end
 
 ############################### simulate with no db ################################
 
