@@ -734,19 +734,13 @@ end
 
 # Merge temp distributed DBs into master DB.
 function mergeTempDatabases(db_filepath_master::String, db_filepath_merger::String)
-    print("master: ")
-    println(db_filepath_master)
-    print("merger: ")
-    println(db_filepath_merger)
-    println(SQLite.tables(SQLite.DB("$db_filepath_merger")))
     db = SQLite.DB("$db_filepath_master")
     SQLite.busy_timeout(db, 5000)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     SQLite.execute(db, "DETACH DATABASE merge_db;")
-    close(db)
-    # SQLite.close(db)
+    SQLite.close(db)
     return nothing
 end
 
