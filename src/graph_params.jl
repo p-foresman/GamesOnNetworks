@@ -1,6 +1,6 @@
 abstract type InteractionParams end
 
-abstract type GraphParams <: InteractionParams end #for static interaction models
+abstract type GraphParams <: InteractionParams end #for static interaction models, abm interaction models will come next
 
 
 struct CompleteParams <: GraphParams 

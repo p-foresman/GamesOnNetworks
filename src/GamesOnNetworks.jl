@@ -66,16 +66,16 @@ include("utility_functions.jl")
 
 #custom types and their methods
 include("games.jl")
-include("simulation_params.jl")
-include("graph_params.jl")
 include("agents.jl")
+include("graph_params.jl")
+include("simulation_params.jl")
 include("starting_conditions.jl")
 include("stopping_conditions.jl")
 include("agent_graph.jl")
 include("pre_allocated_arrays.jl")
 
 #functions which require a combination of types
-include("simulation_functions.jl")
+include("low_level_functions.jl")
 
 #simulation functions should go here and model barrier functions should be in the simulation_model.jl file
 #basically, make sure to delagate any functions pertaining to individual types to that file, then add
@@ -91,6 +91,7 @@ include("sql.jl")
 include("database_api.jl")
 
 #simulation functions
+include("simulation_functions.jl") #this might need to be heigher
 include("simulation.jl")
 
 #plotting functions

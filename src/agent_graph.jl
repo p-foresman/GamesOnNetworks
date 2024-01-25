@@ -2,6 +2,7 @@ const Graph = SimpleGraph{Int64}
 const AgentSet{N} = SVector{N, Agent}
 const Relationship = Graphs.SimpleEdge{Int64}
 const RelationshipSet{E} = SVector{E, Relationship}
+
 struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
     graph::Graph
     agents::AgentSet{N}

@@ -26,4 +26,19 @@ struct SimParams
     end
 end
 
-function displayName(sim_params::SimParams) return "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)" end
+displayName(sim_params::SimParams) = "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)"
+
+
+############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
+function constructSimParamsList(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int64} = nothing)
+    sim_params_list = Vector{SimParams}([])
+    for number_agents in number_agents_list
+        for memory_length in memory_length_list
+            for error in error_list
+                new_sim_params_set = SimParams(number_agents, memory_length, error, tags=tags, random_seed=random_seed)
+                push!(sim_params_list, new_sim_params_set)
+            end
+        end
+    end
+    return sim_params_list
+end

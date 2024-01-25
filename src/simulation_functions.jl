@@ -1,60 +1,6 @@
 
 ############################### FUNCTIONS #######################################
 
-############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
-function constructSimParamsList(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int64} = nothing)
-    sim_params_list = Vector{SimParams}([])
-    for number_agents in number_agents_list
-        for memory_length in memory_length_list
-            for error in error_list
-                new_sim_params_set = SimParams(number_agents, memory_length, error, tags=tags, random_seed=random_seed)
-                push!(sim_params_list, new_sim_params_set)
-            end
-        end
-    end
-    return sim_params_list
-end
-
-
-function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
-    model_list = Vector{SimModel}([])
-    model_number::Int64 = 1
-    for game in game_list
-        for sim_params in sim_params_list
-            for graph_params in graph_params_list
-                for starting_condition in starting_condition_list
-                    for stopping_condition in stopping_condition_list
-                        if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
-                            push!(model_list, SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number))
-                        end
-                        model_number += 1
-                    end
-                end
-            end
-        end
-    end
-    return model_list
-end
-
-function selectAndConstructModel(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
-   #add validation here??  
-    current_model_number::Int64 = 1
-    for game in game_list
-        for sim_params in sim_params_list
-            for graph_params in graph_params_list
-                for starting_condition in starting_condition_list
-                    for stopping_condition in stopping_condition_list
-                        if current_model_number == model_number
-                            return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number)
-                        end
-                        current_model_number += 1
-                    end
-                end
-            end
-        end
-    end
-end
-
 
 
 ######################## game algorithm ####################
