@@ -106,23 +106,23 @@ end
 
 
 struct SimParams
-    number_agents::Int64
-    memory_length::Int64
+    number_agents::Int
+    memory_length::Int
     error::Float64
-    matches_per_period::Int64
+    matches_per_period::Int
     tags::Union{Nothing, Tuple{Symbol, Symbol, Float64}}
     # tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
     # tag2::Symbol #NOTE: REMOVE
     # tag1_proportion::Float64 #NOTE: REMOVE
-    random_seed::Int64 #probably don't need a random seed in every SimParams struct
+    random_seed::Int #probably don't need a random seed in every SimParams struct
 
     #all keyword arguments
-    # function SimParams(number_agents::Int64, memory_length::Int64, error::Float64; tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int64)
+    # function SimParams(number_agents::Int, memory_length::Int, error::Float64; tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
     #     matches_per_period = floor(number_agents / 2)
     #     # sufficient_equity = (1 - error) * memory_length
     #     return new(number_agents, memory_length, error, matches_per_period, tag1, tag2, tag1_proportion, random_seed)
     # end
-    function SimParams(number_agents::Int64, memory_length::Int64, error::Float64; tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int64} = nothing)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64; tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
         if random_seed === nothing random_seed = 1234 end
         matches_per_period = floor(number_agents / 2)
         # sufficient_equity = (1 - error) * memory_length
@@ -195,9 +195,9 @@ struct StochasticBlockModelParams <: GraphParams
 end
 struct LatticeParams <: GraphParams
     graph_type::Symbol
-    dimensions::Int64
-    dim_lengths::Vector{Int64}
-    function LatticeParams(dim_lengths::Vector{Int64})
+    dimensions::Int
+    dim_lengths::Vector{Int}
+    function LatticeParams(dim_lengths::Vector{Int})
         return new(:lattice, length(dim_lengths), dim_lengths)
     end
 end
@@ -212,18 +212,18 @@ function displayName(graph_params::ScaleFreeParams) return "ScaleFree α=$(graph
 function displayName(graph_params::StochasticBlockModelParams) return "StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)" end
 
 
-const Graph = SimpleGraph{Int64}
+const Graph = SimpleGraph{Int}
 const AgentSet{N} = SVector{N, Agent}
-const Relationship = Graphs.SimpleEdge{Int64}
+const Relationship = Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
     graph::Graph
     agents::AgentSet{N}
     edges::RelationshipSet{E}
-    # number_agents::Int64
-    number_hermits::Int64
+    # number_agents::Int
+    number_hermits::Int
     
-    function AgentGraph(graph::SimpleGraph{Int64})
+    function AgentGraph(graph::SimpleGraph{Int})
         N = nv(graph)
         E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
@@ -234,7 +234,7 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
                 number_hermits += 1
             end
         end
-        graph_edges = SVector{E, Graphs.SimpleEdge{Int64}}(collect(edges(graph)))
+        graph_edges = SVector{E, Graphs.SimpleEdge{Int}}(collect(edges(graph)))
         return new{N, E}(graph, agents, graph_edges, number_hermits)
     end
 end
@@ -252,7 +252,7 @@ end
 
 struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents???
     players::Vector{Agent}
-    opponent_strategy_recollection::SVector{2, Vector{Int64}}
+    opponent_strategy_recollection::SVector{2, Vector{Int}}
     opponent_strategy_probs::SVector{2, Vector{Float64}}
     player_expected_utilities::SVector{2, Vector{Float32}}
 
@@ -260,7 +260,7 @@ struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: 
         sizes = size(payoff_matrix)
         N = length(sizes)
         players = Vector{Agent}([Agent() for _ in 1:N]) #should always be 2
-        opponent_strategy_recollection = SVector{N, Vector{Int64}}(zeros.(Int64, sizes))
+        opponent_strategy_recollection = SVector{N, Vector{Int}}(zeros.(Int, sizes))
         opponent_strategy_probs = SVector{N, Vector{Float64}}(zeros.(Float64, sizes))
         player_expected_utilities = SVector{N, Vector{Float32}}(zeros.(Float32, sizes))
         return new(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
@@ -270,7 +270,7 @@ end
 function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
     for player in 1:2
         # pre_allocated_arrays.players[player] = nothing
-        pre_allocated_arrays.opponent_strategy_recollection[player] .= Int64(0)
+        pre_allocated_arrays.opponent_strategy_recollection[player] .= Int(0)
         pre_allocated_arrays.opponent_strategy_probs[player] .= Float64(0)
         pre_allocated_arrays.player_expected_utilities[player] .= Float32(0)
     end
@@ -330,8 +330,8 @@ mutable struct EquityBehavioral <: StoppingCondition
     strategy::Int8
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
-    period_cutoff::Int64 #initialized to nothing (determine in simulation). DEFENITION: memory_length.
-    period_count::Int64 #initialized at 0
+    period_cutoff::Int #initialized to nothing (determine in simulation). DEFENITION: memory_length.
+    period_count::Int #initialized at 0
     
 
     function EquityBehavioral(strategy::Integer)
@@ -354,7 +354,7 @@ end
 include("model_functions.jl")
 
 struct SimModel{S1, S2, L, N, E}
-    id::Union{Nothing, Int64}
+    id::Union{Nothing, Int}
     game::Game{S1, S2, L}
     sim_params::SimParams
     graph_params::GraphParams
@@ -363,7 +363,7 @@ struct SimModel{S1, S2, L, N, E}
     agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int64} = nothing) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
         N = nv(agent_graph.graph)
         E = ne(agent_graph.graph)

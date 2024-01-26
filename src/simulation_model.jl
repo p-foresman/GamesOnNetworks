@@ -3,7 +3,7 @@ SimModel type
 """
 
 struct SimModel{S1, S2, L, N, E}
-    id::Union{Nothing, Int64}
+    id::Union{Nothing, Int}
     game::Game{S1, S2, L}
     sim_params::SimParams
     graph_params::GraphParams
@@ -12,7 +12,7 @@ struct SimModel{S1, S2, L, N, E}
     agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int64} = nothing) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
         agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
         N = nv(agent_graph.graph)
         E = ne(agent_graph.graph)
@@ -68,7 +68,7 @@ end
 
 function constructModelList(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
     model_list = Vector{SimModel}([])
-    model_number::Int64 = 1
+    model_number::Int = 1
     for game in game_list
         for sim_params in sim_params_list
             for graph_params in graph_params_list
@@ -88,7 +88,7 @@ end
 
 function selectAndConstructModel(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
    #add validation here??  
-    current_model_number::Int64 = 1
+    current_model_number::Int = 1
     for game in game_list
         for sim_params in sim_params_list
             for graph_params in graph_params_list

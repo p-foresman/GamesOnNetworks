@@ -26,18 +26,18 @@ function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimPa
     return agent_graph
 end
 function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    m_count = Int64(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
+    m_count = Int(floor(sim_params.number_agents ^ 1.5)) #this could be better defined
     graph = static_scale_free(sim_params.number_agents, m_count, graph_params.α)
     agent_graph = AgentGraph(graph)
     setAgentData!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    community_size = Int64(sim_params.number_agents / graph_params.communities)
+    community_size = Int(sim_params.number_agents / graph_params.communities)
     # println(community_size)
     internal_edge_probability = graph_params.internal_λ / community_size
     internal_edge_probability_vector = Vector{Float64}([])
-    sizes_vector = Vector{Int64}([])
+    sizes_vector = Vector{Int}([])
     for community in 1:graph_params.communities
         push!(internal_edge_probability_vector, internal_edge_probability)
         push!(sizes_vector, community_size)

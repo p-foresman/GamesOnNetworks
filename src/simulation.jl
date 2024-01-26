@@ -46,7 +46,7 @@ end
 
 ################################# simulate with db_filepath and no db_store_period #####################################
 
-function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(model.sim_params.random_seed)
     end
@@ -127,7 +127,7 @@ end
 
 ################################ simulate with db_filepath and db_store_period ##################################
 
-function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
         Random.seed!(model.sim_params.random_seed)
     end
@@ -217,10 +217,10 @@ end
 
 # #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
 # function distributedSimulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
-#     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+#     slurm_task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
 
-#     if length(model_list) != parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"])
-#         throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
+#     if length(model_list) != parse(Int, ENV["SLURM_ARRAY_TASK_COUNT"])
+#         throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
 #     end
 
 #     model = model_list[slurm_task_id]
@@ -255,14 +255,14 @@ end
 
 # #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
 # function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
-#     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+#     slurm_task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
 #     graph_count = length(graph_params_list)
 #     # sim_params_count = length(sim_params_list)
 #     # slurm_array_length = graph_count * sim_params_count
 #     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
 #     graph_params = graph_params_list[graph_index]
 #     # sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
-#     sim_params_index = ceil(Int64, slurm_task_id / graph_count) #allows for iteration of graph_params over each sim_param
+#     sim_params_index = ceil(Int, slurm_task_id / graph_count) #allows for iteration of graph_params over each sim_param
 #     sim_params = sim_params_list[sim_params_index]
      
 #     println("\n\n\n")

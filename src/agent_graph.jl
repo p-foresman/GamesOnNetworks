@@ -1,16 +1,16 @@
-const Graph = SimpleGraph{Int64}
+const Graph = SimpleGraph{Int}
 const AgentSet{N} = SVector{N, Agent}
-const Relationship = Graphs.SimpleEdge{Int64}
+const Relationship = Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 
 struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
     graph::Graph
     agents::AgentSet{N}
     edges::RelationshipSet{E}
-    # number_agents::Int64
-    number_hermits::Int64
+    # number_agents::Int
+    number_hermits::Int
     
-    function AgentGraph(graph::SimpleGraph{Int64})
+    function AgentGraph(graph::SimpleGraph{Int})
         N = nv(graph)
         E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
@@ -21,7 +21,7 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
                 number_hermits += 1
             end
         end
-        graph_edges = SVector{E, Graphs.SimpleEdge{Int64}}(collect(edges(graph)))
+        graph_edges = SVector{E, Graphs.SimpleEdge{Int}}(collect(edges(graph)))
         return new{N, E}(graph, agents, graph_edges, number_hermits)
     end
 end

@@ -7,8 +7,8 @@
 
 
 function setPlayers!(model::SimModel)
-    edge::Graphs.SimpleEdge{Int64} = rand(model.agent_graph.edges)
-    vertex_list::Vector{Int64} = shuffle!([edge.src, edge.dst])
+    edge::Graphs.SimpleEdge{Int} = rand(model.agent_graph.edges)
+    vertex_list::Vector{Int} = shuffle!([edge.src, edge.dst])
     for player in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
         model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
     end
@@ -212,7 +212,7 @@ end
 
 function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
     # length = size(game.payoff_matrix, 1) #for symmetric games only
-    opponent_strategy_recollection = zeros(Int64, S1)
+    opponent_strategy_recollection = zeros(Int, S1)
     for memory in memory_set
         opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
@@ -243,7 +243,7 @@ end
 ########### tagged memory stuff #####
 # function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
 #     # length = size(game.payoff_matrix, 1) #for symmetric games only
-#     opponent_strategy_recollection = zeros(Int64, S1)
+#     opponent_strategy_recollection = zeros(Int, S1)
 #     for memory in memory_set
 #         opponent_strategy_recollection[memory[2]] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
 #     end
@@ -301,7 +301,7 @@ end
 
 
 function countStrats(memory_set::PerceptSequence, desired_strat::Int8)
-    count::Int64 = 0
+    count::Int = 0
     for memory in memory_set
         if memory == desired_strat
             count += 1
@@ -312,7 +312,7 @@ end
 
 #tagged functionality
 # function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
-#     count::Int64 = 0
+#     count::Int = 0
 #     for memory in memory_set
 #         if memory[2] == desired_strat
 #             count += 1

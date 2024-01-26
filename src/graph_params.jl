@@ -57,9 +57,9 @@ struct StochasticBlockModelParams <: GraphParams
 end
 struct LatticeParams <: GraphParams
     graph_type::Symbol
-    dimensions::Int64
-    dim_lengths::Vector{Int64}
-    function LatticeParams(dim_lengths::Vector{Int64})
+    dimensions::Int
+    dim_lengths::Vector{Int}
+    function LatticeParams(dim_lengths::Vector{Int})
         return new(:lattice, length(dim_lengths), dim_lengths)
     end
 end

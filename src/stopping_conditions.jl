@@ -19,8 +19,8 @@ mutable struct EquityBehavioral <: StoppingCondition
     strategy::Int8
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFENITION: (1-error)*number_agents
-    period_cutoff::Int64 #initialized to nothing (determine in simulation). DEFENITION: memory_length.
-    period_count::Int64 #initialized at 0
+    period_cutoff::Int #initialized to nothing (determine in simulation). DEFENITION: memory_length.
+    period_count::Int #initialized at 0
     
 
     function EquityBehavioral(strategy::Integer)

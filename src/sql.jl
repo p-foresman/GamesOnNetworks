@@ -376,7 +376,7 @@ function insertSimGroup(db_filepath::String, description::String)
     return tuple_to_return
 end
 
-function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
     uuid = "$(uuid4())"
     
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
@@ -444,7 +444,7 @@ function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
 end
 
 
-function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
     simulation_uuid = "$(uuid4())"
     
     #prepare simulation SQL
