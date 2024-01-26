@@ -5,6 +5,7 @@
 
 ######################## game algorithm ####################
 
+
 function setPlayers!(model::SimModel)
     edge::Graphs.SimpleEdge{Int64} = rand(model.agent_graph.edges)
     vertex_list::Vector{Int64} = shuffle!([edge.src, edge.dst])
@@ -14,6 +15,20 @@ function setPlayers!(model::SimModel)
     return nothing
 end
 
+
+function updateMemories!(model::SimModel)
+    updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
+    return nothing
+end
+
+#play the defined game
+function playGame!(model::SimModel)
+    # @timeit to "make choices" makeChoices!(model)
+    # @timeit to "update memories" updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
+    makeChoices!(model)
+    updateMemories!(model)
+    return nothing
+end
 
 function runPeriod!(model::SimModel) #NOTE: what type are graph_edges ??
     for match in 1:model.sim_params.matches_per_period
@@ -32,15 +47,16 @@ function runPeriod!(model::SimModel) #NOTE: what type are graph_edges ??
     return nothing
 end
 
+# function findOpponentStrategyProbs!(model::SimModel)
+#     findOpponentStrategyProbs!(model.pre_allocated_arrays.opponent_strategy_recollection, model.pre_allocated_arrays.opponent_strategy_probs, model.pre_allocated_arrays.players)
+#     return nothing
+# end
 
-#play the defined game
-function playGame!(model::SimModel)
-    # @timeit to "make choices" makeChoices!(model)
-    # @timeit to "update memories" updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
-    makeChoices!(model)
-    updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
-    return nothing
-end
+# function findExpectedUtilities!(model::SimModel)
+#     findExpectedUtilities!(model.pre_allocated_arrays.player_expected_utilities, model.game.payoff_matrix, model.pre_allocated_arrays.opponent_strategy_probs)
+#     return nothing
+# end
+
 
 #choice algorithm for agents "deciding" on strategies (find max expected payoff)
 function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. Could use CartesianIndices() to iterate through payoff matrix? 
@@ -50,17 +66,19 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
 
-    findOpponentStrategyProbs!(model.pre_allocated_arrays.opponent_strategy_recollection, model.pre_allocated_arrays.opponent_strategy_probs, model.pre_allocated_arrays.players)
-    findExpectedUtilities!(model.pre_allocated_arrays.player_expected_utilities, model.game.payoff_matrix, model.pre_allocated_arrays.opponent_strategy_probs)
+    findOpponentStrategyProbs!(model)
+    findExpectedUtilities!(model)
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        if rand() <= model.sim_params.error 
-            model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
-        else
-            model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
-        end
+        # if rand() <= model.sim_params.error
+        #     model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
+        # else
+            # model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
+            chooseMaximumStrat!(model, player)
+
+        # end
     end
     # print("player_choices: ")
     # print(players[1].choice)
@@ -74,22 +92,43 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # players[2].wealth += outcome[2]
 end
 
+# function decide!(model::SimModel)
+#     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
+#         if rand() <= model.sim_params.error 
+#             model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
+#         else
+#             model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
+#         end
+#     end
+# end
+
 
 #other player isn't even needed without tags. this could be simplified
-function calculateOpponentStrategyProbs!(player_memory, opponent_strategy_recollection, opponent_strategy_probs)
-    @inbounds for memory in player_memory
-        opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+function calculateOpponentStrategyProbs!(model::SimModel, player::Int)
+    @inbounds for memory in model.pre_allocated_arrays.players[player].memory
+        model.pre_allocated_arrays.opponent_strategy_recollection[player][memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    opponent_strategy_probs .= opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+    model.pre_allocated_arrays.opponent_strategy_probs[player] .= model.pre_allocated_arrays.opponent_strategy_recollection[player] ./ sum(model.pre_allocated_arrays.opponent_strategy_recollection[player])
     return nothing
 end
 
-function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
+function findOpponentStrategyProbs!(model::SimModel)
     for player in 1:2
-        calculateOpponentStrategyProbs!(players[player].memory, opponent_strategy_recollection[player], opponent_strategy_probs[player])
+        calculateOpponentStrategyProbs!(model, player)
     end
     return nothing
 end
+
+function findExpectedUtilities!(model::SimModel)
+    @inbounds for column in axes(model.game.payoff_matrix, 2) #column strategies
+        for row in axes(model.game.payoff_matrix, 1) #row strategies
+            model.pre_allocated_arrays.player_expected_utilities[1][row] += model.game.payoff_matrix[row, column][1] * model.pre_allocated_arrays.opponent_strategy_probs[1][column]
+            model.pre_allocated_arrays.player_expected_utilities[2][column] += model.game.payoff_matrix[row, column][2] * model.pre_allocated_arrays.opponent_strategy_probs[2][row]
+        end
+    end
+    return nothing
+end
+
 
 # with tag functionality
 # function calculateOpponentStrategyProbs!(player_memory, opponent_tag, opponent_strategy_recollection, opponent_strategy_probs)
@@ -102,53 +141,40 @@ end
 #     return nothing
 # end
 
-# function findOpponentStrategyProbs!(opponent_strategy_recollection, opponent_strategy_probs, players)
-#     calculateOpponentStrategyProbs!(players[1].memory, players[2].tag, opponent_strategy_recollection[1], opponent_strategy_probs[1])
-#     calculateOpponentStrategyProbs!(players[2].memory, players[1].tag, opponent_strategy_recollection[2], opponent_strategy_probs[2])
-#     return nothing
+
+
+# function findMaximumStrats(expected_utilities::Vector{Float32})
+#     max_positions = Vector{Int}()
+#     max_val = Float32(0.0)
+#     for i in eachindex(expected_utilities)
+#         if expected_utilities[i] > max_val
+#             max_val = expected_utilities[i]
+#             empty!(max_positions)
+#             push!(max_positions, i)
+#         elseif expected_utilities[i] == max_val
+#             push!(max_positions, i)
+#         end
+#     end
+#     return rand(max_positions)
 # end
 
-# function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
-#     pushMemory!(players[1], (players[2].tag, players[2].choice), sim_params)
-#     pushMemory!(players[2], (players[1].tag, players[1].choice), sim_params)
-#     return nothing
-# end
-
-
-
-function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
-    @inbounds for column in axes(payoff_matrix, 2) #column strategies
-        for row in axes(payoff_matrix, 1) #row strategies
-            player_expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs[1][column]
-            player_expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs[2][row]
+function chooseMaximumStrat!(model::SimModel, player::Int)
+    max_positions = Vector{Int}()
+    max_val = Float32(0.0)
+    for i in eachindex(model.pre_allocated_arrays.player_expected_utilities[player])
+        if model.pre_allocated_arrays.player_expected_utilities[player][i] > max_val
+            max_val = model.pre_allocated_arrays.player_expected_utilities[player][i]
+            empty!(max_positions)
+            push!(max_positions, i)
+        elseif model.pre_allocated_arrays.player_expected_utilities[player][i] == max_val
+            push!(max_positions, i)
         end
     end
+    model.pre_allocated_arrays.players[player].choice = rand(max_positions)
     return nothing
 end
 
 
-# function findExpectedUtilities!(player_expected_utilities, payoff_matrix, opponent_probs)
-#     @inbounds for column in axes(payoff_matrix, 2) #column strategies
-#         for row in axes(payoff_matrix, 1) #row strategies
-#             player_expected_utilities[1][row] += payoff_matrix[row, column][1] * opponent_probs[1][column]
-#             player_expected_utilities[2][column] += payoff_matrix[row, column][2] * opponent_probs[2][row]
-#         end
-#     end
-#     return nothing
-# end
-
-function findMaximumStrats(expected_utilities::Vector{Float32})
-    max_strats::Vector{Int8} = []
-    max = maximum(expected_utilities)
-    @inbounds for i in eachindex(expected_utilities)
-        if expected_utilities[i] == max
-            push!(max_strats, Int8(i))
-        end
-    end
-    # print("max_strats: ")
-    # println(max_strats)
-    return rand(max_strats)
-end
 
 # update agent's memory vector
 function pushMemory!(agent::Agent, percept::Percept, sim_params::SimParams)
@@ -159,11 +185,25 @@ function pushMemory!(agent::Agent, percept::Percept, sim_params::SimParams)
     return nothing
 end
 
+# function pushMemory!(model::SimModel, player::Int, opponent::Int)
+#     if length(model.pre_allocated_arrays.players[player].memory) == model.sim_params.memory_length
+#         popfirst!(model.pre_allocated_arrays.players[player].memory)
+#     end
+#     push!(model.pre_allocated_arrays.players[player].memory, model.pre_allocated_arrays.players[opponent].choice)
+#     return nothing
+# end
+
 function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
     pushMemory!(players[1], players[2].choice, sim_params)
     pushMemory!(players[2], players[1].choice, sim_params)
     return nothing
 end
+
+# function updateMemories!(model::SimModel)
+#     pushMemory!(model, 1, 2)
+#     pushMemory!(model, 2, 1)
+#     return nothing
+# end
 
 
 

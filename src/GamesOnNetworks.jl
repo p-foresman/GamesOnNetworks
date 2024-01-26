@@ -75,7 +75,7 @@ include("agent_graph.jl")
 include("pre_allocated_arrays.jl")
 
 #functions which require a combination of types
-include("low_level_functions.jl")
+include("cross_type_functions.jl")
 
 #simulation functions should go here and model barrier functions should be in the simulation_model.jl file
 #basically, make sure to delagate any functions pertaining to individual types to that file, then add
@@ -91,7 +91,7 @@ include("sql.jl")
 include("database_api.jl")
 
 #simulation functions
-# include("simulation_functions.jl") #this might need to be heigher
+include("simulation_functions.jl")
 include("simulation.jl")
 
 #plotting functions
