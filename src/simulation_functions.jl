@@ -72,13 +72,11 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # println(player_expected_utilities)
     
     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        # if rand() <= model.sim_params.error
-        #     model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
-        # else
-            # model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
-            chooseMaximumStrat!(model, player)
-
-        # end
+        if rand() <= model.sim_params.error
+            model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
+        else
+            model.pre_allocated_arrays.players[player].choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
+        end
     end
     # print("player_choices: ")
     # print(players[1].choice)
@@ -158,20 +156,19 @@ end
 #     return rand(max_positions)
 # end
 
-function chooseMaximumStrat!(model::SimModel, player::Int)
+function findMaximumStrategy(expected_utilities::Vector{Float32})
     max_positions = Vector{Int}()
     max_val = Float32(0.0)
-    for i in eachindex(model.pre_allocated_arrays.player_expected_utilities[player])
-        if model.pre_allocated_arrays.player_expected_utilities[player][i] > max_val
-            max_val = model.pre_allocated_arrays.player_expected_utilities[player][i]
+    for i in eachindex(expected_utilities)
+        if expected_utilities[i] > max_val
+            max_val = expected_utilities[i]
             empty!(max_positions)
             push!(max_positions, i)
-        elseif model.pre_allocated_arrays.player_expected_utilities[player][i] == max_val
+        elseif expected_utilities[i] == max_val
             push!(max_positions, i)
         end
     end
-    model.pre_allocated_arrays.players[player].choice = rand(max_positions)
-    return nothing
+    return rand(max_positions)
 end
 
 
@@ -236,7 +233,7 @@ end
 function determineAgentBehavior(game::Game, memory_set::PerceptSequence)
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
-    max_strat = findMaximumStrats(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+    max_strat = findMaximumStrategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
     return max_strat
 end
 
