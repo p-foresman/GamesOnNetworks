@@ -53,10 +53,13 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::G
 
 # const starting_condition_list = [FractiousState()]
 # const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
+const model = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), PeriodCutoff(10000))
+const model1 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
+const model2 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
+const model5 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityPsychological(2))
+const model6 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1235), CompleteParams(), FractiousState(), EquityPsychological(2))
+const model7 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1235), CompleteParams(), FractiousState(), EquityBehavioral(2))
 
-
-const model2 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
-const model4 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityPsychological(2))
 
 function testModel(model::SimModel)
     simulate(model, use_seed=true)

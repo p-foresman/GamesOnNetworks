@@ -71,13 +71,19 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # print("player_expected_utilities: ")
     # println(player_expected_utilities)
     
+    # for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
+    #     if rand() <= model.sim_params.error
+    #         model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
+    #     else
+    #         model.pre_allocated_arrays.players[player].choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
+    #     end
+    # end
+
     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        if rand() <= model.sim_params.error
-            model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
-        else
-            model.pre_allocated_arrays.players[player].choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
-        end
+        model.pre_allocated_arrays.players[player].rational_choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
+        model.pre_allocated_arrays.players[player].choice = rand() <= model.sim_params.error ? rand(model.game.strategies[player]) : model.pre_allocated_arrays.players[player].rational_choice
     end
+
     # print("player_choices: ")
     # print(players[1].choice)
     # print(", ")
@@ -90,15 +96,15 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # players[2].wealth += outcome[2]
 end
 
-# function decide!(model::SimModel)
-#     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
-#         if rand() <= model.sim_params.error 
-#             model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
-#         else
-#             model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
-#         end
-#     end
-# end
+function setChoices!(model::SimModel)
+    for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
+        if rand() <= model.sim_params.error 
+            model.pre_allocated_arrays.players[player].choice = rand(model.game.strategies[player])
+        else
+            model.pre_allocated_arrays.players[player].choice = findMaximumStrats(model.pre_allocated_arrays.player_expected_utilities[player])
+        end
+    end
+end
 
 
 #other player isn't even needed without tags. this could be simplified
@@ -258,9 +264,9 @@ end
 #######################################################
 
 #NOTE: CAN REMOVE SIM_PARAMS FROM THESE! (ALL CALCULATIONS DONE IN MODEL INITIALIZATION)
-function checkStoppingCondition(::Game, stopping_condition::EquityPsychological, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(model::SimModel, stopping_condition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in agent_graph.agents
+    for agent in model.agent_graph.agents
         if !agent.is_hermit
             if countStrats(agent.memory, stopping_condition.strategy) >= stopping_condition.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
                 number_transitioned += 1
@@ -270,15 +276,16 @@ function checkStoppingCondition(::Game, stopping_condition::EquityPsychological,
     return number_transitioned >= stopping_condition.sufficient_transitioned
 end
 
-function checkStoppingCondition(game::Game, stopping_condition::EquityBehavioral, agent_graph::AgentGraph, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function checkStoppingCondition(model::SimModel, stopping_condition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in agent_graph.agents
+    for agent in model.agent_graph.agents
         if !agent.is_hermit
-            if determineAgentBehavior(game, agent.memory) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+            if agent.rational_choice == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
             end
         end
     end 
+
     if number_transitioned >= stopping_condition.sufficient_transitioned
         stopping_condition.period_count += 1
         return stopping_condition.period_count >= stopping_condition.period_cutoff
@@ -290,7 +297,7 @@ end
 
 
 
-function checkStoppingCondition(::Game, stopping_condition::PeriodCutoff, ::AgentGraph, current_periods::Int128)
+function checkStoppingCondition(::SimModel, stopping_condition::PeriodCutoff, current_periods::Int128)
     return current_periods >= stopping_condition.period_cutoff
 end
 

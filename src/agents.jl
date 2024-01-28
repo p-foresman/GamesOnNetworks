@@ -13,19 +13,20 @@ mutable struct Agent #could make a TaggedAgent as well to separate tags
     is_hermit::Bool
     wealth::Int #is this necessary? #NOTE: REMOVE
     memory::PerceptSequence
+    rational_choice::Choice
     choice::Choice
 
-    function Agent(name::String, wealth::Int, memory::PerceptSequence, choice::Choice) #initialize choice at 0 (representing no choice)
-        return new(name, false, wealth, memory, choice)
+    function Agent(name::String, wealth::Int, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, false, wealth, memory, rational_choice, choice)
     end
     function Agent(name::String, is_hermit::Bool)
-        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0))
+        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent(name::String)
-        return new(name, false, 0, PerceptSequence([]), Choice(0))
+        return new(name, false, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent()
-        return new("", false, 0, PerceptSequence([]), Choice(0))
+        return new("", false, 0, PerceptSequence([]), Choice(0), Choice(0))
     end
 end
 

@@ -8,7 +8,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
         Random.seed!(model.sim_params.random_seed)
     end
 
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model, model.stopping_condition, periods_elapsed)
         runPeriod!(model)
         periods_elapsed += 1
     end
@@ -56,7 +56,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     end
 
     # @timeit to "simulate" begin
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model, model.stopping_condition, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)
@@ -139,7 +139,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     # @timeit to "simulate" begin
     db_status = nothing #NOTE: THIS SHOULD BE TYPED
     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !checkStoppingCondition(model.game, model.stopping_condition, model.agent_graph, periods_elapsed)
+    while !checkStoppingCondition(model, model.stopping_condition, periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         runPeriod!(model)

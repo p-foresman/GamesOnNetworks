@@ -59,6 +59,7 @@ end
 
 
 function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
+    println("setAgentData running")
     for (vertex, agent) in enumerate(agent_graph.agents)
         #set memory initialization
         if vertex % 2 == 0
@@ -67,6 +68,10 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
             recollection = game.strategies[1][3]
         end
         empty!(agent.memory)
+        println(agent.rational_choice)
+        agent.rational_choice = Choice(0)
+        agent.choice = Choice(0)
+        println(agent.rational_choice)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, recollection)
         end
@@ -79,6 +84,8 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
         #set memory initialization
         recollection = game.strategies[1][2]
         empty!(agent.memory)
+        agent.rational_choice = Choice(0)
+        agent.choice = Choice(0)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, recollection)
         end
@@ -90,6 +97,8 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     for (vertex, agent) in enumerate(agent_graph.agents)
         #set memory initialization
         empty!(agent.memory)
+        agent.rational_choice = Choice(0)
+        agent.choice = Choice(0)
         for _ in 1:sim_params.memory_length
             push!(agent.memory, rand(game.strategies[1]))
         end
@@ -177,6 +186,7 @@ end
 function initStoppingCondition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
     stopping_condition.sufficient_transitioned = (1 - sim_params.error) * (sim_params.number_agents - agent_graph.number_hermits) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
     stopping_condition.period_cutoff = sim_params.memory_length
+    stopping_condition.period_count = 0
     return nothing
 end
 
