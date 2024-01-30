@@ -15,29 +15,6 @@ function scale_free(n::Int, α::Int; m_scaler::Float64 = 0.5)
 end
 
 
-function plot_degree_distribution(g)
-    hist = degree_histogram(g)
-    total_vertices = nv(g)
-    normalized_hist = Dict()
-    for (degree, num_vertices) in hist
-        normalized_hist[degree] = num_vertices/total_vertices
-        # append!(x, degree)
-        # append!(y, num_vertices/total_vertices)
-    end
-    return plot(normalized_hist)
-end
-
-function fit_degree_dist(D, g::SimpleGraph{Int})
-    sample_points = degree(g)
-    return fit(D, sample_points)
-end
-
-function plot_fitted_degree_dist(D, g::SimpleGraph{Int})
-    nv = Graphs.nv(g)
-    return plot(D, x_lims=[0, nv])
-end
-
-
 # sf2 = scale_free(100, 2)
 # sf3 = scale_free(100, 3)
 # ba1 = barabasi_albert(100, 1)

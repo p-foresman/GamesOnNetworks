@@ -55,10 +55,17 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::G
 # const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
 const model = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), PeriodCutoff(10000))
 const model1 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
-const model2 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
+const model22 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1235), CompleteParams(), FractiousState(), EquityBehavioral(2))
 const model5 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityPsychological(2))
 const model6 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1235), CompleteParams(), FractiousState(), EquityPsychological(2))
 const model7 = SimModel(game_list[1], SimParams(20, 13, 0.1, random_seed=1235), CompleteParams(), FractiousState(), EquityBehavioral(2))
+const model3 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityPsychological(2))
+const model9 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(1.0), FractiousState(), EquityBehavioral(2))
+const model10 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(4.0), FractiousState(), EquityBehavioral(2))
+const model11 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(4.0), FractiousState(), EquityBehavioral(2))
+const model12 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(3.0), FractiousState(), EquityBehavioral(2))
+const model13 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(4.0), FractiousState(), EquityBehavioral(2))
+model14 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(4.0), FractiousState(), EquityBehavioral(2))
 
 
 function testModel(model::SimModel)

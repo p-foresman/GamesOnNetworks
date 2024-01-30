@@ -4,22 +4,49 @@
 
 
 ######################## game algorithm ####################
+function getAgents(model::SimModel)
+    return model.agent_graph.agents
+end
 
+function getAgent(model::SimModel, agent_number::Int)
+    return model.agent_graph.agents[agent_number]
+end
+
+function getPlayers(model::SimModel)
+    return model.pre_allocated_arrays.players
+end
+
+function getPlayer(model::SimModel, player_number::Int)
+    return model.pre_allocated_arrays.players[player_number]
+end
+
+function setPlayer!(model::SimModel, player_number::Int, agent::Agent)
+    model.pre_allocated_arrays.players[player_number] = agent
+    return nothing
+end
+
+function getOpponentStrategyRecollection(model::SimModel, player_number::Int)
+    return model.pre_allocated_arrays.opponent_strategy_recollection[player_number]
+end
+
+function getOpponentStrategyProbs(model::SimModel, player_number::Int)
+    return model.pre_allocated_arrays.opponent_strategy_probs[player_number]
+end
+
+function getPlayerExpectedUtilities(model::SimModel, player_number::Int)
+    return model.pre_allocated_arrays.player_expected_utilities[player_number]
+end
 
 function setPlayers!(model::SimModel)
     edge::Graphs.SimpleEdge{Int} = rand(model.agent_graph.edges)
     vertex_list::Vector{Int} = shuffle!([edge.src, edge.dst])
     for player in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
-        model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
+        setPlayer!(model, player, getAgent(model, vertex_list[player]))
+        # model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
     end
     return nothing
 end
 
-
-function updateMemories!(model::SimModel)
-    updateMemories!(model.pre_allocated_arrays.players, model.sim_params)
-    return nothing
-end
 
 #play the defined game
 function playGame!(model::SimModel)
@@ -80,8 +107,8 @@ function makeChoices!(model::SimModel) #COULD LIKELY MAKE THIS FUNCTION BETTER. 
     # end
 
     for player in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        model.pre_allocated_arrays.players[player].rational_choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
-        model.pre_allocated_arrays.players[player].choice = rand() <= model.sim_params.error ? rand(model.game.strategies[player]) : model.pre_allocated_arrays.players[player].rational_choice
+        getPlayer(model, player).rational_choice = findMaximumStrategy(model.pre_allocated_arrays.player_expected_utilities[player])
+        getPlayer(model, player).choice = rand() <= model.sim_params.error ? rand(model.game.strategies[player]) : getPlayer(model, player).rational_choice
     end
 
     # print("player_choices: ")
@@ -109,10 +136,10 @@ end
 
 #other player isn't even needed without tags. this could be simplified
 function calculateOpponentStrategyProbs!(model::SimModel, player::Int)
-    @inbounds for memory in model.pre_allocated_arrays.players[player].memory
-        model.pre_allocated_arrays.opponent_strategy_recollection[player][memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+    @inbounds for memory in getPlayer(model, player).memory
+        getOpponentStrategyRecollection(model, player)[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    model.pre_allocated_arrays.opponent_strategy_probs[player] .= model.pre_allocated_arrays.opponent_strategy_recollection[player] ./ sum(model.pre_allocated_arrays.opponent_strategy_recollection[player])
+    getOpponentStrategyProbs(model, player) .= model.pre_allocated_arrays.opponent_strategy_recollection[player] ./ sum(model.pre_allocated_arrays.opponent_strategy_recollection[player])
     return nothing
 end
 
@@ -126,8 +153,8 @@ end
 function findExpectedUtilities!(model::SimModel)
     @inbounds for column in axes(model.game.payoff_matrix, 2) #column strategies
         for row in axes(model.game.payoff_matrix, 1) #row strategies
-            model.pre_allocated_arrays.player_expected_utilities[1][row] += model.game.payoff_matrix[row, column][1] * model.pre_allocated_arrays.opponent_strategy_probs[1][column]
-            model.pre_allocated_arrays.player_expected_utilities[2][column] += model.game.payoff_matrix[row, column][2] * model.pre_allocated_arrays.opponent_strategy_probs[2][row]
+            getPlayerExpectedUtilities(model, 1)[row] += model.game.payoff_matrix[row, column][1] * getOpponentStrategyProbs(model, 1)[column]
+            getPlayerExpectedUtilities(model, 2)[column] += model.game.payoff_matrix[row, column][2] * getOpponentStrategyProbs(model, 2)[row]
         end
     end
     return nothing
@@ -180,33 +207,19 @@ end
 
 
 # update agent's memory vector
-function pushMemory!(agent::Agent, percept::Percept, sim_params::SimParams)
-    if length(agent.memory) == sim_params.memory_length
+function updateMemory!(agent::Agent, percept::Percept, memory_length::Int)
+    if length(agent.memory) == memory_length
         popfirst!(agent.memory)
     end
     push!(agent.memory, percept)
     return nothing
 end
 
-# function pushMemory!(model::SimModel, player::Int, opponent::Int)
-#     if length(model.pre_allocated_arrays.players[player].memory) == model.sim_params.memory_length
-#         popfirst!(model.pre_allocated_arrays.players[player].memory)
-#     end
-#     push!(model.pre_allocated_arrays.players[player].memory, model.pre_allocated_arrays.players[opponent].choice)
-#     return nothing
-# end
-
-function updateMemories!(players::Vector{Agent}, sim_params::SimParams)
-    pushMemory!(players[1], players[2].choice, sim_params)
-    pushMemory!(players[2], players[1].choice, sim_params)
+function updateMemories!(model::SimModel)
+    updateMemory!(getPlayer(model, 1), getPlayer(model, 2).choice, model.sim_params.memory_length)
+    updateMemory!(getPlayer(model, 2), getPlayer(model, 1).choice, model.sim_params.memory_length)
     return nothing
 end
-
-# function updateMemories!(model::SimModel)
-#     pushMemory!(model, 1, 2)
-#     pushMemory!(model, 2, 1)
-#     return nothing
-# end
 
 
 
@@ -266,7 +279,7 @@ end
 #NOTE: CAN REMOVE SIM_PARAMS FROM THESE! (ALL CALCULATIONS DONE IN MODEL INITIALIZATION)
 function checkStoppingCondition(model::SimModel, stopping_condition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in model.agent_graph.agents
+    for agent in getAgents(model)
         if !agent.is_hermit
             if countStrats(agent.memory, stopping_condition.strategy) >= stopping_condition.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
                 number_transitioned += 1
@@ -278,7 +291,7 @@ end
 
 function checkStoppingCondition(model::SimModel, stopping_condition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in model.agent_graph.agents
+    for agent in getAgents(model)
         if !agent.is_hermit
             if agent.rational_choice == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
