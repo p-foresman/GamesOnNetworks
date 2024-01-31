@@ -262,3 +262,18 @@ RUN 1:
 
 
 -switch simple if statements and ternary opperators whose : clauses return nothing to using && shorthand
+
+
+
+
+
+
+
+Notes 1/30
+-graphs are generated from sufficient statistic (high level degree distribution), reverse engineered to generate specific local graph
+-test power laws (poweRlaw package)
+    -testing that degree distribution is power law (significantl different from others)
+    -look at igraph documentation for power law stuff (number edges)
+-network STRUCTURE is what's important, not network size (fine tune alpha for scale free)
+-run statistical tests on all graph types (signif)
+-look into sufficient statistics

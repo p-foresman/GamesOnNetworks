@@ -32,6 +32,7 @@ SimParams Accessors
 number_agents(sim_params::SimParams) = sim_params.number_agents
 memory_length(sim_params::SimParams) = sim_params.memory_length
 error(sim_params::SimParams) = sim_params.error
+matches_per_period(sim_params::SimParams) = sim_params.matches_per_period
 
 
 

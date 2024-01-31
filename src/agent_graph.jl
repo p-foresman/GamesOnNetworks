@@ -21,7 +21,7 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
                 number_hermits += 1
             end
         end
-        graph_edges = SVector{E, Graphs.SimpleEdge{Int}}(collect(edges(graph)))
+        graph_edges = SVector{E, Graphs.SimpleEdge{Int}}(collect(Graphs.edges(graph)))
         return new{N, E}(graph, agents, graph_edges, number_hermits)
     end
 end

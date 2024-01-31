@@ -13,10 +13,10 @@ struct SimModel{S1, S2, L, N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
     function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
-        agent_graph = initGraph(graph_params, game, sim_params, starting_condition)
+        agent_graph = initialize_graph!(graph_params, game, sim_params, starting_condition)
         N = nv(agent_graph.graph)
         E = ne(agent_graph.graph)
-        initStoppingCondition!(stopping_condition, sim_params, agent_graph)
+        initialize_stopping_condition!(stopping_condition, sim_params, agent_graph)
         pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
         return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
@@ -38,6 +38,7 @@ sim_params(model::SimModel) = model.sim_params
 number_agents(model::SimModel) = number_agents(sim_params(model))
 memory_length(model::SimModel) = memory_length(sim_params(model))
 error(model::SimModel) = error(sim_params(model))
+matches_per_period(model::SimModel) = matches_per_period(sim_params(model))
 
 # GraphParams
 graph_params(model::SimModel) = model.graph_params
@@ -45,10 +46,10 @@ graph_type(model::SimModel) = graph_type(graph_params(model))
 ###add more
 
 #StartingCondition
-
+starting_condition(model::SimModel) = model.starting_condition
 
 #StoppingCondition
-
+stopping_condition(model::SimModel) = model.stopping_condition
 
 # AgentGraph
 agent_graph(model::SimModel) = model.agent_graph
@@ -64,27 +65,33 @@ number_hermits(model::SimModel) = number_hermits(agent_graph(model))
 pre_allocated_arrays(model::SimModel) = model.pre_allocated_arrays
 players(model::SimModel) = players(pre_allocated_arrays(model))
 player(model::SimModel, player_number::Integer) = player(pre_allocated_arrays(model), player_number)
-setplayer!(model::SimModel, player_number::Integer, agent::Agent) = setplayer!(pre_allocated_arrays(model), player_number, agent)
-setplayer!(model::SimModel, player_number::Integer, agent_number::Integer) = setplayer!(pre_allocated_arrays(model), player_number, agent(model, agent_number))
-function setplayers!(model::SimModel)
+player!(model::SimModel, player_number::Integer, agent::Agent) = player!(pre_allocated_arrays(model), player_number, agent)
+player!(model::SimModel, player_number::Integer, agent_number::Integer) = player!(pre_allocated_arrays(model), player_number, agent(model, agent_number))
+function players!(model::SimModel)
     edge::Graphs.SimpleEdge{Int} = random_edge(model)
     vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
     for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
-        setplayer!(model, player_number, vertex_list[player_number])
+        player!(model, player_number, vertex_list[player_number])
     end
     return nothing
 end
 #add accessors here for opponent_strategy_recollection_containers, etc?
 opponent_strategy_recollection(model::SimModel, player_number::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number)
+opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number, integer)
+function opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int)
+    opponent_strategy_recollection!(pre_allocated_arrays(model), player_number, index, value)
+end
 opponent_strategy_probabilities(model::SimModel, player_number::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number)
+opponent_strategy_probability(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_probability(pre_allocated_arrays(model), player_number, index)
 expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(pre_allocated_arrays(model), player_number)
+expected_utility(model::SimModel, player_number::Integer, index::Integer) = expected_utility(pre_allocated_arrays(model), player_number, index)
 
 
 """
 SimModel function barriers
     -allows for multiple dispatch functionality based on model fields with only the model as an argument
 """
-function printModel(model::SimModel) #should override show() instead for pretty printing
+function print_model(model::SimModel) #should override show() instead for pretty printing
     println("\n")
     println(model.game.name)
     println(displayName(model.graph_params))
@@ -95,27 +102,27 @@ function printModel(model::SimModel) #should override show() instead for pretty 
     println("Stop: $(model.stopping_condition.name)\n")
 end
 
-function resetModel!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
-    resetAgentGraph!(model.agent_graph, model.game, model.sim_params, model.starting_condition)
-    initStoppingCondition!(model.stopping_condition, model.sim_params, model.agent_graph)
-    resetArrays!(model.pre_allocated_arrays)
+function reset_model!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
+    reset_agent_graph!(model.agent_graph, model.game, model.sim_params, model.starting_condition)
+    initialize_stopping_condition!(model.stopping_condition, model.sim_params, model.agent_graph)
+    reset_arrays!(model.pre_allocated_arrays)
     return nothing
 end
 
 
-function resetArrays!(model::SimModel)
-    resetArrays!(model.pre_allocated_arrays)
+function reset_arrays!(model::SimModel)
+    reset_arrays!(model.pre_allocated_arrays)
     return nothing
 end
 
 
-function initGraph(model::SimModel) #look up what this method is called. function barriers?
-    initGraph(model.graph_params, model.game, model.sim_params, model.starting_condition)
+function initialize_graph!(model::SimModel) #look up what this method is called. function barriers?
+    initialize_graph!(model.graph_params, model.game, model.sim_params, model.starting_condition)
     return nothing
 end
 
-function initStoppingCondition!(model::SimModel)
-    initStoppingCondition!(model.stopping_condition, model.sim_params, model.agent_graph)
+function initialize_stopping_condition!(model::SimModel)
+    initialize_stopping_condition!(model.stopping_condition, model.sim_params, model.agent_graph)
     return nothing
 end
 

@@ -1,12 +1,12 @@
 ##### multiple dispatch for various graph parameter sets #####
-function initGraph(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+function initialize_graph!(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = complete_graph(number_agents(sim_params))
     agent_graph = AgentGraph(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 
-function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     edge_probability = graph_params.λ / number_agents(sim_params)
     graph = nothing
     while true
@@ -16,23 +16,23 @@ function initGraph(graph_params::ErdosRenyiParams, game::Game, sim_params::SimPa
         end
     end
     agent_graph = AgentGraph(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = watts_strogatz(number_agents(sim_params), graph_params.κ, graph_params.β)
     agent_graph = AgentGraph(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     m_count = Int(floor(number_agents(sim_params) ^ 1.5)) #this could be better defined
     graph = static_scale_free(number_agents(sim_params), m_count, graph_params.α)
     agent_graph = AgentGraph(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
-function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     community_size = Int(number_agents(sim_params) / graph_params.communities)
     # println(community_size)
     internal_edge_probability = graph_params.internal_λ / community_size
@@ -52,13 +52,13 @@ function initGraph(graph_params::StochasticBlockModelParams, game::Game, sim_par
         end
     end
     agent_graph = AgentGraph(graph)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 
 
 
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         if vertex % 2 == 0
@@ -76,7 +76,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     return nothing
 end
 
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         recollection = strategies(game)[2]
@@ -90,7 +90,7 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
     return nothing
 end
 
-function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         empty!(memory(agent))
@@ -104,14 +104,14 @@ function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParam
 end
 
 
-function resetAgentGraph!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    setAgentData!(agent_graph, game, sim_params, starting_condition)
+function reset_agent_graph!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+    agentdata!(agent_graph, game, sim_params, starting_condition)
     return nothing
 end
 
 ############################ tagged versions (not currently using) ##############################
 
-# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
+# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
 #     for (vertex, agent) in enumerate(agent_graph.agents)
 #         if sim_params.tags
 #             if rand() <= sim_params.tag1_proportion
@@ -136,7 +136,7 @@ end
 #     return nothing
 # end
 
-# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
+# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
 #     for (vertex, agent) in enumerate(agent_graph.agents)
 #         if rand() <= sim_params.tag1_proportion
 #             agent.tag = sim_params.tag1
@@ -155,7 +155,7 @@ end
 #     return nothing
 # end
 
-# function setAgentData!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
+# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
 #     for (vertex, agent) in enumerate(agent_graph.agents)
 #         if rand() <= sim_params.tag1_proportion
 #             agent.tag = sim_params.tag1
@@ -174,19 +174,19 @@ end
 # end
 
 
-function initStoppingCondition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
+function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
     stopping_condition.sufficient_equity = (1 - error(sim_params)) * memory_length(sim_params)
     stopping_condition.sufficient_transitioned = number_agents(sim_params) - number_hermits(agent_graph)
     return nothing
 end
 
-function initStoppingCondition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
+function initialize_stopping_condition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
     stopping_condition.sufficient_transitioned = (1 - error(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph)) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
     stopping_condition.period_cutoff = memory_length(sim_params)
     stopping_condition.period_count = 0
     return nothing
 end
 
-function initStoppingCondition!(::PeriodCutoff, ::SimParams, ::AgentGraph)
+function initialize_stopping_condition!(::PeriodCutoff, ::SimParams, ::AgentGraph)
     return nothing
 end

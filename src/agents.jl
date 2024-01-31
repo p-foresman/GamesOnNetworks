@@ -37,7 +37,13 @@ Agent Accessors
 ishermit(agent::Agent) = agent.is_hermit
 memory(agent::Agent) = agent.memory
 rational_choice(agent::Agent) = agent.rational_choice
+function rational_choice!(agent::Agent, choice::Choice)
+    agent.rational_choice = choice
+end
 choice(agent::Agent) = agent.choice
+function choice!(agent::Agent, choice::Choice)
+    agent.choice = choice
+end
 
 
 # mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags
