@@ -68,7 +68,7 @@ const model13 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235),
 model14 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1235), ErdosRenyiParams(4.0), FractiousState(), EquityBehavioral(2))
 
 
-function testModel(model::SimModel)
+function test_model(model::SimModel)
     simulate(model, use_seed=true)
-    resetModel!(model)
+    reset_model!(model)
 end

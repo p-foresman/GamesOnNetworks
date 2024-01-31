@@ -1,7 +1,7 @@
 module GamesOnNetworks
 
 export
-    #types
+    # types
     SimModel,
     Game,
     SimParams,
@@ -20,10 +20,63 @@ export
     EquityPsychological,
     EquityBehavioral,
     PeriodCutoff,
+
+    # accessors
+    game,
+    payoff_matrix,
+    strategies,
+    random_strategy,
+
+    sim_params,
+    number_agent,
+    memory_length,
+    error, #change to error rate?
+    matches_per_period,
+
+    graph_params,
+    graph_type,
+
+    starting_condition,
+
+    stopping_condition,
+
+    agent_graph,
+    graph,
+    agents,
+    agent,
+    edges, #rename?
+    edge,
+    random_edge,
+    number_hermits,
+
+    ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
+    memory,
+    rational_choice,
+    rational_choice!,
+    choice,
+    choice!,
+
+    pre_allocated_arrays,
+    players,
+    player,
+    player!,
+    opponent_strategy_recollections, #ditch the s and use multiple dispatch?
+    opponent_strategy_recollection,
+    opponent_strategy_recollection!,
+    opponent_strategy_probs, #use multiple dispatch for these as well?
+    opponent_strategy_probabilities,
+    opponent_strategy_probability,
+    player_expected_utilities,
+    expected_utilities,
+    expected_utility,
+    reset_arrays!,
+
+
+    # constructors
     constructSimParamsList,
     constructModelList,
     selectAndConstructModel,
-    resetModel!,
+    reset_model!,
     initDB,
     insertSimGroup,
     collectDBFilesInDirectory,
