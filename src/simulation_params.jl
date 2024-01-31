@@ -26,6 +26,15 @@ struct SimParams
     end
 end
 
+"""
+SimParams Accessors
+"""
+number_agents(sim_params::SimParams) = sim_params.number_agents
+memory_length(sim_params::SimParams) = sim_params.memory_length
+error(sim_params::SimParams) = sim_params.error
+
+
+
 displayName(sim_params::SimParams) = "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)"
 
 

@@ -31,6 +31,15 @@ mutable struct Agent #could make a TaggedAgent as well to separate tags
 end
 
 
+"""
+Agent Accessors
+"""
+ishermit(agent::Agent) = agent.is_hermit
+memory(agent::Agent) = agent.memory
+rational_choice(agent::Agent) = agent.rational_choice
+choice(agent::Agent) = agent.choice
+
+
 # mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags
 #     name::String
 #     tag::Union{Nothing, Symbol} #NOTE: REMOVE

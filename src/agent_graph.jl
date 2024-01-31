@@ -26,6 +26,16 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
     end
 end
 
+"""
+AgentGraph Accessors
+"""
+graph(agent_graph::AgentGraph) = agent_graph.graph
+agents(agent_graph::AgentGraph) = agent_graph.agents
+agent(agent_graph::AgentGraph, agent_number::Integer) = agents(agent_graph)[agent_number]
+edges(agent_graph::AgentGraph) = agent_graph.edges
+edge(agent_graph::AgentGraph, edge_number::Integer) = edges(agent_graph)[edge_number]
+random_edge(agent_graph::AgentGraph) = rand(edges(agent_graph))
+number_hermits(agent_graph::AgentGraph) = agent_graph.number_hermits
 
 # function resetAgentGraph!(agent_graph::AgentGraph)
 #     for agent in agent_graph.agents

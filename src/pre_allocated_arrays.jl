@@ -1,4 +1,4 @@
-struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents???
+struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents??? Could call this GameState?
     players::Vector{Agent}
     opponent_strategy_recollection::SVector{2, Vector{Int}}
     opponent_strategy_probs::SVector{2, Vector{Float64}}
@@ -14,6 +14,23 @@ struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: 
         return new(players, opponent_strategy_recollection, opponent_strategy_probs, player_expected_utilities)
     end
 end
+
+"""
+PreAllocatedArrays Accessors
+"""
+players(pre_allocated_arrays::PreAllocatedArrays) = pre_allocated_arrays.players
+player(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = players(pre_allocated_arrays)[player_number]
+function setplayer!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, agent::Agent)
+    players(pre_allocated_arrays)[player_number] = agent
+    return nothing
+end
+opponent_strategy_recollections(pre_allocated_arrays::PreAllocatedArrays) = pre_allocated_arrays.opponent_strategy_recollection
+opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = opponent_strategy_recollections(pre_allocated_arrays)[player_number]
+opponent_strategy_probs(pre_allocated_arrays::PreAllocatedArrays) = pre_allocated_arrays.opponent_strategy_probs
+opponent_strategy_probabilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = opponent_strategy_probs(pre_allocated_arrays)[player_number]
+player_expected_utilities(pre_allocated_arrays::PreAllocatedArrays) = pre_allocated_arrays.player_expected_utilities
+expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = player_expected_utilities(pre_allocated_arrays)[player_number]
+
 
 function resetArrays!(pre_allocated_arrays::PreAllocatedArrays)
     for player in 1:2

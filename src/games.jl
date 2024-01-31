@@ -41,3 +41,12 @@ struct Game{S1, S2, L}
         return new{S1, S2, L}(name, payoff_matrix, strategies)
     end
 end
+
+
+"""
+Game Accessors
+"""
+name(game::Game) = game.name
+payoff_matrix(game::Game) = game.payoff_matrix
+strategies(game::Game) = game.strategies[1] #set statically to 1 right now (symmetric games) **make a symmetric game type
+random_strategy(game::Game) = rand(strategies(game))

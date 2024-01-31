@@ -64,7 +64,10 @@ struct LatticeParams <: GraphParams
     end
 end
     
-
+"""
+GraphParams Accessors
+"""
+graph_type(graph_params::GraphParams) = graph_params.graph_type #dont need graph type in these types. can do typeof(graph_params) or something
 
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
 function displayName(::CompleteParams) return "Complete" end

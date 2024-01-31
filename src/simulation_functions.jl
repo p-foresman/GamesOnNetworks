@@ -4,48 +4,6 @@
 
 
 ######################## game algorithm ####################
-function getAgents(model::SimModel)
-    return model.agent_graph.agents
-end
-
-function getAgent(model::SimModel, agent_number::Int)
-    return model.agent_graph.agents[agent_number]
-end
-
-function getPlayers(model::SimModel)
-    return model.pre_allocated_arrays.players
-end
-
-function getPlayer(model::SimModel, player_number::Int)
-    return model.pre_allocated_arrays.players[player_number]
-end
-
-function setPlayer!(model::SimModel, player_number::Int, agent::Agent)
-    model.pre_allocated_arrays.players[player_number] = agent
-    return nothing
-end
-
-function getOpponentStrategyRecollection(model::SimModel, player_number::Int)
-    return model.pre_allocated_arrays.opponent_strategy_recollection[player_number]
-end
-
-function getOpponentStrategyProbs(model::SimModel, player_number::Int)
-    return model.pre_allocated_arrays.opponent_strategy_probs[player_number]
-end
-
-function getPlayerExpectedUtilities(model::SimModel, player_number::Int)
-    return model.pre_allocated_arrays.player_expected_utilities[player_number]
-end
-
-function setPlayers!(model::SimModel)
-    edge::Graphs.SimpleEdge{Int} = rand(model.agent_graph.edges)
-    vertex_list::Vector{Int} = shuffle!([edge.src, edge.dst])
-    for player in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
-        setPlayer!(model, player, getAgent(model, vertex_list[player]))
-        # model.pre_allocated_arrays.players[player] = model.agent_graph.agents[vertex_list[player]]
-    end
-    return nothing
-end
 
 
 #play the defined game

@@ -23,6 +23,62 @@ struct SimModel{S1, S2, L, N, E}
 end
 
 
+"""
+SimModel Accessors
+"""
+# Game
+game(model::SimModel) = model.game
+# name(game::Game) = game.name
+payoff_matrix(model::SimModel) = payoff_matrix(game(model))
+strategies(model::SimModel) = strategies(game(model))
+random_strategy(model::SimModel) = random_strategy(game(model))
+
+# SimParams
+sim_params(model::SimModel) = model.sim_params
+number_agents(model::SimModel) = number_agents(sim_params(model))
+memory_length(model::SimModel) = memory_length(sim_params(model))
+error(model::SimModel) = error(sim_params(model))
+
+# GraphParams
+graph_params(model::SimModel) = model.graph_params
+graph_type(model::SimModel) = graph_type(graph_params(model))
+###add more
+
+#StartingCondition
+
+
+#StoppingCondition
+
+
+# AgentGraph
+agent_graph(model::SimModel) = model.agent_graph
+graph(model::SimModel) = graph(agent_graph(model))
+agents(model::SimModel) = agents(agent_graph(model))
+agent(model::SimModel, agent_number::Integer) = agent(agent_graph(model), agent_number)
+edges(model::SimModel) = edges(agent_graph(model))
+edge(model::SimModel, edge_number::Integer) = edge(agent_graph(model), edge_number)
+random_edge(model::SimModel) = random_edge(agent_graph(model))
+number_hermits(model::SimModel) = number_hermits(agent_graph(model))
+
+#PreAllocatedArrays
+pre_allocated_arrays(model::SimModel) = model.pre_allocated_arrays
+players(model::SimModel) = players(pre_allocated_arrays(model))
+player(model::SimModel, player_number::Integer) = player(pre_allocated_arrays(model), player_number)
+setplayer!(model::SimModel, player_number::Integer, agent::Agent) = setplayer!(pre_allocated_arrays(model), player_number, agent)
+setplayer!(model::SimModel, player_number::Integer, agent_number::Integer) = setplayer!(pre_allocated_arrays(model), player_number, agent(model, agent_number))
+function setplayers!(model::SimModel)
+    edge::Graphs.SimpleEdge{Int} = random_edge(model)
+    vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
+    for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
+        setplayer!(model, player_number, vertex_list[player_number])
+    end
+    return nothing
+end
+#add accessors here for opponent_strategy_recollection_containers, etc?
+opponent_strategy_recollection(model::SimModel, player_number::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number)
+opponent_strategy_probabilities(model::SimModel, player_number::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number)
+expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(pre_allocated_arrays(model), player_number)
+
 
 """
 SimModel function barriers
