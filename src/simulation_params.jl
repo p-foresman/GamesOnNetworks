@@ -26,21 +26,20 @@ struct SimParams
     end
 end
 
+Base.show(sim_params::SimParams) = println("N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)")
+
+
 """
 SimParams Accessors
 """
-number_agents(sim_params::SimParams) = sim_params.number_agents
-memory_length(sim_params::SimParams) = sim_params.memory_length
-error(sim_params::SimParams) = sim_params.error
-matches_per_period(sim_params::SimParams) = sim_params.matches_per_period
-
-
-
-displayName(sim_params::SimParams) = "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)"
+number_agents(sim_params::SimParams) = getfield(sim_params, :number_agents)
+memory_length(sim_params::SimParams) = getfield(sim_params, :memory_length)
+error_rate(sim_params::SimParams) = getfield(sim_params, :error)
+matches_per_period(sim_params::SimParams) = getfield(sim_params, :matches_per_period)
 
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
-function constructSimParamsList(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
+function construct_sim_params_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_list
         for memory_length in memory_length_list

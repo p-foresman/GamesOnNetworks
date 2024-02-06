@@ -20,7 +20,7 @@ end
 function run_period!(model::SimModel) #NOTE: what type are graph_edges ??
     for _ in 1:matches_per_period(model)
         reset_arrays!(model)
-        players!(model)
+        set_players!(model)
         play_game!(model)
     end
     return nothing
@@ -30,7 +30,7 @@ end
 function make_choices!(model::SimModel)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
         rational_choice!(player(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
-        choice!(player(model, player_number), rand() <= error(model) ? random_strategy(model) : rational_choice(player(model, player_number)))
+        choice!(player(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(player(model, player_number)))
     end
 end
 
@@ -54,8 +54,8 @@ end
 function calculate_expected_utilities!(model::SimModel)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies
         for row in axes(payoff_matrix(model), 1) #row strategies
-            expected_utilities(model, 1)[row] += payoff_matrix(model)[row, column][1] * opponent_strategy_probability(model, 1, column)
-            expected_utilities(model, 2)[column] += payoff_matrix(model)[row, column][2] * opponent_strategy_probability(model, 2, row)
+            expected_utilities(model, 1)[row] += payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column)
+            expected_utilities(model, 2)[column] += payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row)
         end
     end
     return nothing

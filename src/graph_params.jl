@@ -67,11 +67,11 @@ end
 """
 GraphParams Accessors
 """
-graph_type(graph_params::GraphParams) = graph_params.graph_type #dont need graph type in these types. can do typeof(graph_params) or something
+graph_type(graph_params::GraphParams) = getfield(graph_params, :graph_type) #dont need graph type in these types. can do typeof(graph_params) or something
 
 # methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
-function displayName(::CompleteParams) return "Complete" end
-function displayName(graph_params::ErdosRenyiParams) return "ErdosRenyi λ=$(graph_params.λ)" end
-function displayName(graph_params::SmallWorldParams) return "SmallWorld κ=$(graph_params.κ) β=$(graph_params.β)" end
-function displayName(graph_params::ScaleFreeParams) return "ScaleFree α=$(graph_params.α)" end
-function displayName(graph_params::StochasticBlockModelParams) return "StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)" end
+Base.show(::CompleteParams) = println("Complete")
+Base.show(graph_params::ErdosRenyiParams) = println("ErdosRenyi λ=$(graph_params.λ)")
+Base.show(graph_params::SmallWorldParams) = println("SmallWorld κ=$(graph_params.κ) β=$(graph_params.β)")
+Base.show(graph_params::ScaleFreeParams) = println("ScaleFree α=$(graph_params.α)")
+Base.show(graph_params::StochasticBlockModelParams) = println("StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)")

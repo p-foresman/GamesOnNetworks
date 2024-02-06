@@ -175,13 +175,13 @@ end
 
 
 function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
-    stopping_condition.sufficient_equity = (1 - error(sim_params)) * memory_length(sim_params)
+    stopping_condition.sufficient_equity = (1 - error_rate(sim_params)) * memory_length(sim_params)
     stopping_condition.sufficient_transitioned = number_agents(sim_params) - number_hermits(agent_graph)
     return nothing
 end
 
 function initialize_stopping_condition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
-    stopping_condition.sufficient_transitioned = (1 - error(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph)) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+    stopping_condition.sufficient_transitioned = (1 - error_rate(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph)) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
     stopping_condition.period_cutoff = memory_length(sim_params)
     stopping_condition.period_count = 0
     return nothing

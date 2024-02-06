@@ -30,7 +30,7 @@ export
     sim_params,
     number_agent,
     memory_length,
-    error, #change to error rate?
+    error_rate,
     matches_per_period,
 
     graph_params,
@@ -60,22 +60,18 @@ export
     players,
     player,
     player!,
-    opponent_strategy_recollections, #ditch the s and use multiple dispatch?
+    set_players!,
     opponent_strategy_recollection,
     opponent_strategy_recollection!,
-    opponent_strategy_probs, #use multiple dispatch for these as well?
     opponent_strategy_probabilities,
-    opponent_strategy_probability,
-    player_expected_utilities,
     expected_utilities,
-    expected_utility,
     reset_arrays!,
 
 
     # constructors
-    constructSimParamsList,
-    constructModelList,
-    selectAndConstructModel,
+    construct_sim_params_list,
+    construct_model_list,
+    select_and_construct_model,
     reset_model!,
     initDB,
     insertSimGroup,

@@ -18,7 +18,7 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
 end
 
 function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false)
-    print_model(model)
+    show(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -30,7 +30,7 @@ end
 
 function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false)
     for model in model_list
-        print_model(model)
+        show(model)
         flush(stdout)
 
         @sync @distributed for run in 1:run_count
@@ -80,7 +80,7 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
 
     db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-    print_model(model)
+    show(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -106,7 +106,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     for model in model_list
         db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-        print_model(model)
+        show(model)
         flush(stdout) #flush buffer
 
         @sync @distributed for run in 1:run_count
@@ -172,7 +172,7 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
 
     db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-    print_model(model)
+    show(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
@@ -198,7 +198,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     for model in model_list
         db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
 
-        print_model(model)
+        show(model)
         flush(stdout) #flush buffer
 
         @sync @distributed for run in 1:run_count
