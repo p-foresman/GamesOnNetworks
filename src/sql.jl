@@ -25,6 +25,7 @@ function initDataBase(db_filepath::String)
                                 κ REAL DEFAULT NULL,
                                 β REAL DEFAULT NULL,
                                 α REAL DEFAULT NULL,
+                                d REAL DEFAULT NULL,
                                 communities INTEGER DEFAULT NULL,
                                 internal_λ REAL DEFAULT NULL,
                                 external_λ REAL DEFAULT NULL,
@@ -720,7 +721,7 @@ function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
     SQLite.busy_timeout(db, 5000)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
-    SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, d, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, d, communities, internal_λ, external_λ FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
     SQLite.execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     SQLite.execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")

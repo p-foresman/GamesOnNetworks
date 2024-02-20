@@ -29,15 +29,15 @@ end
 
 function make_choices!(model::SimModel)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        rational_choice!(player(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
-        choice!(player(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(player(model, player_number)))
+        rational_choice!(players(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
+        choice!(players(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(players(model, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(model::SimModel, player_number::Integer)
-    @inbounds for memory in memory(player(model, player_number))
+    @inbounds for memory in memory(players(model, player_number))
         opponent_strategy_recollection(model, player_number)[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension (use a setter here instead?)
     end
     opponent_strategy_probabilities(model, player_number) .= opponent_strategy_recollection(model, player_number) ./ sum(opponent_strategy_recollection(model, player_number))
@@ -99,8 +99,8 @@ function push_memory!(agent::Agent, percept::Percept, memory_length::Int) #NOTE:
 end
 
 function push_memories!(model::SimModel)
-    push_memory!(player(model, 1), choice(player(model, 2)), memory_length(model))
-    push_memory!(player(model, 2), choice(player(model, 1)), memory_length(model))
+    push_memory!(players(model, 1), choice(players(model, 2)), memory_length(model))
+    push_memory!(players(model, 2), choice(players(model, 1)), memory_length(model))
     return nothing
 end
 
@@ -135,7 +135,7 @@ end
 function determineAgentBehavior(game::Game, memory_set::PerceptSequence)
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
-    max_strat = findMaximumStrategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+    max_strat = maximum_strategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
     return max_strat
 end
 

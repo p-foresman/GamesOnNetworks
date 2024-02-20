@@ -89,9 +89,9 @@ function pushGameToDB(db_filepath::String, game::Game)
 end
 
 function pushGraphToDB(db_filepath::String, graph_params::GraphParams)
-    graph_type = displayName(graph_params)
+    graph_type = displayname(graph_params)
     graph_params_string = JSON3.write(graph_params)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
+    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :d => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
     
     for param in keys(db_params_dict)
         if param in fieldnames(typeof(graph_params))
@@ -245,9 +245,9 @@ function pushToDatabase(db_filepath::String, sim_group_id::Union{Integer, Nothin
     # game_row_id = game_insert_result.insert_row_id
 
     #prepare and insert data for "graphs" table. No duplicate rows.
-    graph_type = displayName(graph_params)
+    graph_type = displayname(graph_params)
     graph_params_string = JSON3.write(graph_params)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
+    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :d => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
     for param in keys(db_params_dict)
         if param in fieldnames(typeof(graph_params))
             db_params_dict[param] = getfield(graph_params, param)

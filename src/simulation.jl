@@ -71,7 +71,7 @@ end
 
 
 function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(model.game.name)__$(displayName(model.graph_params))__$(displayName(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
+    distributed_uuid = "$(model.game.name)__$(displayname(model.graph_params))__$(displayname(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
@@ -162,7 +162,7 @@ end
 
 
 function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(model.game.name)__$(displayName(model.graph_params))__$(displayName(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
+    distributed_uuid = "$(model.game.name)__$(displayname(model.graph_params))__$(displayname(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
 
     
     if nworkers() > 1
@@ -226,11 +226,11 @@ end
 #     model = model_list[slurm_task_id]
      
 #     println("\n\n\n")
-#     println(displayName(model.graph_params))
-#     println(displayName(model.sim_params))
+#     println(displayname(model.graph_params))
+#     println(displayname(model.sim_params))
 #     flush(stdout) #flush buffer
 
-#     distributed_uuid = "$(displayName(graph_params))__$(displayName(sim_params))_TASKID=$slurm_task_id"
+#     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
 #     initDistributedDB(distributed_uuid)
 
 #     db_id_tuple = (
@@ -266,11 +266,11 @@ end
 #     sim_params = sim_params_list[sim_params_index]
      
 #     println("\n\n\n")
-#     println(displayName(graph_params))
-#     println(displayName(sim_params))
+#     println(displayname(graph_params))
+#     println(displayname(sim_params))
 #     flush(stdout) #flush buffer
 
-#     distributed_uuid = "$(displayName(graph_params))__$(displayName(sim_params))_TASKID=$slurm_task_id"
+#     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
 #     initDistributedDB(distributed_uuid)
 
 #     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing

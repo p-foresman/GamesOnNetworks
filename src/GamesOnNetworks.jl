@@ -12,7 +12,6 @@ export
     SmallWorldParams,
     ScaleFreeParams,
     StochasticBlockModelParams,
-    LatticeParams,
     SimParams,
     FractiousState,
     EquityState,
@@ -35,6 +34,14 @@ export
 
     graph_params,
     graph_type,
+    λ,
+    κ,
+    β,
+    α,
+    d,
+    communities,
+    internal_λ,
+    external_λ,
 
     starting_condition,
 
@@ -43,9 +50,7 @@ export
     agent_graph,
     graph,
     agents,
-    agent,
     edges, #rename?
-    edge,
     random_edge,
     number_hermits,
 
@@ -58,7 +63,6 @@ export
 
     pre_allocated_arrays,
     players,
-    player,
     player!,
     set_players!,
     opponent_strategy_recollection,
@@ -73,14 +77,21 @@ export
     construct_model_list,
     select_and_construct_model,
     reset_model!,
+
+    #simulation
+    simulate,
+    simulate_distributed,
+    simulation_iterator,
+
+    determineAgentBehavior, #NOTE: FIX THIS
+    displayname,
+
+    #database api
     initDB,
     insertSimGroup,
     collectDBFilesInDirectory,
-    simulationIterator,
-    simulate,
-    simulateDistributed,
-    # distributedSimulationIterator,
-    determineAgentBehavior,
+
+    #plotting
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
     numberAgentsTransitionTimeLinePlot,
@@ -107,7 +118,7 @@ using
     Statistics,
     Bootstrap,
     DataStructures,
-    Memoize,
+    # Memoize,
     TimerOutputs
 
 #basic utility functions

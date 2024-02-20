@@ -26,8 +26,6 @@ struct SimParams
     end
 end
 
-Base.show(sim_params::SimParams) = println("N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)")
-
 
 """
 SimParams Accessors
@@ -36,6 +34,9 @@ number_agents(sim_params::SimParams) = getfield(sim_params, :number_agents)
 memory_length(sim_params::SimParams) = getfield(sim_params, :memory_length)
 error_rate(sim_params::SimParams) = getfield(sim_params, :error)
 matches_per_period(sim_params::SimParams) = getfield(sim_params, :matches_per_period)
+
+displayname(sim_params::SimParams) = "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)"
+Base.show(sim_params::SimParams) = println(displayname(sim_params))
 
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE

@@ -7,7 +7,7 @@ function initialize_graph!(::CompleteParams, game::Game, sim_params::SimParams, 
 end
 
 function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    edge_probability = graph_params.λ / number_agents(sim_params)
+    edge_probability = λ(graph_params) / number_agents(sim_params)
     graph = nothing
     while true
         graph = erdos_renyi(number_agents(sim_params), edge_probability)
@@ -20,29 +20,40 @@ function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_param
     return agent_graph
 end
 function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = watts_strogatz(number_agents(sim_params), graph_params.κ, graph_params.β)
+    graph = nothing
+    while true
+        graph = watts_strogatz(number_agents(sim_params), κ(graph_params), β(graph_params))
+        if ne(graph) >= 1
+            break
+        end
+    end
     agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    m_count = Int(floor(number_agents(sim_params) ^ 1.5)) #this could be better defined
-    graph = static_scale_free(number_agents(sim_params), m_count, graph_params.α)
+    graph = nothing
+    while true
+        graph = scale_free(number_agents(sim_params), α(graph_params), d(graph_params))
+        if ne(graph) >= 1
+            break
+        end
+    end
     agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    community_size = Int(number_agents(sim_params) / graph_params.communities)
-    # println(community_size)
-    internal_edge_probability = graph_params.internal_λ / community_size
+    @assert number_agents(sim_params) % communities(graph_params) == 0 "Number of communities must divide number of agents evenly"
+    community_size = Int(number_agents(sim_params) / communities(graph_params))
+    internal_edge_probability = internal_λ(graph_params) / community_size
     internal_edge_probability_vector = Vector{Float64}([])
     sizes_vector = Vector{Int}([])
-    for community in 1:graph_params.communities
+    for _ in 1:communities(graph_params)
         push!(internal_edge_probability_vector, internal_edge_probability)
         push!(sizes_vector, community_size)
     end
-    external_edge_probability = graph_params.external_λ / number_agents(sim_params)
+    external_edge_probability = external_λ(graph_params) / number_agents(sim_params)
     affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_edge_probability_vector, external_edge_probability, sizes_vector)
     graph = nothing
     while true
@@ -67,8 +78,8 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
             recollection = strategies(game)[3]
         end
         empty!(memory(agent))
-        agent.rational_choice = Choice(0)
-        agent.choice = Choice(0)
+        rational_choice!(agent, Choice(0))
+        choice!(agent, Choice(0))
         for _ in 1:memory_length(sim_params)
             push!(memory(agent), recollection)
         end
@@ -81,8 +92,8 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
         #set memory initialization
         recollection = strategies(game)[2]
         empty!(memory(agent))
-        agent.rational_choice = Choice(0)
-        agent.choice = Choice(0)
+        rational_choice!(agent, Choice(0))
+        choice!(agent, Choice(0))
         for _ in 1:memory_length(sim_params)
             push!(memory(agent), recollection)
         end
@@ -94,8 +105,8 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         empty!(memory(agent))
-        agent.rational_choice = Choice(0)
-        agent.choice = Choice(0)
+        rational_choice!(agent, Choice(0))
+        choice!(agent, Choice(0))
         for _ in 1:memory_length(sim_params)
             push!(memory(agent), random_strategy(game))
         end
