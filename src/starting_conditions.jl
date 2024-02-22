@@ -26,3 +26,12 @@ struct RandomState <: StartingCondition
         return new("random")
     end
 end
+
+
+"""
+StartingCondition Accessors
+"""
+type(starting_condition::StartingCondition) = getfield(starting_condition, :name)
+
+displayname(starting_condition::StartingCondition) = type(starting_condition)
+Base.show(starting_condition::StartingCondition) = println(displayname(starting_condition))

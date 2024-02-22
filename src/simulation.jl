@@ -5,7 +5,7 @@
 
 function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false)
     if use_seed == true
-        Random.seed!(model.sim_params.random_seed)
+        Random.seed!(random_seed(model))
     end
 
     while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
@@ -48,7 +48,7 @@ end
 
 function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(model.sim_params.random_seed)
+        Random.seed!(random_seed(model))
     end
 
     if db_id_tuple === nothing 
@@ -65,13 +65,13 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     # end
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer
-    db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, model.agent_graph, periods_elapsed, distributed_uuid)
+    db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
     return (periods_elapsed, db_status)
 end
 
 
 function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(model.game.name)__$(displayname(model.graph_params))__$(displayname(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
+    distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
@@ -129,7 +129,7 @@ end
 
 function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int64}}} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(model.sim_params.random_seed)
+        Random.seed!(random_seed(model))
     end
 
     if db_id_tuple === nothing 
@@ -146,7 +146,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
         periods_elapsed += 1
         already_pushed = false
         if periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, model.agent_graph, periods_elapsed, distributed_uuid)
+            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
             prev_simulation_uuid = db_status.simulation_uuid
             already_pushed = true
         end
@@ -155,14 +155,14 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer
     if already_pushed == false #push final results to DB at filepath
-        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, model.agent_graph, periods_elapsed, distributed_uuid)
+        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
     end
     return (periods_elapsed, db_status)
 end
 
 
 function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(model.game.name)__$(displayname(model.graph_params))__$(displayname(model.sim_params))__Start=$(model.starting_condition.name)__Stop=$(model.stopping_condition.name)__TASKID=$(model.id)"
+    distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     
     if nworkers() > 1

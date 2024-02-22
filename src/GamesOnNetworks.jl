@@ -31,9 +31,10 @@ export
     memory_length,
     error_rate,
     matches_per_period,
+    random_seed,
 
     graph_params,
-    graph_type,
+    graph_type, #rename to type?
     λ,
     κ,
     β,
@@ -44,8 +45,18 @@ export
     external_λ,
 
     starting_condition,
+    type, #rename?
 
     stopping_condition,
+    strategy, #rename?
+    sufficient_equity,
+    sufficient_equity!,
+    sufficient_transitioned,
+    sufficient_transitioned!,
+    period_cutoff,
+    period_cutoff!,
+    period_count,
+    period_count!,
 
     agent_graph,
     graph,
@@ -71,20 +82,21 @@ export
     expected_utilities,
     reset_arrays!,
 
+    model_id,
+    displayname,
+    reset_model!,
 
     # constructors
     construct_sim_params_list,
     construct_model_list,
     select_and_construct_model,
-    reset_model!,
 
     #simulation
     simulate,
     simulate_distributed,
     simulation_iterator,
 
-    determineAgentBehavior, #NOTE: FIX THIS
-    displayname,
+    # determine_agent_behavior, #NOTE: FIX THIS
 
     #database api
     initDB,
@@ -98,7 +110,8 @@ export
     timeSeriesPlot,
 
     #utility
-    resetprocs
+    resetprocs,
+    scale_free
 
 using
     Graphs,

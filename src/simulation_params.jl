@@ -34,8 +34,9 @@ number_agents(sim_params::SimParams) = getfield(sim_params, :number_agents)
 memory_length(sim_params::SimParams) = getfield(sim_params, :memory_length)
 error_rate(sim_params::SimParams) = getfield(sim_params, :error)
 matches_per_period(sim_params::SimParams) = getfield(sim_params, :matches_per_period)
+random_seed(sim_params::SimParams) = getfield(sim_params, :random_seed)
 
-displayname(sim_params::SimParams) = "N=$(sim_params.number_agents) m=$(sim_params.memory_length) e=$(sim_params.error)"
+displayname(sim_params::SimParams) = "N=$(number_agents(sim_params)) m=$(memory_length(sim_params)) e=$(error_rate(sim_params))"
 Base.show(sim_params::SimParams) = println(displayname(sim_params))
 
 

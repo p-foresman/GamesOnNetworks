@@ -14,10 +14,10 @@ struct SimModel{S1, S2, L, N, E}
 
     function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
         agent_graph = initialize_graph!(graph_params, game, sim_params, starting_condition)
-        N = nv(agent_graph.graph)
-        E = ne(agent_graph.graph)
+        N = nv(graph(agent_graph))
+        E = ne(graph(agent_graph))
         initialize_stopping_condition!(stopping_condition, sim_params, agent_graph)
-        pre_allocated_arrays = PreAllocatedArrays(game.payoff_matrix)
+        pre_allocated_arrays = PreAllocatedArrays(payoff_matrix(game))
         return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
 end
@@ -26,9 +26,10 @@ end
 """
 SimModel Accessors
 """
+model_id(model::SimModel) = getfield(model, :id)
+
 # Game
 game(model::SimModel) = getfield(model, :game)
-# name(game::Game) = game.name
 payoff_matrix(model::SimModel) = payoff_matrix(game(model))
 strategies(model::SimModel) = strategies(game(model))
 random_strategy(model::SimModel) = random_strategy(game(model))
@@ -39,6 +40,7 @@ number_agents(model::SimModel) = number_agents(sim_params(model))
 memory_length(model::SimModel) = memory_length(sim_params(model))
 error_rate(model::SimModel) = error_rate(sim_params(model))
 matches_per_period(model::SimModel) = matches_per_period(sim_params(model))
+random_seed(model::SimModel) = random_seed(sim_params(model))
 
 # GraphParams
 graph_params(model::SimModel) = getfield(model, :graph_params)
@@ -60,6 +62,10 @@ edges(model::SimModel) = edges(agent_graph(model))
 edges(model::SimModel, edge_number::Integer) = edges(agent_graph(model), edge_number)
 random_edge(model::SimModel) = random_edge(agent_graph(model))
 number_hermits(model::SimModel) = number_hermits(agent_graph(model))
+function reset_agent_graph!(model::SimModel)
+    agentdata!(agent_graph(model), game(model), sim_params(model), starting_condition(model)) #parameter spreading necessary for multiple dispatch
+    return nothing
+end
 
 #PreAllocatedArrays
 pre_allocated_arrays(model::SimModel) = getfield(model, :pre_allocated_arrays)
@@ -83,33 +89,40 @@ opponent_strategy_probabilities(model::SimModel, player_number::Integer) = oppon
 opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number, index)
 expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(pre_allocated_arrays(model), player_number)
 expected_utilities(model::SimModel, player_number::Integer, index::Integer) = expected_utilities(pre_allocated_arrays(model), player_number, index)
+reset_arrays!(model::SimModel) = reset_arrays!(pre_allocated_arrays(model))
 
 
-"""
-SimModel function barriers
-    -allows for multiple dispatch functionality based on model fields with only the model as an argument
-"""
-function Base.show(model::SimModel) #should override show() instead for pretty printing
-    println("\n")
-    show(game(model))
-    show(graph_params(model))
-    show(sim_params(model))
-    print("Start: $(model.starting_condition.name), ")
-    println("Stop: $(model.stopping_condition.name)\n")
-end
+initialize_graph!(model::SimModel) = initialize_graph!(graph_params(model), game(model), sim_params(model), starting_condition(model)) #parameter spreading necessary for multiple dispatch
+initialize_stopping_condition!(model::SimModel) = initialize_stopping_condition!(stopping_condition(model), sim_params(model), agent_graph(model)) #parameter spreading necessary for multiple dispatch
 
 function reset_model!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
-    reset_agent_graph!(model.agent_graph, model.game, model.sim_params, model.starting_condition)
-    initialize_stopping_condition!(model.stopping_condition, model.sim_params, model.agent_graph)
-    reset_arrays!(model.pre_allocated_arrays)
+    reset_agent_graph!(model)
+    initialize_stopping_condition!(model)
+    reset_arrays!(model)
     return nothing
 end
 
-reset_arrays!(model::SimModel) = reset_arrays!(model.pre_allocated_arrays)
 
-initialize_graph!(model::SimModel) = initialize_graph!(model.graph_params, model.game, model.sim_params, model.starting_condition)
+function Base.show(model::SimModel)
+    println("\n")
+    print("Game: ")
+    show(game(model))
+    print("Graph Params: ")
+    show(graph_params(model))
+    print("Sim Params: ")
+    show(sim_params(model))
+    print("Start: ")
+    show(starting_condition(model))
+    print("Stop: ")
+    show(stopping_condition(model))
+end
 
-initialize_stopping_condition!(model::SimModel) = initialize_stopping_condition!(model.stopping_condition, model.sim_params, model.agent_graph)
+
+
+
+
+
+
 
 
 

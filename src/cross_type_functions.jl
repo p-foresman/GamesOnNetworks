@@ -69,7 +69,7 @@ end
 
 
 
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::FractiousState)
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         if vertex % 2 == 0
@@ -87,8 +87,8 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
     return nothing
 end
 
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
-    for (vertex, agent) in enumerate(agents(agent_graph))
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::EquityState)
+    for agent in agents(agent_graph)
         #set memory initialization
         recollection = strategies(game)[2]
         empty!(memory(agent))
@@ -101,8 +101,8 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
     return nothing
 end
 
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
-    for (vertex, agent) in enumerate(agents(agent_graph))
+function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::RandomState)
+    for agent in agents(agent_graph)
         #set memory initialization
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
@@ -115,10 +115,6 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
 end
 
 
-function reset_agent_graph!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return nothing
-end
 
 ############################ tagged versions (not currently using) ##############################
 
@@ -186,15 +182,15 @@ end
 
 
 function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
-    stopping_condition.sufficient_equity = (1 - error_rate(sim_params)) * memory_length(sim_params)
-    stopping_condition.sufficient_transitioned = number_agents(sim_params) - number_hermits(agent_graph)
+    sufficient_equity!(stopping_condition, (1 - error_rate(sim_params)) * memory_length(sim_params))
+    sufficient_transitioned!(stopping_condition, number_agents(sim_params) - number_hermits(agent_graph))
     return nothing
 end
 
 function initialize_stopping_condition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
-    stopping_condition.sufficient_transitioned = (1 - error_rate(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph)) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
-    stopping_condition.period_cutoff = memory_length(sim_params)
-    stopping_condition.period_count = 0
+    sufficient_transitioned!(stopping_condition, (1 - error_rate(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+    period_cutoff!(stopping_condition, memory_length(sim_params))
+    period_count!(stopping_condition, 0)
     return nothing
 end
 

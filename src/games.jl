@@ -42,12 +42,14 @@ struct Game{S1, S2, L}
     end
 end
 
-Base.show(game::Game) = println(game.name)
 
 """
 Game Accessors
 """
-name(game::Game) = getfield(game, :name)
+displayname(game::Game) = getfield(game, :name)
+
 payoff_matrix(game::Game) = getfield(game, :payoff_matrix)
 strategies(game::Game) = getindex(getfield(game, :strategies), 1) #set statically to 1 right now (symmetric games) **make a symmetric game type
 random_strategy(game::Game) = rand(strategies(game))
+
+Base.show(game::Game) = println(displayname(game))
