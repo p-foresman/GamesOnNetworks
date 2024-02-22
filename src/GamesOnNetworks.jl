@@ -99,9 +99,9 @@ export
     # determine_agent_behavior, #NOTE: FIX THIS
 
     #database api
-    initDB,
-    insertSimGroup,
-    collectDBFilesInDirectory,
+    db_init,
+    db_insert_sim_group,
+    db_collect_temp,
 
     #plotting
     transitionTimesBoxPlot,

@@ -52,7 +52,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
@@ -75,10 +75,10 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
-        initDistributedDB(distributed_uuid)
+        db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+    db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -90,7 +90,7 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
     end
 
     if nworkers() > 1
-        collectDistributedDB(db_filepath, distributed_uuid)
+        db_collect_distributed(db_filepath, distributed_uuid)
     end
 end
 
@@ -100,11 +100,11 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
-        initDistributedDB(distributed_uuid)
+        db_init_distributed(distributed_uuid)
     end
 
     for model in model_list
-        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
 
         show(model)
         flush(stdout) #flush buffer
@@ -117,7 +117,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     if nworkers() > 1
-        collectDistributedDB(db_filepath, distributed_uuid)
+        db_collect_distributed(db_filepath, distributed_uuid)
     end
 end
 
@@ -133,7 +133,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
@@ -167,10 +167,10 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
     
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
-        initDistributedDB(distributed_uuid)
+        db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+    db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -182,7 +182,7 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
     end
 
     if nworkers() > 1
-        collectDistributedDB(db_filepath, distributed_uuid)
+        db_collect_distributed(db_filepath, distributed_uuid)
     end
 end
 
@@ -192,11 +192,11 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
-        initDistributedDB(distributed_uuid)
+        db_init_distributed(distributed_uuid)
     end
 
     for model in model_list
-        db_id_tuple = constructIDTuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
 
         show(model)
         flush(stdout) #flush buffer
@@ -209,7 +209,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     if nworkers() > 1
-        collectDistributedDB(db_filepath, distributed_uuid)
+        db_collect_distributed(db_filepath, distributed_uuid)
     end
 end
 
@@ -231,7 +231,7 @@ end
 #     flush(stdout) #flush buffer
 
 #     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
-#     initDistributedDB(distributed_uuid)
+#     db_init_distributed(distributed_uuid)
 
 #     db_id_tuple = (
 #                    game_id = pushGameToDB(db_filepath, model.game),
@@ -247,7 +247,7 @@ end
 #     end
 
 #     if nworkers() > 1
-#         collectDistributedDB(db_filepath, distributed_uuid)
+#         db_collect_distributed(db_filepath, distributed_uuid)
 #     end
 # end
 
@@ -271,7 +271,7 @@ end
 #     flush(stdout) #flush buffer
 
 #     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
-#     initDistributedDB(distributed_uuid)
+#     db_init_distributed(distributed_uuid)
 
 #     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
 #     db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
@@ -283,7 +283,7 @@ end
 #     end
 
 #     if db_filepath !== nothing && nworkers() > 1
-#         collectDistributedDB(db_filepath, distributed_uuid)
+#         db_collect_distributed(db_filepath, distributed_uuid)
 #     end
 # end
 
@@ -299,6 +299,6 @@ end
 
 
 # function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Integer = 0)
-#     prev_sim = restoreFromDatabase(db_filepath, db_simulation_id)
+#     prev_sim = db_restore_model(db_filepath, db_simulation_id)
 #     sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_uuid=prev_sim.prev_simulation_uuid)
 # end
