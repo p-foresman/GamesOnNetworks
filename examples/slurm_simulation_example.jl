@@ -23,8 +23,8 @@ Step 3: Define a database filepath
         -simulation "groups" need to be created manually as well using the insertSimGroup("group description") function
 """
 const db_filepath = "./examle_database_filepath.sqlite"
-initDB(db_filepath) #optional
-const sim_group_id = insertSimGroup("Example Group Description") #optional
+db_init(db_filepath) #optional
+const sim_group_id = db_insert_sim_group("Example Group Description") #optional
 
 """
 Step 4: Include a script that contains all of the setup (i.e., lists of varous parameters) for simulation.
