@@ -36,11 +36,12 @@ end
 struct ScaleFreeParams <: GraphParams
     graph_type::Symbol
     α::Float64
-    function ScaleFreeParams(α::Float64)
-        return new(:sf, α)
+    d::Float64 #edge density
+    function ScaleFreeParams(α::Float64, d::Float64)
+        return new(:sf, α, d)
     end
-    function ScaleFreeParams(::Symbol, α::Float64)
-        return new(:sf, α)
+    function ScaleFreeParams(::Symbol, α::Float64, d::Float64)
+        return new(:sf, α, d)
     end
 end
 struct StochasticBlockModelParams <: GraphParams
@@ -55,23 +56,37 @@ struct StochasticBlockModelParams <: GraphParams
         return new(:sbm, communities, internal_λ, external_λ)
     end
 end
-struct LatticeParams <: GraphParams
-    graph_type::Symbol
-    dimensions::Int
-    dim_lengths::Vector{Int}
-    function LatticeParams(dim_lengths::Vector{Int})
-        return new(:lattice, length(dim_lengths), dim_lengths)
-    end
-end
+# struct LatticeParams <: GraphParams
+#     graph_type::Symbol
+#     dimensions::Int
+#     dim_lengths::Vector{Int}
+#     function LatticeParams(dim_lengths::Vector{Int})
+#         return new(:lattice, length(dim_lengths), dim_lengths)
+#     end
+# end
     
 """
 GraphParams Accessors
 """
 graph_type(graph_params::GraphParams) = getfield(graph_params, :graph_type) #dont need graph type in these types. can do typeof(graph_params) or something
 
-# methods to return displayable names as strings for graph types, etc. (similar to .__str__() in Python)
-Base.show(::CompleteParams) = println("Complete")
-Base.show(graph_params::ErdosRenyiParams) = println("ErdosRenyi λ=$(graph_params.λ)")
-Base.show(graph_params::SmallWorldParams) = println("SmallWorld κ=$(graph_params.κ) β=$(graph_params.β)")
-Base.show(graph_params::ScaleFreeParams) = println("ScaleFree α=$(graph_params.α)")
-Base.show(graph_params::StochasticBlockModelParams) = println("StochasticBlockModel communities=$(graph_params.communities) internal_λ=$(graph_params.internal_λ) external_λ=$(graph_params.external_λ)")
+λ(erdos_renyi_params::ErdosRenyiParams) = getfield(erdos_renyi_params, :λ)
+
+κ(small_world_params::SmallWorldParams) = getfield(small_world_params, :κ)
+β(small_world_params::SmallWorldParams) = getfield(small_world_params, :β)
+
+α(scale_free_params::ScaleFreeParams) = getfield(scale_free_params, :α)
+d(scale_free_params::ScaleFreeParams) = getfield(scale_free_params, :d)
+
+communities(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :communities)
+internal_λ(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :internal_λ)
+external_λ(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :external_λ)
+
+
+
+displayname(::CompleteParams) = "Complete"
+displayname(graph_params::ErdosRenyiParams) = "ErdosRenyi λ=$(λ(graph_params))"
+displayname(graph_params::SmallWorldParams) = "SmallWorld κ=$(κ(graph_params)) β=$(β(graph_params))"
+displayname(graph_params::ScaleFreeParams) = "ScaleFree α=$(α(graph_params)) d=$(d(graph_params))"
+displayname(graph_params::StochasticBlockModelParams) = "StochasticBlockModel communities=$(communities(graph_params)) internal_λ=$(internal_λ(graph_params)) external_λ=$(external_λ(graph_params))"
+Base.show(graph_params::GraphParams) = println(displayname(graph_params))

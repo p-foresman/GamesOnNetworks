@@ -15,8 +15,8 @@ Step 2: Define a database filepath if you want simulation data stored (not requi
         -simulation "groups" need to be created manually as well using the insertSimGroup("group description") function
 """
 const db_filepath = "./examle_database_filepath.sqlite"
-initDB(db_filepath) #optional
-const sim_group_id = insertSimGroup("Example Group Description") #optional
+db_init(db_filepath) #optional
+const sim_group_id = db_insert_sim_group("Example Group Description") #optional
 
 
 """

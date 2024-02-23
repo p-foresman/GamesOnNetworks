@@ -29,15 +29,15 @@ end
 
 function make_choices!(model::SimModel)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        rational_choice!(player(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
-        choice!(player(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(player(model, player_number)))
+        rational_choice!(players(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
+        choice!(players(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(players(model, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(model::SimModel, player_number::Integer)
-    @inbounds for memory in memory(player(model, player_number))
+    @inbounds for memory in memory(players(model, player_number))
         opponent_strategy_recollection(model, player_number)[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension (use a setter here instead?)
     end
     opponent_strategy_probabilities(model, player_number) .= opponent_strategy_recollection(model, player_number) ./ sum(opponent_strategy_recollection(model, player_number))
@@ -76,7 +76,7 @@ end
 
 function maximum_strategy(expected_utilities::Vector{Float32})
     max_positions = Vector{Int}()
-    max_val = Float32(0.0)
+    max_val = Float32(0.)
     for i in eachindex(expected_utilities)
         if expected_utilities[i] > max_val
             max_val = expected_utilities[i]
@@ -99,8 +99,8 @@ function push_memory!(agent::Agent, percept::Percept, memory_length::Int) #NOTE:
 end
 
 function push_memories!(model::SimModel)
-    push_memory!(player(model, 1), choice(player(model, 2)), memory_length(model))
-    push_memory!(player(model, 2), choice(player(model, 1)), memory_length(model))
+    push_memory!(players(model, 1), choice(players(model, 2)), memory_length(model))
+    push_memory!(players(model, 2), choice(players(model, 1)), memory_length(model))
     return nothing
 end
 
@@ -121,10 +121,10 @@ end
 
 
 function calculateExpectedUtilities(game::Game{S1, S2, L}, opponent_probs) where {S1, S2, L} #for symmetric games only!
-    payoff_matrix = game.payoff_matrix
+    payoff_matrix = payoff_matrix(game)
     player_expected_utilities = zeros(Float32, S1)
-    @inbounds for column in axes(game.payoff_matrix, 2) #column strategies
-        for row in axes(game.payoff_matrix, 1) #row strategies
+    @inbounds for column in axes(payoff_matrix(game), 2) #column strategies
+        for row in axes(payoff_matrix(game), 1) #row strategies
             player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
         end
     end
@@ -132,10 +132,10 @@ function calculateExpectedUtilities(game::Game{S1, S2, L}, opponent_probs) where
 end
 
 
-function determineAgentBehavior(game::Game, memory_set::PerceptSequence)
+function determine_agent_behavior(game::Game, memory_set::PerceptSequence)
     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
-    max_strat = findMaximumStrategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+    max_strat = maximum_strategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
     return max_strat
 end
 
@@ -163,29 +163,29 @@ function is_stopping_condition(model::SimModel, stopping_condition::EquityPsycho
     number_transitioned = 0
     for agent in agents(model)
         if !ishermit(agent)
-            if count_strategy(memory(agent), stopping_condition.strategy) >= stopping_condition.sufficient_equity #this is hard coded to strategy 2 (M) for now. Should change later!
+            if count_strategy(memory(agent), strategy(stopping_condition)) >= sufficient_equity(stopping_condition) #this is hard coded to strategy 2 (M) for now. Should change later!
                 number_transitioned += 1
             end
         end
     end 
-    return number_transitioned >= stopping_condition.sufficient_transitioned
+    return number_transitioned >= sufficient_transitioned(stopping_condition)
 end
 
 function is_stopping_condition(model::SimModel, stopping_condition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agents(model)
         if !ishermit(agent)
-            if rational_choice(agent) == stopping_condition.strategy #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+            if rational_choice(agent) == strategy(stopping_condition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
             end
         end
     end 
 
-    if number_transitioned >= stopping_condition.sufficient_transitioned
-        stopping_condition.period_count += 1
-        return stopping_condition.period_count >= stopping_condition.period_cutoff
+    if number_transitioned >= sufficient_transitioned(stopping_condition)
+        period_count(stopping_condition) += 1
+        return period_count(stopping_condition) >= period_cutoff(stopping_condition)
     else
-        stopping_condition.period_count = 0 #reset period count
+        period_count!(stopping_condition, 0) #reset period count
         return false
     end
 end
@@ -193,7 +193,7 @@ end
 
 
 function is_stopping_condition(::SimModel, stopping_condition::PeriodCutoff, current_periods::Int128)
-    return current_periods >= stopping_condition.period_cutoff
+    return current_periods >= period_cutoff(stopping_condition)
 end
 
 

@@ -19,7 +19,7 @@ end
 Accessors
 """
 players(pre_allocated_arrays::PreAllocatedArrays) = getfield(pre_allocated_arrays, :players)
-player(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(players(pre_allocated_arrays), player_number)
+players(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(players(pre_allocated_arrays), player_number)
 player!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, agent::Agent) = setindex!(players(pre_allocated_arrays), agent, player_number)
 opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays) = getfield(pre_allocated_arrays, :opponent_strategy_recollection)
 opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(opponent_strategy_recollection(pre_allocated_arrays), player_number)

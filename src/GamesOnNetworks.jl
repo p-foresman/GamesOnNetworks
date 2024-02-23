@@ -17,7 +17,6 @@ export
     SmallWorldParams,
     ScaleFreeParams,
     StochasticBlockModelParams,
-    LatticeParams,
     SimParams,
     FractiousState,
     EquityState,
@@ -37,20 +36,37 @@ export
     memory_length,
     error_rate,
     matches_per_period,
+    random_seed,
 
     graph_params,
-    graph_type,
+    graph_type, #rename to type?
+    λ,
+    κ,
+    β,
+    α,
+    d,
+    communities,
+    internal_λ,
+    external_λ,
 
     starting_condition,
+    type, #rename?
 
     stopping_condition,
+    strategy, #rename?
+    sufficient_equity,
+    sufficient_equity!,
+    sufficient_transitioned,
+    sufficient_transitioned!,
+    period_cutoff,
+    period_cutoff!,
+    period_count,
+    period_count!,
 
     agent_graph,
     graph,
     agents,
-    agent,
     edges, #rename?
-    edge,
     random_edge,
     number_hermits,
 
@@ -63,7 +79,6 @@ export
 
     pre_allocated_arrays,
     players,
-    player,
     player!,
     set_players!,
     opponent_strategy_recollection,
@@ -72,27 +87,36 @@ export
     expected_utilities,
     reset_arrays!,
 
+    model_id,
+    displayname,
+    reset_model!,
 
     # constructors
     construct_sim_params_list,
     construct_model_list,
     select_and_construct_model,
-    reset_model!,
-    initDB,
-    insertSimGroup,
-    collectDBFilesInDirectory,
-    simulationIterator,
+
+    #simulation
     simulate,
-    simulateDistributed,
-    # distributedSimulationIterator,
-    determineAgentBehavior,
+    simulate_distributed,
+    simulation_iterator,
+
+    # determine_agent_behavior, #NOTE: FIX THIS
+
+    #database api
+    db_init,
+    db_insert_sim_group,
+    db_collect_temp,
+
+    #plotting
     transitionTimesBoxPlot,
     memoryLengthTransitionTimeLinePlot,
     numberAgentsTransitionTimeLinePlot,
     timeSeriesPlot,
 
     #utility
-    resetprocs
+    resetprocs,
+    scale_free
 
 using
     Graphs,
@@ -112,7 +136,7 @@ using
     Statistics,
     Bootstrap,
     DataStructures,
-    Memoize,
+    # Memoize,
     TimerOutputs
 
 #basic utility functions

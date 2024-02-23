@@ -55,16 +55,16 @@ end
 ##########################################
 
 """
-    name(game::Game)
+    displayname(game::Game)
 
 Get the name of a game instance.
 """
-name(game::Game) = getfield(game, :name)
+displayname(game::Game) = getfield(game, :name)
 
 """
     payoff_matrix(game::Game)
 
-Get the payoff matrix of a game.
+Get the payoff matrix for a game.
 """
 payoff_matrix(game::Game) = getfield(game, :payoff_matrix)
 
@@ -83,4 +83,4 @@ Get a random strategy from the possible strategies that can be played in a game.
 random_strategy(game::Game) = rand(strategies(game))
 
 
-Base.show(game::Game) = println(name(game))
+Base.show(game::Game) = println(displayname(game))

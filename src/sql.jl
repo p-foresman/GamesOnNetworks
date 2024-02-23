@@ -1,4 +1,4 @@
-function initDataBase(db_filepath::String)
+function execute_init_full(db_filepath::String)
     #create or connect to database
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
@@ -25,6 +25,7 @@ function initDataBase(db_filepath::String)
                                 κ REAL DEFAULT NULL,
                                 β REAL DEFAULT NULL,
                                 α REAL DEFAULT NULL,
+                                d REAL DEFAULT NULL,
                                 communities INTEGER DEFAULT NULL,
                                 internal_λ REAL DEFAULT NULL,
                                 external_λ REAL DEFAULT NULL,
@@ -133,7 +134,7 @@ function initDataBase(db_filepath::String)
 end
 
 #this DB only needs tables for simulations and agents. These will be collected into the master DB later
-function initTempSimulationDB(db_filepath::String)
+function execute_init_temp(db_filepath::String)
     #create or connect to database
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
@@ -195,7 +196,7 @@ end
 
 
 
-function insertGame(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
+function execute_insert_game(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
@@ -225,7 +226,7 @@ function insertGame(db_filepath::String, game_name::String, game::String, payoff
     return tuple_to_return
 end
 
-function insertGraph(db_filepath::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
+function execute_insert_graph(db_filepath::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     insert_string_columns = "graph_type, graph_params, "
@@ -262,7 +263,7 @@ function insertGraph(db_filepath::String, graph_type::String, graph_params_str::
     return tuple_to_return
 end
 
-function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
+function execute_insert_sim_params(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
@@ -296,7 +297,7 @@ function insertSimParams(db_filepath::String, sim_params::SimParams, sim_params_
     return tuple_to_return
 end
 
-function insertStartingCondition(db_filepath::String, starting_condition_name::String, starting_condition_str::String)
+function execute_insert_starting_condition(db_filepath::String, starting_condition_name::String, starting_condition_str::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
@@ -323,7 +324,7 @@ function insertStartingCondition(db_filepath::String, starting_condition_name::S
     return tuple_to_return
 end
 
-function insertStoppingCondition(db_filepath::String, stopping_condition_name::String, stopping_condition_str::String)
+function execute_insert_stopping_condition(db_filepath::String, stopping_condition_name::String, stopping_condition_str::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
@@ -350,7 +351,7 @@ function insertStoppingCondition(db_filepath::String, stopping_condition_name::S
     return tuple_to_return
 end
 
-function insertSimGroup(db_filepath::String, description::String)
+function execute_insert_sim_group(db_filepath::String, description::String)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
@@ -376,7 +377,7 @@ function insertSimGroup(db_filepath::String, description::String)
     return tuple_to_return
 end
 
-function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+function execute_insert_simulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
     uuid = "$(uuid4())"
     
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
@@ -420,7 +421,7 @@ function insertSimulation(db, sim_group_id::Union{Integer, Nothing}, prev_simula
     return tuple_to_return
 end
 
-function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
+function execute_insert_agents(db, simulation_uuid::String, agent_list::Vector{String})
     # db = SQLite.DB("$db_filepath")
     # SQLite.busy_timeout(db, 3000)
     values_string = "" #construct a values string to insert multiple agents into db table
@@ -444,7 +445,7 @@ function insertAgents(db, simulation_uuid::String, agent_list::Vector{String})
 end
 
 
-function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
     simulation_uuid = "$(uuid4())"
     
     #prepare simulation SQL
@@ -511,7 +512,7 @@ function insertSimulationWithAgents(db_filepath::String, sim_group_id::Union{Int
 end
 
 
-function queryGame(db_filepath::String, game_id::Integer)
+function execute_query_games(db_filepath::String, game_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -524,7 +525,7 @@ function queryGame(db_filepath::String, game_id::Integer)
     return df
 end
 
-function queryGraph(db_filepath::String, graph_id::Integer)
+function execute_query_graphs(db_filepath::String, graph_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -537,7 +538,7 @@ function queryGraph(db_filepath::String, graph_id::Integer)
     return df
 end
 
-function querySimParams(db_filepath::String, sim_params_id::Integer)
+function execute_query_sim_params(db_filepath::String, sim_params_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -550,7 +551,7 @@ function querySimParams(db_filepath::String, sim_params_id::Integer)
     return df
 end
 
-function queryStartingCondition(db_filepath::String, starting_condition_id::Integer)
+function execute_query_starting_conditions(db_filepath::String, starting_condition_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -563,7 +564,7 @@ function queryStartingCondition(db_filepath::String, starting_condition_id::Inte
     return df
 end
 
-function queryStoppingCondition(db_filepath::String, stopping_condition_id::Integer)
+function execute_query_stopping_conditions(db_filepath::String, stopping_condition_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -576,7 +577,7 @@ function queryStoppingCondition(db_filepath::String, stopping_condition_id::Inte
     return df
 end
 
-function querySimGroups(db_filepath::String, sim_group_id::Integer)
+function execute_query_sim_groups(db_filepath::String, sim_group_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -589,7 +590,7 @@ function querySimGroups(db_filepath::String, sim_group_id::Integer)
     return df
 end
 
-function querySimulation(db_filepath::String, simulation_id::Integer)
+function execute_query_simulations(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -602,7 +603,7 @@ function querySimulation(db_filepath::String, simulation_id::Integer)
     return df
 end
 
-function queryAgents(db_filepath::String, simulation_id::Integer)
+function execute_query_agents(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -616,7 +617,7 @@ function queryAgents(db_filepath::String, simulation_id::Integer)
     return df
 end
 
-function querySimulationForRestore(db_filepath::String, simulation_id::Integer)
+function execute_query_simulations_for_restore(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -646,7 +647,7 @@ function querySimulationForRestore(db_filepath::String, simulation_id::Integer)
     return df
 end
 
-function queryAgentsForRestore(db_filepath::String, simulation_id::Integer)
+function execute_query_agents_for_restore(db_filepath::String, simulation_id::Integer)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
@@ -704,7 +705,7 @@ function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
     return df
 end
 
-function deleteSimulationById(db_filepath::String, simulation_id::Int)
+function execute_delete_simulation(db_filepath::String, simulation_id::Int)
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)
     SQLite.execute(db, "PRAGMA foreign_keys = ON;") #turn on foreign key support to allow cascading deletes
@@ -715,12 +716,12 @@ end
 
 
 # Merge two SQLite files. These db files MUST have the same schema
-function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
+function execute_merge_full(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
     SQLite.busy_timeout(db, 5000)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
-    SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, communities, internal_λ, external_λ FROM merge_db.graphs;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph_type, graph_params, λ, κ, β, α, d, communities, internal_λ, external_λ) SELECT graph_type, graph_params, λ, κ, β, α, d, communities, internal_λ, external_λ FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
     SQLite.execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     SQLite.execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
@@ -733,7 +734,7 @@ function mergeDatabases(db_filepath_master::String, db_filepath_merger::String)
 end
 
 # Merge temp distributed DBs into master DB.
-function mergeTempDatabases(db_filepath_master::String, db_filepath_merger::String)
+function db_merge_temp(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
     # SQLite.busy_timeout(db, 5000) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")

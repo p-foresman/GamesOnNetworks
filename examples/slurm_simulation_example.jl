@@ -23,8 +23,8 @@ Step 3: Define a database filepath
         -simulation "groups" need to be created manually as well using the insertSimGroup("group description") function
 """
 const db_filepath = "./examle_database_filepath.sqlite"
-initDB(db_filepath) #optional
-const sim_group_id = insertSimGroup("Example Group Description") #optional
+db_init(db_filepath) #optional
+const sim_group_id = db_insert_sim_group("Example Group Description") #optional
 
 """
 Step 4: Include a script that contains all of the setup (i.e., lists of varous parameters) for simulation.
@@ -37,13 +37,13 @@ Step 5: Construct the model to simulate
     -get the SLURM_ARRAY_TASK_ID environment variable to use to construct the unique model for this slurm task
 """
 const slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-const model = selectAndConstructModel(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, model_number=slurm_task_id)
+const model = select_and_construct_model(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, model_number=slurm_task_id)
 
 """
 Step 6: Run simulation on the constructed model
     -add db_filepath to store data in the sqlite file
 """
-simulateDistributed(model, db_filepath, run_count=nworkers())
+simulate_distributed(model, db_filepath, run_count=nworkers())
 
 
 """
