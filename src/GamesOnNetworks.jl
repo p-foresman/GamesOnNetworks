@@ -1,3 +1,8 @@
+"""
+    GamesOnNetworks
+
+Package used to simulate games over network interaction structures.
+"""
 module GamesOnNetworks
 
 export
@@ -131,9 +136,8 @@ include("cross_type_functions.jl")
 #combined type functions after all in a separate file, then define the SimModel and then the mode function barriers.
 #essentially, barriers need to be build from the bottom up ****
 
-#SimModel type and methods/barriers
+#SimModel type and methods
 include("simulation_model.jl")
-# include("types.jl") #depreciated
 
 #sql functions and api to sql functions
 include("sql.jl")

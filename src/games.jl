@@ -2,6 +2,12 @@
 const PayoffMatrix{S1, S2, L} = SMatrix{S1, S2, Tuple{Int8, Int8}, L}
 const StrategySet{L} = SVector{L, Int8}
 
+
+"""
+    Game{S1, S2, L}
+
+Basic Game type with row dimension S1, column dimension S2, and length L=S1*S2.
+"""
 struct Game{S1, S2, L}
     name::String
     payoff_matrix::PayoffMatrix{S1, S2, L} #want to make this parametric (for any int size to be used) #NEED TO MAKE THE SMATRIX SIZE PARAMETRIC AS WELL? Normal Matrix{Tuple{Int8, Int8}} doesnt work with JSON3.read()
@@ -42,12 +48,39 @@ struct Game{S1, S2, L}
     end
 end
 
-Base.show(game::Game) = println(game.name)
+
+
+##########################################
+# Game Accessors
+##########################################
 
 """
-Game Accessors
+    name(game::Game)
+
+Get the name of a game instance.
 """
 name(game::Game) = getfield(game, :name)
+
+"""
+    payoff_matrix(game::Game)
+
+Get the payoff matrix of a game.
+"""
 payoff_matrix(game::Game) = getfield(game, :payoff_matrix)
+
+"""
+    strategies(game::Game)
+
+Get the possible strategies that can be played in a game.
+"""
 strategies(game::Game) = getindex(getfield(game, :strategies), 1) #set statically to 1 right now (symmetric games) **make a symmetric game type
+
+"""
+    random_strategy(game::Game)
+
+Get a random strategy from the possible strategies that can be played in a game.
+"""
 random_strategy(game::Game) = rand(strategies(game))
+
+
+Base.show(game::Game) = println(name(game))

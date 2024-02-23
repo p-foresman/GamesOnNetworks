@@ -7,6 +7,11 @@ const Choice = Int8
 
 # abstract type Agent end
 
+"""
+    Agent
+
+Basic Agent type. Agents are nodes of the AgentGraph and are players in games.
+"""
 mutable struct Agent #could make a TaggedAgent as well to separate tags
     name::String
     # tag::Union{Nothing, Symbol} #NOTE: REMOVE
@@ -31,14 +36,50 @@ mutable struct Agent #could make a TaggedAgent as well to separate tags
 end
 
 
+##########################################
+# Agent Accessors
+##########################################
+
 """
-Agent Accessors
+    ishermit(agent::Agent)
+
+Determine if an agent is a hermit on the AgentGraph (i.e. degree=0).
 """
 ishermit(agent::Agent) = getfield(agent, :is_hermit)
+
+"""
+    memory(agent::Agent)
+
+Get the current memory of an agent.
+"""
 memory(agent::Agent) = getfield(agent, :memory)
+
+"""
+    rational_choice(agent::Agent)
+
+Get an agent's most recent 'rational' choice (i.e. no error).
+"""
 rational_choice(agent::Agent) = getfield(agent, :rational_choice)
+
+"""
+    rational_choice!(agent::Agent)
+
+Set an agent's 'rational' choice.
+"""
 rational_choice!(agent::Agent, choice::Choice) = setfield!(agent, :rational_choice, choice)
+
+"""
+    choice(agent::Agent)
+
+Get an agent's most recent actual choice.
+"""
 choice(agent::Agent) = getfield(agent, :choice)
+
+"""
+    choice!(agent::Agent)
+
+Set an agent's choice.
+"""
 choice!(agent::Agent, choice::Choice) = setfield!(agent, :choice, choice)
 
 
