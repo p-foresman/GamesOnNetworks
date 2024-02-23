@@ -32,7 +32,7 @@ export
     random_strategy,
 
     sim_params,
-    number_agent,
+    number_agents,
     memory_length,
     error_rate,
     matches_per_period,

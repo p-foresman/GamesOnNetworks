@@ -1,3 +1,8 @@
+"""
+    SimParams
+
+Type to define and store simulation parameters.
+"""
 struct SimParams
     number_agents::Int
     memory_length::Int
@@ -27,17 +32,55 @@ struct SimParams
 end
 
 
+##########################################
+# SimParams Accessors
+##########################################
+
+
 """
-SimParams Accessors
+    number_agents(sim_params::SimParams)
+
+Get the population size simulation parameter N.
 """
 number_agents(sim_params::SimParams) = getfield(sim_params, :number_agents)
+
+"""
+    memory_length(sim_params::SimParams)
+
+Get the memory length simulation parameter m.
+"""
 memory_length(sim_params::SimParams) = getfield(sim_params, :memory_length)
+
+"""
+    error_rate(sim_params::SimParams)
+
+Get the error rate simulation parameter ϵ.
+"""
 error_rate(sim_params::SimParams) = getfield(sim_params, :error)
+
+"""
+    matches_per_period(sim_params::SimParams)
+
+Get the number of matches per period for the simulation.
+"""
 matches_per_period(sim_params::SimParams) = getfield(sim_params, :matches_per_period)
+
+"""
+    random_seed(sim_params::SimParams)
+
+Get the random seed for the simulation.
+"""
 random_seed(sim_params::SimParams) = getfield(sim_params, :random_seed)
 
-displayname(sim_params::SimParams) = "N=$(number_agents(sim_params)) m=$(memory_length(sim_params)) e=$(error_rate(sim_params))"
+"""
+    displayname(sim_params::SimParams)
+
+Get the string used for displaying a SimParams instance.
+"""
+displayname(sim_params::SimParams) = "N=$(number_agens(sim_params)) m=$(memory_length(sim_params)) e=$(error_rate(sim_params))"
+
 Base.show(sim_params::SimParams) = println(displayname(sim_params))
+
 
 
 ############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
