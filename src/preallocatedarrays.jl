@@ -25,12 +25,15 @@ opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays) = getfi
 opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(opponent_strategy_recollection(pre_allocated_arrays), player_number)
 opponent_strategy_recollection(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer) = getindex(opponent_strategy_recollection(pre_allocated_arrays, player_number), index)
 opponent_strategy_recollection!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer, value::Int) = setindex!(opponent_strategy_recollection(pre_allocated_arrays, player_number), value, index)
+increment_opponent_strategy_recollection!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer, value::Int=1) = opponent_strategy_recollection!(pre_allocated_arrays, player_number, index, opponent_strategy_recollection(pre_allocated_arrays, player_number, index) + value)
 opponent_strategy_probabilities(pre_allocated_arrays::PreAllocatedArrays) = getfield(pre_allocated_arrays, :opponent_strategy_probs)
 opponent_strategy_probabilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(opponent_strategy_probabilities(pre_allocated_arrays), player_number)
 opponent_strategy_probabilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer) = getindex(opponent_strategy_probabilities(pre_allocated_arrays, player_number), index)
 expected_utilities(pre_allocated_arrays::PreAllocatedArrays) = getfield(pre_allocated_arrays, :player_expected_utilities)
 expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer) = getindex(expected_utilities(pre_allocated_arrays), player_number)
 expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer) = getindex(opponent_strategy_probabilities(pre_allocated_arrays, player_number), index)
+expected_utilities!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer, value::AbstractFloat) = setindex!(expected_utilities(pre_allocated_arrays, player_number), value, index) #not sure if abstract float is good here
+increment_expected_utilities!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer, value::AbstractFloat) = expected_utilities!(pre_allocated_arrays, player_number, index, expected_utilities(pre_allocated_arrays, player_number, index) + value)
 
 
 

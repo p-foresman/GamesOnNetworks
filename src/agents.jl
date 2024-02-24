@@ -41,6 +41,13 @@ end
 ##########################################
 
 """
+    displayname(agent::Agent)
+
+Get the name/identifier of an agent.
+"""
+displayname(agent::Agent) = getfield(agent, :name)
+
+"""
     ishermit(agent::Agent)
 
 Determine if an agent is a hermit on the AgentGraph (i.e. degree=0).

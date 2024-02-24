@@ -28,10 +28,22 @@ struct RandomState <: StartingCondition
 end
 
 
+##########################################
+# StartingCondition Accessors
+##########################################
+
 """
-StartingCondition Accessors
+    type(starting_condition::StartingCondition)
+
+Get the starting condition type.
 """
 type(starting_condition::StartingCondition) = getfield(starting_condition, :name)
 
+"""
+    displayname(starting_condition::StartingCondition)
+
+Get the string used for displaying a StartingCondition instance.
+"""
 displayname(starting_condition::StartingCondition) = type(starting_condition)
+
 Base.show(starting_condition::StartingCondition) = println(displayname(starting_condition))

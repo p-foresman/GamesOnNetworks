@@ -38,7 +38,7 @@ end
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(model::SimModel, player_number::Integer)
     @inbounds for memory in memory(players(model, player_number))
-        opponent_strategy_recollection(model, player_number)[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension (use a setter here instead?)
+        increment_opponent_strategy_recollection!(model, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
     end
     opponent_strategy_probabilities(model, player_number) .= opponent_strategy_recollection(model, player_number) ./ sum(opponent_strategy_recollection(model, player_number))
     return nothing
@@ -54,8 +54,10 @@ end
 function calculate_expected_utilities!(model::SimModel)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies
         for row in axes(payoff_matrix(model), 1) #row strategies
-            expected_utilities(model, 1)[row] += payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column)
-            expected_utilities(model, 2)[column] += payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row)
+            increment_expected_utilities!(model, 1, row, payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column))
+            increment_expected_utilities!(model, 2, column, payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row))
+            # expected_utilities(model, 1)[row] += payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column)
+            # expected_utilities(model, 2)[column] += payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row)
         end
     end
     return nothing
@@ -182,7 +184,7 @@ function is_stopping_condition(model::SimModel, stopping_condition::EquityBehavi
     end 
 
     if number_transitioned >= sufficient_transitioned(stopping_condition)
-        period_count(stopping_condition) += 1
+        increment_period_count!(stopping_condition)
         return period_count(stopping_condition) >= period_cutoff(stopping_condition)
     else
         period_count!(stopping_condition, 0) #reset period count

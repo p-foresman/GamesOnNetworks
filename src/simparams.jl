@@ -36,7 +36,6 @@ end
 # SimParams Accessors
 ##########################################
 
-
 """
     number_agents(sim_params::SimParams)
 
@@ -83,7 +82,16 @@ Base.show(sim_params::SimParams) = println(displayname(sim_params))
 
 
 
-############### parameter initialization (for simulateIterator()) ############### NOTE:ADD MORE
+
+##########################################
+# SimParams Extra Constructors
+##########################################
+
+"""
+    construct_sim_params_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
+
+Construct a list of SimParams instances with various parameter combinations.
+"""
 function construct_sim_params_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_list

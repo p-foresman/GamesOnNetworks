@@ -62,6 +62,7 @@ export
     period_cutoff!,
     period_count,
     period_count!,
+    increment_period_count!,
 
     agent_graph,
     graph,
@@ -83,8 +84,11 @@ export
     set_players!,
     opponent_strategy_recollection,
     opponent_strategy_recollection!,
+    increment_opponent_strategy_recollection!,
     opponent_strategy_probabilities,
     expected_utilities,
+    expected_utilities!,
+    increment_expected_utilities!,
     reset_arrays!,
 
     model_id,
@@ -145,12 +149,12 @@ include("utility_functions.jl")
 #custom types and their methods
 include("games.jl")
 include("agents.jl")
-include("graph_params.jl")
-include("simulation_params.jl")
-include("starting_conditions.jl")
-include("stopping_conditions.jl")
-include("agent_graph.jl")
-include("pre_allocated_arrays.jl")
+include("graphparams.jl")
+include("simparams.jl")
+include("startingconditions.jl")
+include("stoppingconditions.jl")
+include("agentgraph.jl")
+include("preallocatedarrays.jl")
 
 #functions which require a combination of types
 include("cross_type_functions.jl")
@@ -161,7 +165,7 @@ include("cross_type_functions.jl")
 #essentially, barriers need to be build from the bottom up ****
 
 #SimModel type and methods
-include("simulation_model.jl")
+include("simmodel.jl")
 
 #sql functions and api to sql functions
 include("sql.jl")
@@ -169,7 +173,7 @@ include("database_api.jl")
 
 #simulation functions
 include("simulation_functions.jl")
-include("simulation.jl")
+include("simulate.jl")
 
 #plotting functions
 include("plotting.jl")

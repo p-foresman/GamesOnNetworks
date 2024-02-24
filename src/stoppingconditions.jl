@@ -38,10 +38,15 @@ struct PeriodCutoff <: StoppingCondition
 end
 
 
-"""
-StoppingCondition Accessors
-"""
+##########################################
+# StoppingCondition Accessors
+##########################################
 
+"""
+    type(stopping_condition::StoppingCondition)
+
+Get the stopping condition type.
+"""
 type(stopping_condition::StoppingCondition) = getfield(stopping_condition, :name)
 strategy(stopping_condition::EquityPsychological) = getfield(stopping_condition, :strategy)
 sufficient_equity(stopping_condition::EquityPsychological) = getfield(stopping_condition, :sufficient_equity)
@@ -57,6 +62,7 @@ period_cutoff(stopping_condition::EquityBehavioral) = getfield(stopping_conditio
 period_cutoff!(stopping_condition::EquityBehavioral, value::Int) = setfield!(stopping_condition, :period_cutoff, value)
 period_count(stopping_condition::EquityBehavioral) = getfield(stopping_condition, :period_count)
 period_count!(stopping_condition::EquityBehavioral, value::Int) = setfield!(stopping_condition, :period_count, value)
+increment_period_count!(stopping_condition::EquityBehavioral, value::Int=1) = period_count!(stopping_condition, period_count(stopping_condition) + value)
 
 
 period_cutoff(stopping_condition::PeriodCutoff) = getfield(stopping_condition, :period_cutoff)

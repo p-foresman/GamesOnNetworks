@@ -85,10 +85,13 @@ end
 opponent_strategy_recollection(model::SimModel, player_number::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number)
 opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number, index)
 opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int) = opponent_strategy_recollection!(pre_allocated_arrays(model), player_number, index, value)
+increment_opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int=1) = increment_opponent_strategy_recollection!(pre_allocated_arrays(model), player_number, index, value)
 opponent_strategy_probabilities(model::SimModel, player_number::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number)
 opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number, index)
 expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(pre_allocated_arrays(model), player_number)
 expected_utilities(model::SimModel, player_number::Integer, index::Integer) = expected_utilities(pre_allocated_arrays(model), player_number, index)
+expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = expected_utilities!(pre_allocated_arrays(model), player_number, index, value)
+increment_expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = increment_expected_utilities!(pre_allocated_arrays(model), player_number, index, value)
 reset_arrays!(model::SimModel) = reset_arrays!(pre_allocated_arrays(model))
 
 
