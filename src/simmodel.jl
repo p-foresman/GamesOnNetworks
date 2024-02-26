@@ -1,7 +1,15 @@
 """
-SimModel type
-"""
+    SimModel{S1, S2, L, N, E}
 
+A type which defines the entire model for simulation. Contains Game, SimParams, GraphParams, StartingCondition,
+StoppingCondition, AgentGraph, and PreAllocatedArrays.
+
+S1 = row dimension of Game instance
+S2 = column dimension of Game instance
+L = length of Game payoff_matrix (S1*S2)
+N = number of agents/vertices
+E = number of relationships/edges
+"""
 struct SimModel{S1, S2, L, N, E}
     id::Union{Nothing, Int}
     game::Game{S1, S2, L}
@@ -23,51 +31,197 @@ struct SimModel{S1, S2, L, N, E}
 end
 
 
+##########################################
+# PreAllocatedArrays Accessors
+##########################################
+
 """
-SimModel Accessors
+    model_id(model::SimModel)
+
+Get the id of a SimModel instance (primarily for distributed computing purposes).
 """
 model_id(model::SimModel) = getfield(model, :id)
 
-# Game
+#Game
+"""
+    game(model::SimModel)
+
+Get the Game instance in the model.
+"""
 game(model::SimModel) = getfield(model, :game)
+
+"""
+    payoff_matrix(game::SimModel)
+
+Get the payoff matrix for the model.
+"""
 payoff_matrix(model::SimModel) = payoff_matrix(game(model))
+
+"""
+    strategies(game::SimModel)
+
+Get the possible strategies that can be played in the model.
+"""
 strategies(model::SimModel) = strategies(game(model))
+
+"""
+    random_strategy(game::SimModel)
+
+Get a random strategy from the possible strategies that can be played in the model.
+"""
 random_strategy(model::SimModel) = random_strategy(game(model))
 
+
 # SimParams
+"""
+    sim_params(model::SimModel)
+
+Get the SimParams instance in the model.
+"""
 sim_params(model::SimModel) = getfield(model, :sim_params)
+
+"""
+    number_agents(sim_params::SimModel)
+
+Get the population size simulation parameter N of the model.
+"""
 number_agents(model::SimModel) = number_agents(sim_params(model))
+
+"""
+    memory_length(sim_params::SimModel)
+
+Get the memory length simulation parameter m of the model.
+"""
 memory_length(model::SimModel) = memory_length(sim_params(model))
+
+"""
+    error_rate(sim_params::SimModel)
+
+Get the error rate simulation parameter ϵ of the model.
+"""
 error_rate(model::SimModel) = error_rate(sim_params(model))
+
+"""
+    matches_per_period(sim_params::SimModel)
+
+Get the number of matches per period for the model.
+"""
 matches_per_period(model::SimModel) = matches_per_period(sim_params(model))
+
+"""
+    random_seed(sim_params::SimModel)
+
+Get the random seed for the model.
+"""
 random_seed(model::SimModel) = random_seed(sim_params(model))
 
+
 # GraphParams
+"""
+    graph_params(model::SimModel)
+
+Get the GraphParams instance in the model.
+"""
 graph_params(model::SimModel) = getfield(model, :graph_params)
+
+"""
+    graph_type(graph_params::SimModel)
+
+Get the graph type of the model
+"""
 graph_type(model::SimModel) = graph_type(graph_params(model))
 ###add more
 
+
 #StartingCondition
+"""
+    starting_condition(model::SimModel)
+
+Get the StartingCondition instance in the model.
+"""
 starting_condition(model::SimModel) = getfield(model, :starting_condition)
 
+
 #StoppingCondition
+"""
+    stopping_condition(model::SimModel)
+
+Get the StoppingCondition instance in the model.
+"""
 stopping_condition(model::SimModel) = getfield(model, :stopping_condition)
 
+
 # AgentGraph
+"""
+    agent_graph(model::SimModel)
+
+Get the AgentGraph instance in the model.
+"""
 agent_graph(model::SimModel) = getfield(model, :agent_graph)
+
+"""
+    graph(agent_graph::SimModel)
+
+Get the graph (Graphs.SimpleGraph{Int}) in the model.
+"""
 graph(model::SimModel) = graph(agent_graph(model))
+
+"""
+    agents(agent_graph::SimModel)
+
+Get all of the agents in the model.
+"""
 agents(model::SimModel) = agents(agent_graph(model))
+
+"""
+    agents(agent_graph::SimModel, agent_number::Integer)
+
+Get the agent indexed by the agent_number in the model.
+"""
 agents(model::SimModel, agent_number::Integer) = agents(agent_graph(model), agent_number)
+
+"""
+    edges(agent_graph::SimModel)
+
+Get all of the edges/relationships in the model.
+"""
 edges(model::SimModel) = edges(agent_graph(model))
+
+"""
+    edges(agent_graph::SimModel, edge_number::Integer)
+
+Get the edge indexed by the edge_number in the model.
+"""
 edges(model::SimModel, edge_number::Integer) = edges(agent_graph(model), edge_number)
+
+"""
+    random_edge(agent_graph::SimModel)
+
+Get a random edge/relationship in the model.
+"""
 random_edge(model::SimModel) = random_edge(agent_graph(model))
+
+"""
+    number_hermits(agent_graph::SimModel)
+
+Get the number of hermits (vertecies with degree=0) in the model.
+"""
 number_hermits(model::SimModel) = number_hermits(agent_graph(model))
-function reset_agent_graph!(model::SimModel)
-    agentdata!(agent_graph(model), game(model), sim_params(model), starting_condition(model)) #parameter spreading necessary for multiple dispatch
-    return nothing
-end
+
+"""
+    reset_agent_graph!(model::SimModel)
+
+Reset the AgentGraph of the model.
+"""
+reset_agent_graph!(model::SimModel) = agentdata!(agent_graph(model), game(model), sim_params(model), starting_condition(model))
+
 
 #PreAllocatedArrays
+"""
+    pre_allocated_arrays(model::SimModel)
+
+Get the PreAllocatedArrays instance in the model.
+"""
 pre_allocated_arrays(model::SimModel) = getfield(model, :pre_allocated_arrays)
 players(model::SimModel) = players(pre_allocated_arrays(model))
 players(model::SimModel, player_number::Integer) = players(pre_allocated_arrays(model), player_number)

@@ -1,5 +1,15 @@
+"""
+    StartingCondition
+
+An abstract type representing starting conditions for simulations.
+"""
 abstract type StartingCondition end
 
+"""
+    FractiousState
+
+Type denoting the "fractious state" starting condition.
+"""
 struct FractiousState <: StartingCondition
     name::String
     # game::Game
@@ -9,6 +19,11 @@ struct FractiousState <: StartingCondition
     end
 end
 
+"""
+    EquityState
+
+Type denoting the "equity state" starting condition.
+"""
 struct EquityState <: StartingCondition
     name::String
     # game::Game
@@ -18,6 +33,11 @@ struct EquityState <: StartingCondition
     end
 end
 
+"""
+    RandomState
+
+Type denoting the "random state" starting condition.
+"""
 struct RandomState <: StartingCondition
     name::String
     # game::Game

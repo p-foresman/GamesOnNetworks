@@ -3,14 +3,24 @@ const AgentSet{N} = SVector{N, Agent}
 const Relationship = Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 
-struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
+
+"""
+    GamesOnNetworks.AgentGraph{N, E} <: AbstractGraph{Int}
+
+A type extending the Graphs.jl SimpleGraph functionality by adding agents to each vertex.
+This is a simpler alternative to MetaGraphs.jl for the purposes of this package.
+
+N = number of vertices,
+E = number of edges
+"""
+struct AgentGraph{N, E} <: AbstractGraph{Int}
     graph::Graph
     agents::AgentSet{N}
     edges::RelationshipSet{E}
     # number_agents::Int
     number_hermits::Int
     
-    function AgentGraph(graph::SimpleGraph{Int})
+    function AgentGraph(graph::Graph)
         N = nv(graph)
         E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
@@ -21,27 +31,64 @@ struct AgentGraph{N, E} #a simpler replacement for MetaGraphs
                 number_hermits += 1
             end
         end
-        graph_edges = SVector{E, Graphs.SimpleEdge{Int}}(collect(Graphs.edges(graph)))
+        graph_edges = RelationshipSet{E}(collect(Graphs.edges(graph)))
         return new{N, E}(graph, agents, graph_edges, number_hermits)
     end
 end
 
+
+
+##########################################
+# AgentGraph Accessors
+##########################################
+
 """
-AgentGraph Accessors
+    graph(agent_graph::AgentGraph)
+
+Get the graph (Graphs.SimpleGraph{Int}) defined in an AgentGraph instance.
 """
 graph(agent_graph::AgentGraph) = getfield(agent_graph, :graph)
-agents(agent_graph::AgentGraph) = getfield(agent_graph, :agents)
-agents(agent_graph::AgentGraph, agent_number::Integer) = getindex(agents(agent_graph), agent_number)
-edges(agent_graph::AgentGraph) = getfield(agent_graph, :edges)
-edges(agent_graph::AgentGraph, edge_number::Integer) = getindex(edges(agent_graph), edge_number)
-random_edge(agent_graph::AgentGraph) = rand(edges(agent_graph))
-number_hermits(agent_graph::AgentGraph) = getfield(agent_graph, :number_hermits)
 
-# function resetAgentGraph!(agent_graph::AgentGraph)
-#     for agent in agent_graph.agents
-#         resetAgent!(agent)
-#     end
-#     return nothing
-# end
+"""
+    agents(agent_graph::AgentGraph)
+
+Get all of the agents in an AgentGraph instance.
+"""
+agents(agent_graph::AgentGraph) = getfield(agent_graph, :agents)
+
+"""
+    agents(agent_graph::AgentGraph, agent_number::Integer)
+
+Get the agent indexed by the agent_number in an AgentGraph instance.
+"""
+agents(agent_graph::AgentGraph, agent_number::Integer) = getindex(agents(agent_graph), agent_number)
+
+"""
+    edges(agent_graph::AgentGraph)
+
+Get all of the edges/relationships in an AgentGraph instance.
+"""
+edges(agent_graph::AgentGraph) = getfield(agent_graph, :edges)
+
+"""
+    edges(agent_graph::AgentGraph, edge_number::Integer)
+
+Get the edge indexed by the edge_number in an AgentGraph instance.
+"""
+edges(agent_graph::AgentGraph, edge_number::Integer) = getindex(edges(agent_graph), edge_number)
+
+"""
+    random_edge(agent_graph::AgentGraph)
+
+Get a random edge/relationship in an AgentGraph instance.
+"""
+random_edge(agent_graph::AgentGraph) = rand(edges(agent_graph))
+
+"""
+    number_hermits(agent_graph::AgentGraph)
+
+Get the number of hermits (vertecies with degree=0) in an AgentGraph instance.
+"""
+number_hermits(agent_graph::AgentGraph) = getfield(agent_graph, :number_hermits)
 
 
