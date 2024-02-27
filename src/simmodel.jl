@@ -223,10 +223,40 @@ reset_agent_graph!(model::SimModel) = agentdata!(agent_graph(model), game(model)
 Get the PreAllocatedArrays instance in the model.
 """
 pre_allocated_arrays(model::SimModel) = getfield(model, :pre_allocated_arrays)
+
+"""
+    players(model::SimModel)
+
+Get the currently cached players in the model.
+"""
 players(model::SimModel) = players(pre_allocated_arrays(model))
+
+"""
+    players(model::SimModel, player_number::Integer)
+
+Get the player indexed by player_number currently cached in the model.
+"""
 players(model::SimModel, player_number::Integer) = players(pre_allocated_arrays(model), player_number)
+
+"""
+    player!(model::SimModel, player_number::Integer, agent::Agent)
+
+Set the player indexed by player_number to the Agent instance agent.
+"""
 player!(model::SimModel, player_number::Integer, agent::Agent) = player!(pre_allocated_arrays(model), player_number, agent)
+
+"""
+    player!(model::SimModel, player_number::Integer, agent_number::Integer)
+
+Set the player indexed by player_number to the Agent instance indexed by agent_number in the AgentGraph instance.
+"""
 player!(model::SimModel, player_number::Integer, agent_number::Integer) = player!(pre_allocated_arrays(model), player_number, agents(model, agent_number))
+
+"""
+    set_players!(model::SimModel)
+
+Choose a random relationship/edge in the AgentGraph and set players to be the agents that the edge connects.
+"""
 function set_players!(model::SimModel)
     edge::Graphs.SimpleEdge{Int} = random_edge(model)
     vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
