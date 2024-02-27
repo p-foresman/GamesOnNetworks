@@ -1,4 +1,8 @@
-##### multiple dispatch for various graph parameter sets #####
+"""
+    GamesOnNetworks.initialize_graph(graph_params::GraphParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+
+Initialize and return an AgentGraph instance.
+"""
 function initialize_graph!(::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = complete_graph(number_agents(sim_params))
     agent_graph = AgentGraph(graph)
@@ -68,7 +72,11 @@ function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game,
 end
 
 
+"""
+    agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::StoppingCondition)
 
+Initialize the agent data for an AgentGraph instance based on the StoppingCondition concrete type.
+"""
 function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::FractiousState)
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
@@ -180,7 +188,11 @@ end
 #     return nothing
 # end
 
+"""
+    initialize_stopping_condition!(stopping_condition::StoppingCondition, sim_params::SimParams, agent_graph::AgentGraph)
 
+Initialize the stopping condition for a model.
+"""
 function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
     sufficient_equity!(stopping_condition, (1 - error_rate(sim_params)) * memory_length(sim_params))
     sufficient_transitioned!(stopping_condition, number_agents(sim_params) - number_hermits(agent_graph))

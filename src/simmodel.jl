@@ -265,23 +265,125 @@ function set_players!(model::SimModel)
     end
     return nothing
 end
-#add accessors here for opponent_strategy_recollection_containers, etc?
+
+"""
+    opponent_strategy_recollection(model::SimModel)
+
+Get the currently cached recollections of each player (i.e., the quantity of each strategy that resides in players' memories).
+"""
+opponent_strategy_recollection(model::SimModel) = opponent_strategy_recollection(pre_allocated_arrays(model))
+
+"""
+    opponent_strategy_recollection(model::SimModel, player_number::Integer)
+
+Get the currently cached recollection of the player indexed by player_number.
+"""
 opponent_strategy_recollection(model::SimModel, player_number::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number)
+
+"""
+    opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer)
+
+Get the currently cached recollection of a strategy indexed by index of the player indexed by player_number.
+"""
 opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_recollection(pre_allocated_arrays(model), player_number, index)
+
+"""
+    opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int)
+
+Set the recollection of a strategy indexed by index of the player indexed by player_number.
+"""
 opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int) = opponent_strategy_recollection!(pre_allocated_arrays(model), player_number, index, value)
+
+"""
+    increment_opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int=1)
+
+Increment the recollection of a strategy indexed by index of the player indexed by player_number by value (defaults to an increment of 1).
+"""
 increment_opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int=1) = increment_opponent_strategy_recollection!(pre_allocated_arrays(model), player_number, index, value)
+
+"""
+    opponent_strategy_probabilities(model::SimModel)
+
+Get the currently cached probabilities that each player's opponent will play each strategy (from recollection).
+"""
+opponent_strategy_probabilities(model::SimModel) = opponent_strategy_probabilities(pre_allocated_arrays(model))
+
+"""
+    opponent_strategy_probabilities(model::SimModel, player_number::Integer)
+
+Get the currently cached probabilities that the player indexed by player_number's opponent will play each strategy (from recollection).
+"""
 opponent_strategy_probabilities(model::SimModel, player_number::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number)
+
+"""
+    opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer)
+
+Get the currently cached probability that the player indexed by player_number's opponent will play the strategy indexed by index.
+"""
 opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_probabilities(pre_allocated_arrays(model), player_number, index)
+
+"""
+    expected_utilities(model::SimModel)
+
+Get the cached expected utilities for playing each strategy for both players.
+"""
+expected_utilities(model::SimModel) = expected_utilities(pre_allocated_arrays(model))
+
+
+"""
+    expected_utilities(model::SimModel, player_number::Integer)
+
+Get the cached expected utilities for playing each strategy for the player indexed by player_number.
+"""
 expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(pre_allocated_arrays(model), player_number)
+
+"""
+    expected_utilities(model::SimModel, player_number::Integer, index::Integer)
+
+Get the cached expected utility for playing the strategy indexed by index for the player indexed by player_number.
+"""
 expected_utilities(model::SimModel, player_number::Integer, index::Integer) = expected_utilities(pre_allocated_arrays(model), player_number, index)
+
+"""
+    expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat)
+
+Set the expected utility for playing the strategy indexed by index for the player indexed by player_number.
+"""
 expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = expected_utilities!(pre_allocated_arrays(model), player_number, index, value)
+
+"""
+    increment_expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat)
+
+Increment the expected utility for playing the strategy indexed by index for the player indexed by player_number by value.
+"""
 increment_expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = increment_expected_utilities!(pre_allocated_arrays(model), player_number, index, value)
+
+"""
+    reset_arrays!(model::SimModel)
+
+Reset the cached arrays in the model's PreAllocatedArrays instance to zeros.
+"""
 reset_arrays!(model::SimModel) = reset_arrays!(pre_allocated_arrays(model))
 
+"""
+    initialize_graph!(model::SimModel)
 
+Initialize the AgentGraph instance for the model based on parameters of other model components.
+"""
 initialize_graph!(model::SimModel) = initialize_graph!(graph_params(model), game(model), sim_params(model), starting_condition(model)) #parameter spreading necessary for multiple dispatch
+
+"""
+    initialize_stopping_condition!(model::SimModel)
+
+Initialize the stopping condition values for the model based on parameters of the model's SimParams instance and properties of the AgentGraph instance.
+"""
 initialize_stopping_condition!(model::SimModel) = initialize_stopping_condition!(stopping_condition(model), sim_params(model), agent_graph(model)) #parameter spreading necessary for multiple dispatch
 
+"""
+    reset_model!(model::SimModel)
+
+Reset the model to its initial state.
+"""
 function reset_model!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
     reset_agent_graph!(model)
     initialize_stopping_condition!(model)
@@ -313,7 +415,11 @@ end
 
 
 
+"""
+    construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
 
+Construct a list of models from the combinatorial set of component lists.
+"""
 function construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
     model_list = Vector{SimModel}([])
     model_number::Int = 1
@@ -334,6 +440,11 @@ function construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector
     return model_list
 end
 
+"""
+    select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
+
+From lists of component parts, select the model indexed by model_number and construct the model. Used for distributed computing on a workload manager like SLURM.
+"""
 function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
    #add validation here??  
     current_model_number::Int = 1
