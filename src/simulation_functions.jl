@@ -51,6 +51,8 @@ function find_opponent_strategy_probabilities!(model::SimModel)
     return nothing
 end
 
+
+
 function calculate_expected_utilities!(model::SimModel)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies
         for row in axes(payoff_matrix(model), 1) #row strategies
