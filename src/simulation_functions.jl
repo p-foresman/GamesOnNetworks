@@ -58,8 +58,6 @@ function calculate_expected_utilities!(model::SimModel)
         for row in axes(payoff_matrix(model), 1) #row strategies
             increment_expected_utilities!(model, 1, row, payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column))
             increment_expected_utilities!(model, 2, column, payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row))
-            # expected_utilities(model, 1)[row] += payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column)
-            # expected_utilities(model, 2)[column] += payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row)
         end
     end
     return nothing
@@ -94,8 +92,8 @@ function maximum_strategy(expected_utilities::Vector{Float32})
 end
 
 
-function push_memory!(agent::Agent, percept::Percept, memory_length::Int) #NOTE: should i memory instead of agent?
-    if length(memory(agent)) == memory_length
+function push_memory!(agent::Agent, percept::Percept, memory_length::Int)
+    if length(memory(agent)) >= memory_length
         popfirst!(memory(agent))
     end
     push!(memory(agent), percept)

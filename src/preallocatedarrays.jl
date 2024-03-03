@@ -122,7 +122,7 @@ expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Inte
 
 Get the cached expected utility for playing the strategy indexed by index for the player indexed by player_number.
 """
-expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer) = getindex(opponent_strategy_probabilities(pre_allocated_arrays, player_number), index)
+expected_utilities(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer) = getindex(expected_utilities(pre_allocated_arrays, player_number), index)
 
 """
     expected_utilities!(pre_allocated_arrays::PreAllocatedArrays, player_number::Integer, index::Integer, value::AbstractFloat)

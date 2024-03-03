@@ -195,7 +195,7 @@ Initialize the stopping condition for a model.
 """
 function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
     sufficient_equity!(stopping_condition, (1 - error_rate(sim_params)) * memory_length(sim_params))
-    sufficient_transitioned!(stopping_condition, number_agents(sim_params) - number_hermits(agent_graph))
+    sufficient_transitioned!(stopping_condition, Float64(number_agents(sim_params) - number_hermits(agent_graph)))
     return nothing
 end
 
