@@ -36,11 +36,11 @@ Type to define and store graph interaction parameters for an Erdos-Renyi random 
 struct ErdosRenyiParams <: GraphParams
     graph_type::Symbol
     λ::Float64
-    function ErdosRenyiParams(λ::Float64)
-        return new(:er, λ)
+    function ErdosRenyiParams(λ::Real)
+        return new(:er, Float64(λ))
     end
-    function ErdosRenyiParams(::Symbol, λ::Float64)
-        return new(:er, λ)
+    function ErdosRenyiParams(::Symbol, λ::Real)
+        return new(:er, Float64(λ))
     end
 end
 
@@ -51,13 +51,13 @@ Type to define and store graph interaction parameters for a small-world (Watts-S
 """
 struct SmallWorldParams <: GraphParams
     graph_type::Symbol
-    κ::Int
+    λ::Int
     β::Float64
-    function SmallWorldParams(κ::Int, β::Float64)
-        return new(:sw, κ, β)
+    function SmallWorldParams(λ::Real, β::Real)
+        return new(:sw, Float64(λ), Float64(β))
     end
-    function SmallWorldParams(::Symbol, κ::Int, β::Float64)
-        return new(:sw, κ, β)
+    function SmallWorldParams(::Symbol, λ::Real, β::Real)
+        return new(:sw, Float64(λ), Float64(β))
     end
 end
 
@@ -68,13 +68,13 @@ Type to define and store graph interaction parameters for a scale-free random gr
 """
 struct ScaleFreeParams <: GraphParams
     graph_type::Symbol
+    λ::Float64
     α::Float64
-    d::Float64 #edge density
-    function ScaleFreeParams(α::Float64, d::Float64)
-        return new(:sf, α, d)
+    function ScaleFreeParams(λ::Real, α::Real)
+        return new(:sf, Float64(λ), Float64(α))
     end
-    function ScaleFreeParams(::Symbol, α::Float64, d::Float64)
-        return new(:sf, α, d)
+    function ScaleFreeParams(::Symbol, λ::Real, α::Real)
+        return new(:sf, Float64(λ), Float64(α))
     end
 end
 
@@ -85,7 +85,7 @@ Type to define and store graph interaction parameters for a stochastic block mod
 """
 struct StochasticBlockModelParams <: GraphParams
     graph_type::Symbol
-    communities::Int
+    blocks::Int
     internal_λ::Float64
     external_λ::Float64
     function StochasticBlockModelParams(communities::Int, internal_λ::Float64, external_λ::Float64)
