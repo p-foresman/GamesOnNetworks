@@ -11,10 +11,9 @@ function initialize_graph!(::CompleteParams, game::Game, sim_params::SimParams, 
 end
 
 function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    edge_probability = λ(graph_params) / number_agents(sim_params)
     graph = nothing
     while true
-        graph = erdos_renyi(number_agents(sim_params), edge_probability)
+        graph = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
         if ne(graph) >= 1 #simulation will break if graph has no edges
             break
         end
@@ -26,7 +25,7 @@ end
 function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = nothing
     while true
-        graph = watts_strogatz(number_agents(sim_params), κ(graph_params), β(graph_params))
+        graph = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
         if ne(graph) >= 1
             break
         end
@@ -38,7 +37,7 @@ end
 function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = nothing
     while true
-        graph = scale_free(number_agents(sim_params), α(graph_params), d(graph_params))
+        graph = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
         if ne(graph) >= 1
             break
         end
@@ -48,20 +47,17 @@ function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params
     return agent_graph
 end
 function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    @assert number_agents(sim_params) % communities(graph_params) == 0 "Number of communities must divide number of agents evenly"
-    community_size = Int(number_agents(sim_params) / communities(graph_params))
-    internal_edge_probability = internal_λ(graph_params) / community_size
-    internal_edge_probability_vector = Vector{Float64}([])
-    sizes_vector = Vector{Int}([])
-    for _ in 1:communities(graph_params)
-        push!(internal_edge_probability_vector, internal_edge_probability)
-        push!(sizes_vector, community_size)
+    @assert number_agents(sim_params) % blocks(graph_params) == 0 "Number of blocks must divide number of agents evenly"
+    block_size = Int(number_agents(sim_params) / blocks(graph_params))
+    p_in_vector = Vector{Float64}([])
+    block_sizes_vector = Vector{Int}([])
+    for _ in 1:blocks(graph_params)
+        push!(p_in_vector, p_in(graph_params))
+        push!(block_sizes_vector, block_size)
     end
-    external_edge_probability = external_λ(graph_params) / number_agents(sim_params)
-    affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(internal_edge_probability_vector, external_edge_probability, sizes_vector)
     graph = nothing
     while true
-        graph = stochastic_block_model(affinity_matrix, sizes_vector)
+        graph = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
         if ne(graph) >= 1
             break
         end

@@ -52,7 +52,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
@@ -65,7 +65,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
     # end
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer
-    db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+    db_status = db_insert_simulation_with_agents(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
     return (periods_elapsed, db_status)
 end
 
@@ -78,7 +78,7 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
         db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+    db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -104,7 +104,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     for model in model_list
-        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
 
         show(model)
         flush(stdout) #flush buffer
@@ -133,7 +133,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     end
 
     if db_id_tuple === nothing 
-        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
     end
 
     # @timeit to "simulate" begin
@@ -146,7 +146,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
         periods_elapsed += 1
         already_pushed = false
         if periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+            db_status = db_insert_simulation_with_agents(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
             prev_simulation_uuid = db_status.simulation_uuid
             already_pushed = true
         end
@@ -155,7 +155,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer
     if already_pushed == false #push final results to DB at filepath
-        db_status = pushSimulationToDB(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+        db_status = db_insert_simulation_with_agents(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
     end
     return (periods_elapsed, db_status)
 end
@@ -170,7 +170,7 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
         db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+    db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -196,7 +196,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     for model in model_list
-        db_id_tuple = db_id_tuple(model, db_filepath, use_seed=use_seed)
+        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
 
         show(model)
         flush(stdout) #flush buffer

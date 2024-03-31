@@ -92,7 +92,7 @@ end
 function db_insert_graph(db_filepath::String, graph_params::GraphParams)
     graph_type = displayname(graph_params)
     graph_params_string = JSON3.write(graph_params)
-    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :κ => nothing, :β => nothing, :α => nothing, :d => nothing, :communities => nothing, :internal_λ => nothing, :external_λ => nothing) #allows for parameter-based queries
+    db_params_dict = Dict{Symbol, Any}(:λ => nothing, :β => nothing, :α => nothing, :blocks => nothing, :p_in => nothing, :p_out => nothing) #allows for parameter-based queries
     
     for param in keys(db_params_dict)
         if param in fieldnames(typeof(graph_params))
@@ -206,7 +206,7 @@ function db_insert_simulation_with_agents(db_filepath::String, sim_group_id::Uni
 end
 
 
-function db_id_tuple(model::SimModel, db_filepath::String; use_seed::Bool = false)
+function construct_db_id_tuple(model::SimModel, db_filepath::String; use_seed::Bool = false)
     db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}} = (
                     game_id = db_insert_game(db_filepath, model.game),
                     graph_id = db_insert_graph(db_filepath, model.graph_params),

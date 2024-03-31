@@ -51,7 +51,7 @@ Type to define and store graph interaction parameters for a small-world (Watts-S
 """
 struct SmallWorldParams <: GraphParams
     graph_type::Symbol
-    λ::Int
+    λ::Float64
     β::Float64
     function SmallWorldParams(λ::Real, β::Real)
         return new(:sw, Float64(λ), Float64(β))
@@ -85,14 +85,15 @@ Type to define and store graph interaction parameters for a stochastic block mod
 """
 struct StochasticBlockModelParams <: GraphParams
     graph_type::Symbol
+    λ::Float64
     blocks::Int
-    internal_λ::Float64
-    external_λ::Float64
-    function StochasticBlockModelParams(communities::Int, internal_λ::Float64, external_λ::Float64)
-        return new(:sbm, communities, internal_λ, external_λ)
+    p_in::Float64
+    p_out::Float64
+    function StochasticBlockModelParams(λ::Real, blocks::Int, p_in::Float64, p_out::Float64)
+        return new(:sbm, λ, blocks, p_in, p_out)
     end
-    function StochasticBlockModelParams(::Symbol, communities::Int, internal_λ::Float64, external_λ::Float64)
-        return new(:sbm, communities, internal_λ, external_λ)
+    function StochasticBlockModelParams(::Symbol, λ::Real, blocks::Int, p_in::Float64, p_out::Float64)
+        return new(:sbm, λ, blocks, p_in, p_out)
     end
 end
 
@@ -121,72 +122,65 @@ graph_type(graph_params::GraphParams) = getfield(graph_params, :graph_type) #don
 """
     λ(erdos_renyi_params:ErdosRenyiParams)
 
-Get the λ parameter value of an ErdosRenyiParams instance.
-
-λ = edge_probability * number_agents
+Get the mean degree of an ErdosRenyiParams instance.
 """
 λ(erdos_renyi_params::ErdosRenyiParams) = getfield(erdos_renyi_params, :λ)
 
 """
-    κ(small_world_params:SmallWorldParams)
+    λ(small_world_params:SmallWorldParams)
 
-Get the κ parameter value of a SmallWorldParams instance.
-
-κ = expected degree per vertex
+Get the mean degree of a SmallWorldParams instance.
 """
-κ(small_world_params::SmallWorldParams) = getfield(small_world_params, :κ)
+λ(small_world_params::SmallWorldParams) = getfield(small_world_params, :λ)
 
 """
     β(small_world_params:SmallWorldParams)
 
-Get the β parameter value of a SmallWorldParams instance.
-
-β = edge probability
+Get the rewiring probability of a SmallWorldParams instance.
 """
 β(small_world_params::SmallWorldParams) = getfield(small_world_params, :β)
 
 """
+    λ(scale_free_params:ScaleFreeParams)
+
+Get the mean degree of a ScaleFreeParams instance.
+"""
+λ(scale_free_params::ScaleFreeParams) = getfield(scale_free_params, :λ)
+
+"""
     α(scale_free_params:ScaleFreeParams)
 
-Get the α parameter value of a ScaleFreeParams instance.
-
-α = exponent for expected power law degree distribution
+Get the expected power law degree distribution exponent of a ScaleFreeParams instance.
 """
 α(scale_free_params::ScaleFreeParams) = getfield(scale_free_params, :α)
 
 """
-    d(scale_free_params:ScaleFreeParams)
+    λ(stochastic_block_model_params:StochasticBlockModelParams)
 
-Get the d parameter value of a ScaleFreeParams instance.
-
-d = expected edge density
+Get the mean degree of a StochasticBlockModelParams instance.
 """
-d(scale_free_params::ScaleFreeParams) = getfield(scale_free_params, :d)
+λ(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :λ)
 
 """
-    communities(stochastic_block_model_params:StochasticBlockModelParams)
+    blocks(stochastic_block_model_params:StochasticBlockModelParams)
 
-Get the number of communities defined for a StochasticBlockModelParams instance.
+Get the number of blocks defined for a StochasticBlockModelParams instance.
 """
-communities(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :communities)
-
-"""
-    internal_λ(stochastic_block_model_params:StochasticBlockModelParams)
-
-Get the internal_λ parameter value of a StochasticBlockModelParams instance.
-
-internal_λ = λ parameter within communities
-"""
-internal_λ(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :internal_λ)
+blocks(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :blocks)
 
 """
-    external_λ(stochastic_block_model_params:StochasticBlockModelParams)
+    p_in(stochastic_block_model_params:StochasticBlockModelParams)
 
-Get the external_λ parameter value of a StochasticBlockModelParams instance.
-
-external_λ = λ parameter between communities
+Get the in-block edge probability of a StochasticBlockModelParams instance.
 """
-external_λ(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :external_λ)
+p_in(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :p_in)
+
+"""
+    p_out(stochastic_block_model_params:StochasticBlockModelParams)
+
+Get the out-block edge probability of a StochasticBlockModelParams instance.
+"""
+p_out(stochastic_block_model_params::StochasticBlockModelParams) = getfield(stochastic_block_model_params, :p_out)
 
 
 """
@@ -196,8 +190,8 @@ Get the string used for displaying a GraphParams instance.
 """
 displayname(::CompleteParams) = "Complete"
 displayname(graph_params::ErdosRenyiParams) = "ErdosRenyi λ=$(λ(graph_params))"
-displayname(graph_params::SmallWorldParams) = "SmallWorld κ=$(κ(graph_params)) β=$(β(graph_params))"
-displayname(graph_params::ScaleFreeParams) = "ScaleFree α=$(α(graph_params)) d=$(d(graph_params))"
-displayname(graph_params::StochasticBlockModelParams) = "StochasticBlockModel communities=$(communities(graph_params)) internal_λ=$(internal_λ(graph_params)) external_λ=$(external_λ(graph_params))"
+displayname(graph_params::SmallWorldParams) = "SmallWorld λ=$(λ(graph_params)) β=$(β(graph_params))"
+displayname(graph_params::ScaleFreeParams) = "ScaleFree λ=$(λ(graph_params)) α=$(α(graph_params))"
+displayname(graph_params::StochasticBlockModelParams) = "StochasticBlockModel λ=$(λ(graph_params)) blocks=$(blocks(graph_params)) p_in=$(p_in(graph_params)) p_out=$(p_out(graph_params))"
 
 Base.show(graph_params::GraphParams) = println(displayname(graph_params))

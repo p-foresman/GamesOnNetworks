@@ -41,13 +41,11 @@ export
     graph_params,
     graph_type, #rename to type?
     λ,
-    κ,
     β,
     α,
-    d,
-    communities,
-    internal_λ,
-    external_λ,
+    blocks,
+    p_in,
+    p_out,
 
     starting_condition,
     type, #rename?
@@ -120,7 +118,13 @@ export
 
     #utility
     resetprocs,
-    scale_free
+
+    #graph constructors
+    erdos_renyi_rg,
+    small_world_rg,
+    scale_free_rg,
+    stochastic_block_model_rg
+
 
 using
     Graphs,
@@ -145,6 +149,9 @@ using
 
 #basic utility functions
 include("utility_functions.jl")
+
+#extensions of Graphs.jl graph constructors
+include("graphs.jl")
 
 #custom types and their methods
 include("games.jl")
