@@ -199,4 +199,7 @@ gplot(er_graph)
 #   Dont bother with random graphs with densities which fall below the giant component threshold.
 #   The characteristic social structures for different graph types have certainly not crystalized at this point.
 #   (we WANT a giant component)
+#
+#
+# NOTE: new stopping condition breaks down for high error (1-e) term will be small, so small portion of agents need to transition
 # """
