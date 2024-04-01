@@ -38,7 +38,7 @@ end
 #     return static_scale_free(n, num_edges, α; kwargs...)
 # end
 
-function scale_free_rg(n::Integer, λ::Real, α::Integer; kwargs...)
+function scale_free_rg(N::Integer, λ::Real, α::Integer; kwargs...)
     num_edges = edge_count(N, edge_density(N, λ))
     return static_scale_free(N, num_edges, α; kwargs...)
 end

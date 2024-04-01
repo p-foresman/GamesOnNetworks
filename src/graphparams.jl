@@ -37,9 +37,11 @@ struct ErdosRenyiParams <: GraphParams
     graph_type::Symbol
     λ::Float64
     function ErdosRenyiParams(λ::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
         return new(:er, Float64(λ))
     end
     function ErdosRenyiParams(::Symbol, λ::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
         return new(:er, Float64(λ))
     end
 end
@@ -54,9 +56,13 @@ struct SmallWorldParams <: GraphParams
     λ::Float64
     β::Float64
     function SmallWorldParams(λ::Real, β::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert 0.0 <= β <= 1.0 "'β' parameter must be between 0.0 and 1.0"
         return new(:sw, Float64(λ), Float64(β))
     end
     function SmallWorldParams(::Symbol, λ::Real, β::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert 0.0 <= β <= 1.0 "'β' parameter must be between 0.0 and 1.0"
         return new(:sw, Float64(λ), Float64(β))
     end
 end
@@ -71,9 +77,13 @@ struct ScaleFreeParams <: GraphParams
     λ::Float64
     α::Float64
     function ScaleFreeParams(λ::Real, α::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert α >= 2 "'α' parameter must be >= 2.0"
         return new(:sf, Float64(λ), Float64(α))
     end
     function ScaleFreeParams(::Symbol, λ::Real, α::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert α >= 2 "'α' parameter must be >= 2.0"
         return new(:sf, Float64(λ), Float64(α))
     end
 end
@@ -90,9 +100,17 @@ struct StochasticBlockModelParams <: GraphParams
     p_in::Float64
     p_out::Float64
     function StochasticBlockModelParams(λ::Real, blocks::Int, p_in::Float64, p_out::Float64)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert blocks >= 1 "'blocks' parameter must be a positive integer"
+        @assert 0.0 <= p_in <= 1.0 "'p_in' parameter must be between 0.0 and 1.0"
+        @assert 0.0 <= p_in <= 1.0 "'p_out' parameter must be between 0.0 and 1.0"
         return new(:sbm, λ, blocks, p_in, p_out)
     end
     function StochasticBlockModelParams(::Symbol, λ::Real, blocks::Int, p_in::Float64, p_out::Float64)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert blocks >= 1 "'blocks' parameter must be a positive integer"
+        @assert 0.0 <= p_in <= 1.0 "'p_in' parameter must be between 0.0 and 1.0"
+        @assert 0.0 <= p_in <= 1.0 "'p_out' parameter must be between 0.0 and 1.0"
         return new(:sbm, λ, blocks, p_in, p_out)
     end
 end

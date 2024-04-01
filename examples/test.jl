@@ -53,17 +53,16 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::G
 
 # const starting_condition_list = [FractiousState()]
 # const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
-const complete = SimModel(game_list[1], SimParams(100, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), PeriodCutoff(10000))
-const er = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), ErdosRenyiParams(5.0), FractiousState(), EquityBehavioral(2))
-const sw = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), SmallWorldParams(5.0, 0.01), FractiousState(), EquityBehavioral(2))
-const sf = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), ScaleFreeParams(5.0, 3), FractiousState(), EquityBehavioral(2))
-const sbm = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), StochasticBlockModelParams(5.0, 2, 0.7, 0.05), FractiousState(), EquityBehavioral(2))
+const c2 = SimModel(game_list[1], SimParams(100, 13, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
+const er2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), ErdosRenyiParams(5.0), FractiousState(), EquityBehavioral(2))
+const sw2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), SmallWorldParams(5.0, 0.01), FractiousState(), EquityBehavioral(2))
+const sf22 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), ScaleFreeParams(5.0, 3), FractiousState(), EquityBehavioral(2))
+const sbm2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), StochasticBlockModelParams(5.0, 2, 0.7, 0.05), FractiousState(), EquityBehavioral(2))
 
 # const c2 = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
 
 const er10 = SimModel(game_list[1], SimParams(1000, 10, 0.01, random_seed=1234), ErdosRenyiParams(5.0), FractiousState(), EquityBehavioral(2))
-const sw10 = SimModel(game_list[1], SimParams(100, 10, 0.1, random_seed=1234), SmallWorldParams(5.0, 0.0), FractiousState(), EquityBehavioral(2))
-const sf2 = SimModel(game_list[1], SimParams(100, 13, 0.1, random_seed=1234), ScaleFreeParams(5.0, 3), FractiousState(), EquityBehavioral(2))
+const sw100 = SimModel(game_list[1], SimParams(1000, 10, 0.01, random_seed=1234), SmallWorldParams(5.0, 0.0), FractiousState(), EquityBehavioral(2))
 
 const er3 = SimModel(game_list[1], SimParams(100, 10, 0.05, random_seed=1234), ErdosRenyiParams(5.0), FractiousState(), EquityBehavioral(2))
 const sw3 = SimModel(game_list[1], SimParams(100, 10, 0.05, random_seed=1234), SmallWorldParams(5.0, 0.01), FractiousState(), EquityBehavioral(2))
