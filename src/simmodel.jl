@@ -418,9 +418,9 @@ end
 """
     construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
 
-Construct a list of models from the combinatorial set of component lists.
+Construct a list of models from the combinatorial set of component lists. Used for simulation_iterator() function.
 """
-function construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
+function construct_model_list(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Union{Integer, Nothing}=nothing)
     model_list = Vector{SimModel}([])
     model_number::Int = 1
     for game in game_list

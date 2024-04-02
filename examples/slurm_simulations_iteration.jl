@@ -19,7 +19,7 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)]
 const sim_params_list = construct_sim_params_list(
                 number_agents_list = [1000],
                 memory_length_list = [10],
-                error_list = [0.02, 0.05, 0.1, 0.2]
+                error_list = [0.2]
                 )
 
 const graph_params_list = [
@@ -104,11 +104,10 @@ const starting_condition_list = [FractiousState()]
 const stopping_condition_list = [EquityBehavioral(2)]
 
 
-const slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-const model = select_and_construct_model(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, model_number=slurm_task_id)
+const model = construct_model_list(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list)
 
 
-simulate_distributed(model, db_filepath, run_count=nworkers())
+simulation_iterator(model, db_filepath, run_count=nworkers())
 
 resetprocs()
 

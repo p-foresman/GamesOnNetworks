@@ -96,7 +96,7 @@ end
 
 
 function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
-    distributed_uuid = "$(uuid4())"
+    distributed_uuid = "./sqlite/$(uuid4())"
 
     if nworkers() > 1
         println("\nSimulation Distributed UUID: $distributed_uuid")
