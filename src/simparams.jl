@@ -76,7 +76,7 @@ random_seed(sim_params::SimParams) = getfield(sim_params, :random_seed)
 
 Get the string used for displaying a SimParams instance.
 """
-displayname(sim_params::SimParams) = "N=$(number_agens(sim_params)) m=$(memory_length(sim_params)) e=$(error_rate(sim_params))"
+displayname(sim_params::SimParams) = "N=$(number_agents(sim_params)) m=$(memory_length(sim_params)) e=$(error_rate(sim_params))"
 
 Base.show(sim_params::SimParams) = println(displayname(sim_params))
 
