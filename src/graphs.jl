@@ -16,14 +16,10 @@ function connected_component_edges(g::AbstractGraph{T}) where {T}
     components = filter(component -> length(component) > 1, connected_components(g))
     # component_edges = fill([], length(components))
     component_edges::Vector{Vector{Graphs.SimpleEdge}} = []
-    println("components: ", components)
-    println(length(components))
     for vertex_set in components
         edge_set::Vector{Graphs.SimpleEdge} = []
         for edge in Graphs.edges(g)
-            println(edge)
             if edge.src in vertex_set && edge.dst in vertex_set
-                println("yup")
                 push!(edge_set, edge)
             end
         end
