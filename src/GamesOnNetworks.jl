@@ -67,6 +67,8 @@ export
     agents,
     edges, #rename?
     random_edge,
+    component_edge_sets,
+    random_component_edge,
     number_hermits,
 
     ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?

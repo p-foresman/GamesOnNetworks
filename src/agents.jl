@@ -55,6 +55,13 @@ Determine if an agent is a hermit on the AgentGraph (i.e. degree=0).
 ishermit(agent::Agent) = getfield(agent, :is_hermit)
 
 """
+    GamesOnNetworks.ishermit!(agent::Agent)
+
+Set an agent's hermit status on the AgentGraph (i.e. degree=0).
+"""
+ishermit!(agent::Agent, is_hermit::Bool) = setfield!(agent, :is_hermit, is_hermit)
+
+"""
     memory(agent::Agent)
 
 Get the current memory of an agent.

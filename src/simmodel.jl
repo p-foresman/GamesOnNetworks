@@ -160,49 +160,80 @@ Get the AgentGraph instance in the model.
 agent_graph(model::SimModel) = getfield(model, :agent_graph)
 
 """
-    graph(agent_graph::SimModel)
+    graph(model::SimModel)
 
 Get the graph (Graphs.SimpleGraph{Int}) in the model.
 """
 graph(model::SimModel) = graph(agent_graph(model))
 
 """
-    agents(agent_graph::SimModel)
+    agents(model::SimModel)
 
 Get all of the agents in the model.
 """
 agents(model::SimModel) = agents(agent_graph(model))
 
 """
-    agents(agent_graph::SimModel, agent_number::Integer)
+    agents(model::SimModel, agent_number::Integer)
 
 Get the agent indexed by the agent_number in the model.
 """
 agents(model::SimModel, agent_number::Integer) = agents(agent_graph(model), agent_number)
 
 """
-    edges(agent_graph::SimModel)
+    edges(model::SimModel)
 
 Get all of the edges/relationships in the model.
 """
 edges(model::SimModel) = edges(agent_graph(model))
 
 """
-    edges(agent_graph::SimModel, edge_number::Integer)
+    edges(model::SimModel, edge_number::Integer)
 
 Get the edge indexed by the edge_number in the model.
 """
 edges(model::SimModel, edge_number::Integer) = edges(agent_graph(model), edge_number)
 
 """
-    random_edge(agent_graph::SimModel)
+    random_edge(model::SimModel)
 
 Get a random edge/relationship in the model.
 """
 random_edge(model::SimModel) = random_edge(agent_graph(model))
 
 """
-    number_hermits(agent_graph::SimModel)
+    component_edge_sets(model::SimModel)
+
+Get all of the connected component edge sets that reside in the model's AgentGraph instance.
+Returns a vector of vectors, each containing the edges in each separated component.
+"""
+component_edge_sets(model::SimModel) = component_edge_sets(agent_graph(model))
+
+"""
+    component_edge_sets(model::SimModel, component_number::Integer)
+
+Get the connected component edge set indexed by component_number in the model's AgentGraph instance.
+Returns a vector of Graphs.SimpleEdge instances.
+"""
+component_edge_sets(model::SimModel, component_number::Integer) = component_edge_sets(agent_graph(model), component_number)
+
+"""
+    component_edge_sets(model::SimModel, component_number::Integer, edge_number::Integer)
+
+Get the edge indexed by edge_number in the connected component edge set indexed by component_number in the model's AgentGraph instance.
+Returns a Graphs.SimpleEdge instance.
+"""
+component_edge_sets(model::SimModel, component_number::Integer, edge_number::Integer) = component_edge_sets(agent_graph(model), component_number, edge_number)
+
+"""
+    random__component_edge(model::SimModel, component_number::Integer)
+
+Get a random edge/relationship in the component specified by component_number in the model's AgentGraph instance.
+"""
+random_component_edge(model::SimModel, component_number::Integer) = rand(component_edge_sets(agent_graph(model), component_number))
+
+"""
+    number_hermits(model::SimModel)
 
 Get the number of hermits (vertecies with degree=0) in the model.
 """
@@ -257,8 +288,8 @@ player!(model::SimModel, player_number::Integer, agent_number::Integer) = player
 
 Choose a random relationship/edge in the AgentGraph and set players to be the agents that the edge connects.
 """
-function set_players!(model::SimModel)
-    edge::Graphs.SimpleEdge{Int} = random_edge(model)
+function set_players!(model::SimModel, edge_set::RelationshipSet)
+    edge::Graphs.SimpleEdge{Int} = rand(edge_set)
     vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
     for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
         player!(model, player_number, vertex_list[player_number])

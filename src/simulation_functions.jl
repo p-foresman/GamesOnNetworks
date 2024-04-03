@@ -18,10 +18,12 @@ function play_game!(model::SimModel)
 end
 
 function run_period!(model::SimModel) #NOTE: what type are graph_edges ??
-    for _ in 1:matches_per_period(model)
-        reset_arrays!(model)
-        set_players!(model)
-        play_game!(model)
+    for component_edge_set in component_edge_sets(model) #each connected component plays a period's worth of matches
+        for _ in 1:matches_per_period(model)
+            reset_arrays!(model)
+            set_players!(model, component_edge_set)
+            play_game!(model)
+        end
     end
     return nothing
 end
