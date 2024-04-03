@@ -104,10 +104,26 @@ const starting_condition_list = [FractiousState()]
 const stopping_condition_list = [EquityBehavioral(2)]
 
 
-const model_list = construct_model_list(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list)
+# const model_list = construct_model_list(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list)
 
 
-simulation_iterator(model_list, db_filepath, run_count=nworkers())
+function simulate_a_bunch(game_list, sim_params_list, graph_params_list, starting_condition_list, stopping_condition_list, db_filepath)
+    sim_count = length(game_list) * length(sim_params_list) * length(graph_params_list) * length(starting_condition_list) * length(stopping_condition_list)
+    for sim_number in 1:sim_count
+            simulate_distributed(select_and_construct_model(game_list=game_list,
+                                                            sim_params_list=sim_params_list,
+                                                            graph_params_list=graph_params_list,
+                                                            starting_condition_list=starting_condition_list,
+                                                            stopping_condition_list=stopping_condition_list,
+                                                            model_number=sim_number),
+                                db_filepath,
+                                run_count=nworkers())
+    end
+end
+
+simulate_a_bunch(game_list, sim_params_list, graph_params_list, starting_condition_list, stopping_condition_list, db_filepath)
+
+# simulation_iterator(model_list, db_filepath, run_count=nworkers())
 
 resetprocs()
 

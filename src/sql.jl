@@ -732,7 +732,7 @@ function execute_merge_full(db_filepath_master::String, db_filepath_merger::Stri
 end
 
 # Merge temp distributed DBs into master DB.
-function db_merge_temp(db_filepath_master::String, db_filepath_merger::String)
+function execute_merge_temp(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
     # SQLite.busy_timeout(db, 5000) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")

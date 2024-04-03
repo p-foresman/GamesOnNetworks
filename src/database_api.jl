@@ -37,7 +37,7 @@ function db_collect_distributed(db_filepath::String, distributed_uuid::String) #
                 # rm(temp_filepath)
                 success = true
             catch
-                sleep(rand(0.1:0.1:30.0))
+                sleep(rand(0.1:0.1:10.0))
             end
         end
     end
