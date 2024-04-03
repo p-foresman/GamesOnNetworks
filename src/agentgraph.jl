@@ -3,7 +3,6 @@ const AgentSet{N} = SVector{N, Agent}
 const Relationship = Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 
-
 """
     GamesOnNetworks.AgentGraph{N, E} <: AbstractGraph{Int}
 
@@ -17,6 +16,7 @@ struct AgentGraph{N, E} <: AbstractGraph{Int}
     graph::Graph
     agents::AgentSet{N}
     edges::RelationshipSet{E}
+    component_edge_sets::Vector{Vector{Graphs.SimpleEdge}} #edit later
     # number_agents::Int
     number_hermits::Int
     
@@ -32,7 +32,8 @@ struct AgentGraph{N, E} <: AbstractGraph{Int}
             end
         end
         graph_edges = RelationshipSet{E}(collect(Graphs.edges(graph)))
-        return new{N, E}(graph, agents, graph_edges, number_hermits)
+        component_edge_sets = connected_component_edges(graph)
+        return new{N, E}(graph, agents, graph_edges, component_edge_sets, number_hermits)
     end
 end
 

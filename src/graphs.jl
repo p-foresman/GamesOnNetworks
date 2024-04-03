@@ -12,6 +12,27 @@ edge_count(N::Integer, d::Float64) = Int(round(d * possible_edge_count(N)))
 mean_degree(N::Int, d::Float64) = Int(round(N * d))
 
 
+function connected_component_edges(g::AbstractGraph{T}) where {T}
+    components = filter(component -> length(component) > 1, connected_components(g))
+    # component_edges = fill([], length(components))
+    component_edges::Vector{Vector{Graphs.SimpleEdge}} = []
+    println("components: ", components)
+    println(length(components))
+    for vertex_set in components
+        edge_set::Vector{Graphs.SimpleEdge} = []
+        for edge in Graphs.edges(g)
+            println(edge)
+            if edge.src in vertex_set && edge.dst in vertex_set
+                println("yup")
+                push!(edge_set, edge)
+            end
+        end
+        push!(component_edges, edge_set)
+    end
+    return component_edges
+end
+
+
 function erdos_renyi_rg(N::Integer, λ::Real; kwargs...)
     num_edges = edge_count(N, edge_density(N, λ))
     return erdos_renyi(N, num_edges; kwargs...) #we can use d or num_edges here (num_edges will be exact while d will slightly change)
