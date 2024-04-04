@@ -62,14 +62,21 @@ export
     period_count!,
     increment_period_count!,
 
+    # vertices,
+    # num_vertices, #these are from the ConnectedComponent struct (should i export?)
+    # edges,
+    # num_edges,
+
     agent_graph,
     graph,
     agents,
-    edges, #rename?
+    # edges, #rename?
     random_edge,
-    component_vertex_sets,
-    component_edge_sets,
-    random_component_edge,
+    components,
+    num_components,
+    # component_vertex_sets,
+    # component_edge_sets,
+    # random_component_edge,
     number_hermits,
 
     ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?

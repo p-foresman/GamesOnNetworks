@@ -16,12 +16,33 @@ N = number of vertices,
 E = number of edges,
 C = number of connected components
 """
+struct ConnectedComponent{V, E}
+    vertices::VertexSet{V}
+    edges::RelationshipSet{E}
+
+    function ConnectedComponent(vertices::Vector{Int}, edges::Vector{Graphs.SimpleEdge})
+        V = length(vertices)
+        E = length(edges)
+        return new{V, E}(VertexSet{V}(vertices), RelationshipSet{E}(edges))
+    end
+end
+
+const ComponentSet{C} = SVector{C, ConnectedComponent}
+
+vertices(component::ConnectedComponent) = getfield(component, :vertices)
+num_vertices(::ConnectedComponent{V, E}) where {V, E} = V
+edges(component::ConnectedComponent) = getfield(component, :edges)
+num_edges(::ConnectedComponent{V, E}) where {V, E} = E
+random_edge(component::ConnectedComponent) = rand(edges(component))
+
+
 struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     graph::Graph
     agents::AgentSet{N}
-    edges::RelationshipSet{E} #all edges
-    component_vertex_sets::ComponentVertexSets{C}
-    component_edge_sets::ComponentRelationshipSets{C} #edges separated by connected components
+    # edges::RelationshipSet{E} #all edges (unnecessary)
+    components::ComponentSet{C}
+    # component_vertex_sets::ComponentVertexSets{C}
+    # component_edge_sets::ComponentRelationshipSets{C} #The union of these sets will contain all edges (large enough lambda will generally only contain one connected component)
     # number_agents::Int
     number_hermits::Int
     
@@ -36,17 +57,22 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
                 number_hermits += 1
             end
         end
-        graph_edges = RelationshipSet{E}(collect(Graphs.edges(graph)))
+        # graph_edges = RelationshipSet{E}(collect(Graphs.edges(graph)))
         vertex_sets, edge_sets, C = connected_component_sets(graph)
-        component_vertex_sets = []
-        component_edge_sets = []
+        # component_vertex_sets = []
+        # component_edge_sets = []
+        # for component_number in 1:C
+        #     push!(component_vertex_sets, VertexSet{length(vertex_sets[component_number])}(vertex_sets[component_number]))
+        #     push!(component_edge_sets, RelationshipSet{length(edge_sets[component_number])}(edge_sets[component_number]))
+        # end
+        # component_vertex_sets = ComponentVertexSets{C}(component_vertex_sets) # type parameter C ensures that these two sets are of the same length
+        # component_edge_sets = ComponentRelationshipSets{C}(component_edge_sets)
+        components = []
         for component_number in 1:C
-            push!(component_vertex_sets, VertexSet{length(vertex_sets[component_number])}(vertex_sets[component_number]))
-            push!(component_edge_sets, RelationshipSet{length(edge_sets[component_number])}(edge_sets[component_number]))
+            push!(components, ConnectedComponent(vertex_sets[component_number], edge_sets[component_number]))
         end
-        component_vertex_sets = ComponentVertexSets{C}(component_vertex_sets) # type parameter C ensures that these two sets are of the same length
-        component_edge_sets = ComponentRelationshipSets{C}(component_edge_sets)
-        return new{N, E, C}(graph, agents, graph_edges, component_vertex_sets, component_edge_sets, number_hermits)
+        components = ComponentSet{C}(components)
+        return new{N, E, C}(graph, agents, components, number_hermits)
     end
 end
 
@@ -57,11 +83,11 @@ end
 ##########################################
 
 
-number_vertices(::AgentGraph{N, E, C}) where {N, E, C} = N
+num_vertices(::AgentGraph{N, E, C}) where {N, E, C} = N
 
-number_edges(::AgentGraph{N, E, C}) where {N, E, C} = E
+num_edges(::AgentGraph{N, E, C}) where {N, E, C} = E
 
-number_components(::AgentGraph{N, E, C}) where {N, E, C} = C
+num_components(::AgentGraph{N, E, C}) where {N, E, C} = C
 
 """
     graph(agent_graph::AgentGraph)
@@ -84,85 +110,100 @@ Get the agent indexed by the agent_number in an AgentGraph instance.
 """
 agents(agent_graph::AgentGraph, agent_number::Integer) = getindex(agents(agent_graph), agent_number)
 
-"""
-    edges(agent_graph::AgentGraph)
+# """
+#     edges(agent_graph::AgentGraph)
 
-Get all of the edges/relationships in an AgentGraph instance.
-"""
-edges(agent_graph::AgentGraph) = getfield(agent_graph, :edges)
+# Get all of the edges/relationships in an AgentGraph instance.
+# """
+# edges(agent_graph::AgentGraph) = getfield(agent_graph, :edges)
 
-"""
-    edges(agent_graph::AgentGraph, edge_number::Integer)
+# """
+#     edges(agent_graph::AgentGraph, edge_number::Integer)
 
-Get the edge indexed by the edge_number in an AgentGraph instance.
-"""
-edges(agent_graph::AgentGraph, edge_number::Integer) = getindex(edges(agent_graph), edge_number)
+# Get the edge indexed by the edge_number in an AgentGraph instance.
+# """
+# edges(agent_graph::AgentGraph, edge_number::Integer) = getindex(edges(agent_graph), edge_number)
 
-"""
-    random_edge(agent_graph::AgentGraph)
+# """
+#     random_edge(agent_graph::AgentGraph)
 
-Get a random edge/relationship in an AgentGraph instance.
-"""
-random_edge(agent_graph::AgentGraph) = rand(edges(agent_graph))
+# Get a random edge/relationship in an AgentGraph instance.
+# """
+# random_edge(agent_graph::AgentGraph) = rand(edges(agent_graph))
 
 
-number_vertices(::VertexSet{V}) where {V} = V
-
-"""
-    component_vertex_sets(agent_graph::AgentGraph)
-
-Get all of the connected component vertex sets that reside in an AgentGraph instance.
-Returns a vector of vectors, each containing the vertices in each separated component.
-"""
-component_vertex_sets(agent_graph::AgentGraph) = getfield(agent_graph, :component_vertex_sets)
+num_vertices(::VertexSet{V}) where {V} = V
 
 """
-    component_vertex_sets(agent_graph::AgentGraph, component_number::Integer)
+    components(agent_graph::AgentGraph)
 
-Get the connected component vertex set indexed by component_number in an AgentGraph instance.
-Returns a vector of Int.
+Get all of the connected componentd that reside in an AgentGraph instance.
+Returns a vector of ConnectedComponent objects.
 """
-component_vertex_sets(agent_graph::AgentGraph, component_number::Integer) = getindex(component_vertex_sets(agent_graph), component_number)
-
-
-number_edges(::RelationshipSet{E}) where {E} = E
+components(agent_graph::AgentGraph) = getfield(agent_graph, :components)
 
 """
-    component_edge_sets(agent_graph::AgentGraph)
+    components(agent_graph::AgentGraph, component_number::Integer)
 
-Get all of the connected component edge sets that reside in an AgentGraph instance.
-Returns a vector of vectors, each containing the edges in each separated component.
+Get the ConnectedComponent object indexed by component_number in an AgentGraph instance's 'components' field.
 """
-component_edge_sets(agent_graph::AgentGraph) = getfield(agent_graph, :component_edge_sets)
+components(agent_graph::AgentGraph, component_number::Integer) = getindex(components(agent_graph), component_number)
 
-"""
-    component_edge_sets(agent_graph::AgentGraph, component_number::Integer)
+# """
+#     component_vertex_sets(agent_graph::AgentGraph)
 
-Get the connected component edge set indexed by component_number in an AgentGraph instance.
-Returns a vector of Graphs.SimpleEdge instances.
-"""
-component_edge_sets(agent_graph::AgentGraph, component_number::Integer) = getindex(component_edge_sets(agent_graph), component_number)
+# Get all of the connected component vertex sets that reside in an AgentGraph instance.
+# Returns a vector of vectors, each containing the vertices in each separated component.
+# """
+# component_vertex_sets(agent_graph::AgentGraph) = getfield(agent_graph, :component_vertex_sets)
 
-"""
-    component_edge_sets(agent_graph::AgentGraph, component_number::Integer, edge_number::Integer)
+# """
+#     component_vertex_sets(agent_graph::AgentGraph, component_number::Integer)
 
-Get the edge indexed by edge_number in the connected component edge set indexed by component_number in an AgentGraph instance.
-Returns a Graphs.SimpleEdge instance.
-"""
-component_edge_sets(agent_graph::AgentGraph, component_number::Integer, edge_number::Integer) = getindex(component_edge_sets(agent_graph, component_number), edge_number)
+# Get the connected component vertex set indexed by component_number in an AgentGraph instance.
+# Returns a vector of Int.
+# """
+# component_vertex_sets(agent_graph::AgentGraph, component_number::Integer) = getindex(component_vertex_sets(agent_graph), component_number)
 
-"""
-    random__component_edge(agent_graph::AgentGraph, component_number::Integer)
 
-Get a random edge/relationship in the component specified by component_number in an AgentGraph instance.
-"""
-random_component_edge(agent_graph::AgentGraph, component_number::Integer) = rand(component_edge_sets(agent_graph, component_number))
+num_edges(::RelationshipSet{E}) where {E} = E
 
-"""
-    number_hermits(agent_graph::AgentGraph)
+# """
+#     component_edge_sets(agent_graph::AgentGraph)
 
-Get the number of hermits (vertecies with degree=0) in an AgentGraph instance.
-"""
+# Get all of the connected component edge sets that reside in an AgentGraph instance.
+# Returns a vector of vectors, each containing the edges in each separated component.
+# """
+# component_edge_sets(agent_graph::AgentGraph) = getfield(agent_graph, :component_edge_sets)
+
+# """
+#     component_edge_sets(agent_graph::AgentGraph, component_number::Integer)
+
+# Get the connected component edge set indexed by component_number in an AgentGraph instance.
+# Returns a vector of Graphs.SimpleEdge instances.
+# """
+# component_edge_sets(agent_graph::AgentGraph, component_number::Integer) = getindex(component_edge_sets(agent_graph), component_number)
+
+# """
+#     component_edge_sets(agent_graph::AgentGraph, component_number::Integer, edge_number::Integer)
+
+# Get the edge indexed by edge_number in the connected component edge set indexed by component_number in an AgentGraph instance.
+# Returns a Graphs.SimpleEdge instance.
+# """
+# component_edge_sets(agent_graph::AgentGraph, component_number::Integer, edge_number::Integer) = getindex(component_edge_sets(agent_graph, component_number), edge_number)
+
+# """
+#     random__component_edge(agent_graph::AgentGraph, component_number::Integer)
+
+# Get a random edge/relationship in the component specified by component_number in an AgentGraph instance.
+# """
+# random_component_edge(agent_graph::AgentGraph, component_number::Integer) = rand(component_edge_sets(agent_graph, component_number))
+
+# """
+#     number_hermits(agent_graph::AgentGraph)
+
+# Get the number of hermits (vertecies with degree=0) in an AgentGraph instance.
+# """
 number_hermits(agent_graph::AgentGraph) = getfield(agent_graph, :number_hermits)
 
 
