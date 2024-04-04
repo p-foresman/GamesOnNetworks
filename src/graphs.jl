@@ -11,21 +11,29 @@ edge_density(N::Integer, λ::Real) = λ / N
 edge_count(N::Integer, d::Float64) = Int(round(d * possible_edge_count(N)))
 mean_degree(N::Int, d::Float64) = Int(round(N * d))
 
+function connected_component_vertices(g::AbstractGraph{T}) where {T}
+    return filter(component -> length(component) > 1, connected_components(g))
+end
 
-function connected_component_edges(g::AbstractGraph{T}) where {T}
-    components = filter(component -> length(component) > 1, connected_components(g))
+function connected_component_sets(g::AbstractGraph{T}) where {T}
+    component_vertex_sets = connected_component_vertices(g)
     # component_edges = fill([], length(components))
-    component_edges::Vector{Vector{Graphs.SimpleEdge}} = []
-    for vertex_set in components
+    component_count = length(component_vertex_sets)
+    component_edge_sets::Vector{Vector{Graphs.SimpleEdge}} = []
+    for vertex_set in component_vertex_sets
         edge_set::Vector{Graphs.SimpleEdge} = []
         for edge in Graphs.edges(g)
             if edge.src in vertex_set && edge.dst in vertex_set
                 push!(edge_set, edge)
             end
         end
-        push!(component_edges, edge_set)
+        push!(component_edge_sets, edge_set)
     end
-    return component_edges
+    return component_vertex_sets, component_edge_sets, component_count
+end
+
+function connected_component_edges(g::AbstractGraph{T}) where {T}
+    return connected_component_sets(g)[2]
 end
 
 

@@ -17,11 +17,14 @@ function play_game!(model::SimModel)
     return nothing
 end
 
+matches_per_period(N::Integer) = Int(floor(N / 2)) #NOTE: hard coded for now
+
 function run_period!(model::SimModel) #NOTE: what type are graph_edges ??
-    for component_edge_set in component_edge_sets(model) #each connected component plays a period's worth of matches
-        for _ in 1:matches_per_period(model)
+    for component_number in 1:number_components(model) #each connected component plays a period's worth of matches
+        for _ in 1:matches_per_period(number_vertices(component_vertex_sets(model, component_number)))
+        # for _ in 1:matches_per_period(model)
             reset_arrays!(model)
-            set_players!(model, component_edge_set)
+            set_players!(model, component_edge_sets(model, component_number))
             play_game!(model)
         end
     end

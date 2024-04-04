@@ -1,5 +1,5 @@
 ################### Define Game Payoff Matrix and Strategies #######################
-using GamesOnNetworks, BenchmarkTools
+using GamesOnNetworks, BenchmarkTools, GraphPlot
 
 const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
                                             (0, 0) (50, 50) (50, 30);
@@ -54,7 +54,7 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::G
 # const starting_condition_list = [FractiousState()]
 # const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
 const c = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityBehavioral(2))
-const er333 = SimModel(game_list[1], SimParams(10, 10, 0.1, random_seed=1234), ErdosRenyiParams(5.0), FractiousState(), EquityBehavioral(2))
+const er222 = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), ErdosRenyiParams(2.0), FractiousState(), EquityBehavioral(2))
 const sw2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), SmallWorldParams(5.0, 0.01), FractiousState(), EquityBehavioral(2))
 const sf4 = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), ScaleFreeParams(3.0, 2), FractiousState(), EquityBehavioral(2))
 const sbm2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), StochasticBlockModelParams(5.0, 2, 0.7, 0.05), FractiousState(), EquityBehavioral(2))

@@ -159,6 +159,12 @@ Get the AgentGraph instance in the model.
 """
 agent_graph(model::SimModel) = getfield(model, :agent_graph)
 
+number_vertices(model::SimModel) = number_vertices(agent_graph(model))
+
+number_edges(model::SimModel) = number_edges(agent_graph(model))
+
+number_components(model::SimModel) = number_components(agent_graph(model))
+
 """
     graph(model::SimModel)
 
@@ -200,6 +206,22 @@ edges(model::SimModel, edge_number::Integer) = edges(agent_graph(model), edge_nu
 Get a random edge/relationship in the model.
 """
 random_edge(model::SimModel) = random_edge(agent_graph(model))
+
+"""
+    component_vertex_sets(model::SimModel)
+
+Get all of the connected component vertex sets that reside in the model's AgentGraph instance.
+Returns a vector of vectors, each containing the vertices in each separated component.
+"""
+component_vertex_sets(model::SimModel) = component_vertex_sets(agent_graph(model))
+
+"""
+    component_vertex_sets(model::SimModel, component_number::Integer)
+
+Get the connected component vertex set indexed by component_number in the model's AgentGraph instance.
+Returns a vector of Int.
+"""
+component_vertex_sets(model::SimModel, component_number::Integer) = component_vertex_sets(agent_graph(model), component_number)
 
 """
     component_edge_sets(model::SimModel)

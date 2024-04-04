@@ -22,7 +22,7 @@ struct SimParams
     # end
     function SimParams(number_agents::Int, memory_length::Int, error::Float64; tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
         if random_seed === nothing random_seed = 1234 end
-        matches_per_period = floor(number_agents / 2)
+        matches_per_period = floor(number_agents / 2) #NOTE: hard-coded for now
         # sufficient_equity = (1 - error) * memory_length
         return new(number_agents, memory_length, error, matches_per_period, tags, random_seed)
     end

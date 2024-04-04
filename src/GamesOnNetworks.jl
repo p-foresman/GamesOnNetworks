@@ -67,6 +67,7 @@ export
     agents,
     edges, #rename?
     random_edge,
+    component_vertex_sets,
     component_edge_sets,
     random_component_edge,
     number_hermits,
