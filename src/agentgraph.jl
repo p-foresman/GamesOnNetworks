@@ -17,19 +17,19 @@ E = number of edges,
 C = number of connected components
 """
 struct ConnectedComponent{V, E}
-    vertices::VertexSet{V}
+    # vertices::VertexSet{V} #can delete for now to save allocations
     edges::RelationshipSet{E}
 
     function ConnectedComponent(vertices::Vector{Int}, edges::Vector{Graphs.SimpleEdge})
         V = length(vertices)
         E = length(edges)
-        return new{V, E}(VertexSet{V}(vertices), RelationshipSet{E}(edges))
+        return new{V, E}(RelationshipSet{E}(edges))
     end
 end
 
 const ComponentSet{C} = SVector{C, ConnectedComponent}
 
-vertices(component::ConnectedComponent) = getfield(component, :vertices)
+# vertices(component::ConnectedComponent) = getfield(component, :vertices)
 num_vertices(::ConnectedComponent{V, E}) where {V, E} = V
 edges(component::ConnectedComponent) = getfield(component, :edges)
 num_edges(::ConnectedComponent{V, E}) where {V, E} = E
