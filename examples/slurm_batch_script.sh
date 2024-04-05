@@ -6,7 +6,7 @@
 #SBATCH --nodes=1                # node count
 #SBATCH --ntasks=1               # total number of tasks across all nodes
 #SBATCH --cpus-per-task=20        # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --array=1-300              # job array with index values 1-300
+#SBATCH --array=1-240              # job array with index values 1-240
 #SBATCH --mail-type=all          # send email on job start, end and fault
 #SBATCH --mail-user=fores2@pdx.edu
 

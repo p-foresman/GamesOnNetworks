@@ -41,7 +41,7 @@ function db_collect_distributed(db_filepath::String, distributed_uuid::String) #
             end
         end
     end
-    rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty")
+    rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty") due to hidden nsf lock files
 end
 
 

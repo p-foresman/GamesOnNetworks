@@ -522,6 +522,12 @@ function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list
                 for starting_condition in starting_condition_list
                     for stopping_condition in stopping_condition_list
                         if current_model_number == model_number
+                            # show(game)
+                            # show(sim_params)
+                            # show(graph_params)
+                            # show(starting_condition)
+                            # show(stopping_condition)
+                            # flush(stdout)
                             return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number)
                         end
                         current_model_number += 1
