@@ -306,7 +306,66 @@ function plot_fitted_degree_dist(D, g::SimpleGraph{Int})
 end
 
 
+function noise_vs_structure_heatmap(db_filepath::String;
+                                    game_id::Integer,
+                                    graph_ids::Vector{<:Integer},
+                                    errors::Vector{<:AbstractFloat},
+                                    mean_degrees::Vector{AbstractFloat},
+                                    number_agents::Integer,
+                                    memory_length::Integer,
+                                    starting_condition_id::Integer,
+                                    stopping_condition_id::Integer,
+                                    sample_size::Integer,
+                                    legend_labels::Vector = [],
+                                    colors::Vector = [],
+                                    error_styles::Vector = [],
+                                    plot_title::String=nothing)
 
+    sort!(graph_ids)
+    sort!(errors)
+    sort!(mean_degrees)
+    
+    x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
+    y_axis = fill(string.(errors), (length(graph_ids), 1))
+
+    z_axis = []
+
+    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id, graph_ids, errors, mean_degrees, number_agents, memory_length, starting_condition_id, stopping_condition_id, sample_size)
+
+
+
+    #wrangle data
+    df = querySimulationsForNumberAgentsLinePlot(db_filepath, game_id=game_id, number_agents_list=number_agents_list, memory_length=memory_length, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
+    plot_line_number = 1 #this will make the lines unordered***
+    for graph_id in graph_ids
+        for error in errors
+            filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
+
+            average_number_agents = Vector{Float64}([])
+
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            for (index, number_agents) in enumerate(number_agents_list)
+                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
+
+                confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+
+                push!(average_number_agents, confidence_interval[1]) #first element is the mean
+                push!(confidence_interval_lower, confidence_interval[2])
+                push!(confidence_interval_upper, confidence_interval[3])
+            end
+
+            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+
+
+        end
+    end
+    # x = density
+    # y = noise
+    # block = graph
+    heatmap(x, y, z, layout=(4, 1), cscale=:log)#c=cgrad(scale=:log)) #4 plots vertically
+    annotate!( vec(tuple.((1:length(x))'.-0.5, (1:length(y)).-0.5, string.(z), :white)) )
+end
 
 # function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
 #     memory_length_list !== nothing ? memory_length_list = sort(memory_lengths) : nothing
