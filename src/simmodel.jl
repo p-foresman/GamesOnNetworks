@@ -513,7 +513,7 @@ end
 
 From lists of component parts, select the model indexed by model_number and construct the model. Used for distributed computing on a workload manager like SLURM.
 """
-function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
+function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer, print_model::Bool=false)
    #add validation here??  
     current_model_number::Int = 1
     for game in game_list
@@ -522,12 +522,14 @@ function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list
                 for starting_condition in starting_condition_list
                     for stopping_condition in stopping_condition_list
                         if current_model_number == model_number
-                            # show(game)
-                            # show(sim_params)
-                            # show(graph_params)
-                            # show(starting_condition)
-                            # show(stopping_condition)
-                            # flush(stdout)
+                            if print_model
+                                show(game)
+                                show(sim_params)
+                                show(graph_params)
+                                show(starting_condition)
+                                show(stopping_condition)
+                                flush(stdout)
+                            end
                             return SimModel(game, sim_params, graph_params, starting_condition, stopping_condition, model_number)
                         end
                         current_model_number += 1

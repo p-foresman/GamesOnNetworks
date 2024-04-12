@@ -125,6 +125,7 @@ export
     memoryLengthTransitionTimeLinePlot,
     numberAgentsTransitionTimeLinePlot,
     timeSeriesPlot,
+    multipleTimeSeriesPlot,
 
     #utility
     resetprocs,

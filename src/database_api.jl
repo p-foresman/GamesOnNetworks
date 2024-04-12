@@ -67,7 +67,18 @@ function db_collect_temp(db_filepath::String, directory_path::String; cleanup_di
 end
 
 
-db_insert_sim_group(db_filepath::String, description::String) = execute_insert_sim_group(db_filepath, description)
+function db_insert_sim_group(db_filepath::String, description::String)
+    # println("Inserting from worker ", myid())
+    sim_group_id = nothing
+    while sim_group_id === nothing
+        try
+            sim_group_id = execute_insert_sim_group(db_filepath, description).insert_row_id
+        catch
+            sleep(rand(0.1:0.1:4.0))
+        end
+    end
+    return sim_group_id
+end
 
 function db_insert_game(db_filepath::String, game::Game)
     game_name = game.name

@@ -21,6 +21,9 @@ mutable struct Agent #could make a TaggedAgent as well to separate tags
     rational_choice::Choice
     choice::Choice
 
+    function Agent(name::String, is_hermit::Bool, wealth::Int, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, is_hermit, wealth, memory, rational_choice, choice)
+    end
     function Agent(name::String, wealth::Int, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
         return new(name, false, wealth, memory, rational_choice, choice)
     end

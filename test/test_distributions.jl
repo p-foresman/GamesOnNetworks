@@ -4,12 +4,12 @@ import Graphs: stochastic_block_model, erdos_renyi #import to extend
 
 TestType = ApproximateTwoSampleKSTest
 
-N = 100
+N = 1000
 # d = 0.05
-λ = 3 #(mean degree)
+λ = 5 #(mean degree)
 
 
-power_law_degree = 2
+power_law_degree = 100
 rewiring_prob = 0.05
 
 internal_p = 0.25
@@ -116,7 +116,8 @@ println("p-value ER and SBM: ", round(p_er_sbm; digits=3))
 
 
 hist = histogram([er_degrees sf_degrees sw_degrees sbm_degrees]; bins = 20, normalize = :pdf, label = ["ER = $(round(p_er_sf; digits=3))" "SF = $(round(p_er_sw; digits=3))" "SW = $(round(p_sf_sw; digits=3))" "SBM = $(round(p_er_sbm; digits=3))"], fillalpha=0.4)
-hist2 = histogram(sf_degrees; bins = 20, normalize = :pdf, label = "SF = $(round(p_er_sw; digits=3))", fillalpha=0.4)
+hist2 = histogram(sf_degrees; bins = 20, normalize = :pdf, label = "SF", fillalpha=0.4)
+hist3 = histogram([er_degrees sf_degrees]; bins = 20, normalize = :pdf, label = ["ER = $(round(p_er_sf; digits=3))" "SF"], fillalpha=0.4)
 
 # xrange = range(0, maximum(er_degrees); length = 100)
 # histogram(er_degrees; bins = 50, normalize = :pdf)

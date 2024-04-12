@@ -249,9 +249,9 @@ function timeSeriesPlot(db_filepath::String; sim_group_id::Integer, plot_title::
             agent_dict[row.periods_elapsed] = []
         end
         agent = JSON3.read(row.agent, Agent)
-        agent_memory = agent.memory
-        agent_behavior = determineAgentBehavior(reproduced_game, agent_memory)
-        push!(agent_dict[row.periods_elapsed], agent_behavior)
+        # agent_memory = agent.memory
+        # agent_behavior = determineAgentBehavior(reproduced_game, agent_memory) #old
+        push!(agent_dict[row.periods_elapsed], rational_choice(agent))
     end
     period_counts = Vector()
     fraction_L = Vector()
@@ -277,6 +277,63 @@ function timeSeriesPlot(db_filepath::String; sim_group_id::Integer, plot_title::
                             xticks=[:none :none :auto],
                             ylabel=["Proportion H" "Proportion M" "Proportion L"],
                             size=(700, 700))
+    return time_series_plot
+end
+
+
+#NOTE: CORRECT FOR HERMITS!! AND CUT OFF BEGINNING (period 0 isn't stored, but should be)!
+function multipleTimeSeriesPlot(db_filepath::String; sim_group_ids::Vector{<:Integer}, labels::Union{Vector{String}, Nothing} = nothing, plot_title::String = "")
+    time_series_plot = plot(
+                            ylims=(0.0, 1.0),
+                            layout=(3, 1),
+                            legend=[true false false],
+                            title=[plot_title "" ""], 
+                            xlabel=["" "" "Periods Elapsed"],
+                            xticks=[:none :none :auto],
+                            ylabel=["Proportion H" "Proportion M" "Proportion L"],
+                            size=(1000, 1500))
+    for (i, sim_group_id) in enumerate(sim_group_ids)
+        sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
+        payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
+        payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
+        # reproduced_game = JSON3.read(sim_info_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
+        agent_dict = OrderedDict()
+        hermit_count = 0
+        for (row_num, row) in enumerate(eachrow(agent_df))
+            if !haskey(agent_dict, row.periods_elapsed)
+                agent_dict[row.periods_elapsed] = []
+            end
+            agent = JSON3.read(row.agent, Agent)
+            # agent_memory = agent.memory
+            # agent_behavior = determineAgentBehavior(reproduced_game, agent_memory) #old
+            if !ishermit(agent) #if the agent is a hermit, it shouldn't count in the population
+                push!(agent_dict[row.periods_elapsed], rational_choice(agent))
+            else
+                if row_num == 1
+                    hermit_count += 1
+                end
+            end
+        end
+        period_counts = Vector()
+        fraction_L = Vector()
+        fraction_M = Vector()
+        fraction_H = Vector()
+        # fractions = Vector()
+        for (periods_elapsed, agent_behaviors) in agent_dict
+            push!(period_counts, periods_elapsed)
+            # subfractions = Vector()
+            push!(fraction_L, count(action->(action==3), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
+            push!(fraction_M, count(action->(action==2), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
+            push!(fraction_H, count(action->(action==1), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
+            # println("$periods_elapsed: $subfractions")
+            # push!(fractions, subfractions)
+        end
+        label = labels !== nothing ? labels[i] : nothing
+        time_series_plot = plot!(period_counts,
+                                [fraction_H fraction_M fraction_L],
+                                label=label,
+                                linewidth=2)
+    end
     return time_series_plot
 end
 
