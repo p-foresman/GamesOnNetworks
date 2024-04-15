@@ -367,7 +367,7 @@ function noise_vs_structure_heatmap(db_filepath::String;
                                     game_id::Integer,
                                     graph_ids::Vector{<:Integer},
                                     errors::Vector{<:AbstractFloat},
-                                    mean_degrees::Vector{AbstractFloat},
+                                    mean_degrees::Vector{<:AbstractFloat},
                                     number_agents::Integer,
                                     memory_length::Integer,
                                     starting_condition_id::Integer,
@@ -385,43 +385,24 @@ function noise_vs_structure_heatmap(db_filepath::String;
     x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
     y_axis = fill(string.(errors), (length(graph_ids), 1))
 
-    z_axis = []
+    z_axis = fill(zeros(length(errors), length(mean_degrees)), (length(graph_ids), 1))
 
-    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id, graph_ids, errors, mean_degrees, number_agents, memory_length, starting_condition_id, stopping_condition_id, sample_size)
-
-
-
-    #wrangle data
-    df = querySimulationsForNumberAgentsLinePlot(db_filepath, game_id=game_id, number_agents_list=number_agents_list, memory_length=memory_length, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
-    plot_line_number = 1 #this will make the lines unordered***
-    for graph_id in graph_ids
-        for error in errors
-            filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
-
-            average_number_agents = Vector{Float64}([])
-
-            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
-            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
-            for (index, number_agents) in enumerate(number_agents_list)
-                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
-
-                confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
-
-                push!(average_number_agents, confidence_interval[1]) #first element is the mean
-                push!(confidence_interval_lower, confidence_interval[2])
-                push!(confidence_interval_upper, confidence_interval[3])
+    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
+    for (i, graph_id) in enumerate(graph_ids)
+        filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
+        for (x, mean_degree) in enumerate(mean_degrees)
+            for (y, error) in enumerate(errors)
+                more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
+                average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
+                z_axis[i][x, y] = average_transition_time
             end
-
-            legend_label = "$(legend_labels_map[graph_id]), error=$error"
-
-
         end
     end
     # x = density
     # y = noise
     # block = graph
-    heatmap(x, y, z, layout=(4, 1), cscale=:log)#c=cgrad(scale=:log)) #4 plots vertically
-    annotate!( vec(tuple.((1:length(x))'.-0.5, (1:length(y)).-0.5, string.(z), :white)) )
+    return heatmap(x_axis, y_axis, z_axis, layout=(length(graph_ids), 1), cscale=:log)#c=cgrad(scale=:log)) #4 plots vertically
+    # annotate!( vec(tuple.((1:length(x_axis))'.-0.5, (1:length(y)).-0.5, string.(z), :white)) )
 end
 
 # function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)

@@ -91,3 +91,15 @@ function test_model(model::SimModel)
     simulate(model, use_seed=true)
     reset_model!(model)
 end
+
+
+GamesOnNetworks.noise_vs_structure_heatmap("./sqlite/slurm_simulation_saves_incomplete.sqlite";
+                                    game_id=1,
+                                    graph_ids=[1],
+                                    errors=[0.1, 0.2],
+                                    mean_degrees=[3.0, 5.0],
+                                    number_agents=1000,
+                                    memory_length=10,
+                                    starting_condition_id=1,
+                                    stopping_condition_id=1,
+                                    sample_size=4)

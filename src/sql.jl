@@ -1031,10 +1031,6 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
                                                         starting_condition_id::Integer,
                                                         stopping_condition_id::Integer,
                                                         sample_size::Integer)
-    number_agents_sql = ""
-    if number_agents_list !== nothing
-        length(number_agents_list) == 1 ? number_agents_sql *= "AND sim_params.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND sim_params.number_agents IN $(Tuple(number_agents_list))"
-    end
     errors_sql = ""
     if errors !== nothing
         length(errors) == 1 ? errors_sql *= "AND sim_params.error = $(errors[1])" : errors_sql *= "AND sim_params.error IN $(Tuple(errors))"
@@ -1042,6 +1038,10 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
     graph_ids_sql = ""
     if graph_ids !== nothing
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
+    end
+    mean_degrees_sql = ""
+    if mean_degrees !== nothing
+        length(mean_degrees) == 1 ? mean_degrees_sql *= "AND graphs.λ = $(mean_degrees[1])" : mean_degrees_sql *= "AND graphs.λ IN $(Tuple(mean_degrees))"
     end
 
 
@@ -1051,28 +1051,28 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
                                         SELECT * FROM (
                                             SELECT
                                                 ROW_NUMBER() OVER ( 
-                                                    PARTITION BY sim_params.number_agents, sim_params.error, simulations.graph_id
-                                                    ORDER BY sim_params.number_agents
+                                                    PARTITION BY simulations.graph_id, sim_params.error, graphs.λ
+                                                    ORDER BY sim_params.error, graphs.λ
                                                 ) RowNum,
                                                 simulations.simulation_id,
                                                 sim_params.sim_params,
-                                                sim_params.number_agents,
-                                                sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
                                                 graphs.graph_id,
                                                 graphs.graph_type,
                                                 graphs.graph_params,
+                                                graphs.λ,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
                                             INNER JOIN graphs USING(graph_id)
                                             WHERE simulations.game_id = $game_id
+                                            AND sim_params.number_agents = $number_agents
                                             AND sim_params.memory_length = $memory_length
-                                            $number_agents_sql
                                             $errors_sql
                                             $graph_ids_sql
+                                            $mean_degrees_sql
                                             )
                                         WHERE RowNum <= $sample_size;
                                 ")
@@ -1080,23 +1080,24 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
 
 
     #error handling
-    function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
-    function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph_type FROM graphs")) end
-    
+    errorsDF() = DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params"))
+    graphsDF() = DataFrame(DBInterface.execute(db, "SELECT graph_id, graph_type FROM graphs"))
+    meanDegreesDF() = DataFrame(DBInterface.execute(db, "SELECT λ FROM graphs"))
+
     error_set = []
-    number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    mean_degrees === nothing ? mean_degrees = Set([λ for λ in numberAgentsDF()[:, :λ]]) : nothing
+
 
     SQLite.close(db)
 
-    for number_agents in number_agents_list
+    for mean_degree in mean_degrees
         for error in errors
             for graph_id in graph_ids
-                filtered_df = filter([:number_agents, :error, :graph_id] => (num, err, id) -> num == number_agents && err == error && id == graph_id, df)
+                filtered_df = filter([:λ, :error, :graph_id] => (λ, err, id) -> λ == mean_degree && err == error && id == graph_id, df)
                 if nrow(filtered_df) < sample_size
-                    push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id]\n")
+                    push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id, λ: $mean_degree]\n")
                 end
             end
         end
