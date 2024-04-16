@@ -90,7 +90,7 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
     end
 
     if nworkers() > 1
-        db_collect_distributed(db_filepath, distributed_uuid)
+        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
     end
 end
 
@@ -117,7 +117,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     if nworkers() > 1
-        db_collect_distributed(db_filepath, distributed_uuid)
+        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
     end
 end
 
@@ -182,7 +182,7 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
     end
 
     if nworkers() > 1
-        db_collect_distributed(db_filepath, distributed_uuid)
+        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
     end
 end
 
@@ -209,7 +209,7 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
     end
 
     if nworkers() > 1
-        db_collect_distributed(db_filepath, distributed_uuid)
+        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
     end
 end
 
@@ -247,7 +247,7 @@ end
 #     end
 
 #     if nworkers() > 1
-#         db_collect_distributed(db_filepath, distributed_uuid)
+#         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
 #     end
 # end
 
@@ -283,7 +283,7 @@ end
 #     end
 
 #     if db_filepath !== nothing && nworkers() > 1
-#         db_collect_distributed(db_filepath, distributed_uuid)
+#         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
 #     end
 # end
 

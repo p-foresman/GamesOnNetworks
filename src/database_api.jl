@@ -36,7 +36,10 @@ function db_collect_distributed(db_filepath::String, distributed_uuid::String) #
                 execute_merge_temp(db_filepath, temp_filepath)
                 # rm(temp_filepath)
                 success = true
-            catch
+            catch err
+                println("An error has been caught in db_collect_distributed():")
+                showerror(stdout, err)
+                flush(stdout)
                 sleep(rand(0.1:0.1:10.0))
             end
         end
@@ -55,8 +58,11 @@ function db_collect_temp(db_filepath::String, directory_path::String; cleanup_di
                 try
                     execute_merge_temp(db_filepath, item_path)
                     success = true
-                catch
-                    sleep(rand(0.1:0.1:4.0))
+                catch err
+                    println("An error has been caught in db_collect_temp():")
+                    showerror(stdout, err)
+                    flush(stdout)
+                    sleep(rand(0.1:0.1:10.0))
                 end
             end
         else
@@ -149,7 +155,7 @@ function db_insert_sim_params(db_filepath::String, sim_params::SimParams, use_se
 end
 
 function db_insert_starting_condition(db_filepath::String, starting_condition::StartingCondition)
-    starting_condition_json_str = JSON3.write(starting_condition)
+    starting_condition_json_str = JSON3.write(typeof(starting_condition)(starting_condition)) #generates a "raw" starting condition object for the database
 
     starting_condition_row_id = nothing
     while starting_condition_row_id === nothing
@@ -166,7 +172,7 @@ function db_insert_starting_condition(db_filepath::String, starting_condition::S
 end
 
 function db_insert_stopping_condition(db_filepath::String, stopping_condition::StoppingCondition)
-    stopping_condition_json_str = JSON3.write(stopping_condition)
+    stopping_condition_json_str = JSON3.write(typeof(stopping_condition)(stopping_condition)) #generates a "raw" stopping condition object for the database
 
     stopping_condition_row_id = nothing
     while stopping_condition_row_id === nothing

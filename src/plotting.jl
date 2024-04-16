@@ -386,22 +386,19 @@ function noise_vs_structure_heatmap(db_filepath::String;
     y_axis = fill(string.(errors), (length(graph_ids), 1))
 
     z_axis = fill(zeros(length(errors), length(mean_degrees)), (length(graph_ids), 1))
-
-    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
-    for (i, graph_id) in enumerate(graph_ids)
-        filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
-        for (x, mean_degree) in enumerate(mean_degrees)
-            for (y, error) in enumerate(errors)
-                more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
-                average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
-                z_axis[i][x, y] = average_transition_time
-            end
-        end
-    end
-    # x = density
-    # y = noise
-    # block = graph
-    return heatmap(x_axis, y_axis, z_axis, layout=(length(graph_ids), 1), cscale=:log)#c=cgrad(scale=:log)) #4 plots vertically
+    z_lims = [0, 0] #[min, max]
+    # df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
+    # for (i, graph_id) in enumerate(graph_ids)
+    #     filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
+    #     for (x, mean_degree) in enumerate(mean_degrees)
+    #         for (y, error) in enumerate(errors)
+    #             more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
+    #             average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
+    #             z_axis[i][x, y] = average_transition_time
+    #         end
+    #     end
+    # end
+    return heatmap(x_axis, y_axis, z_axis, layout=(length(graph_ids), 1), clims=extrema(z_axis), colorbar_scale=:log10)#c=cgrad(scale=:log)) #4 plots vertically
     # annotate!( vec(tuple.((1:length(x_axis))'.-0.5, (1:length(y)).-0.5, string.(z), :white)) )
 end
 
@@ -456,6 +453,67 @@ end
 #     return sim_plot
 # end
 
+function noise_vs_structure_heatmap_new(db_filepath::String;
+                                    game_id::Integer,
+                                    graph_ids::Vector{<:Integer},
+                                    errors::Vector{<:AbstractFloat},
+                                    mean_degrees::Vector{<:AbstractFloat},
+                                    number_agents::Integer,
+                                    memory_length::Integer,
+                                    starting_condition_id::Integer,
+                                    stopping_condition_id::Integer,
+                                    sample_size::Integer,
+                                    legend_labels::Vector = [],
+                                    colors::Vector = [],
+                                    error_styles::Vector = [],
+                                    plot_title::Union{String, Nothing}=nothing)
+
+    sort!(graph_ids)
+    sort!(errors)
+    sort!(mean_degrees)
+
+    x = string.(mean_degrees)
+    y = string.(errors)
+    # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
+    # y_axis = fill(string.(errors), (length(graph_ids), 1))
+
+    z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_ids)))
+    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
+    for (i, graph_id) in enumerate(graph_ids)
+        filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
+        for (x, mean_degree) in enumerate(mean_degrees)
+            for (y, error) in enumerate(errors)
+                more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
+                average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
+                z_data[i][x, y] = average_transition_time
+            end
+        end
+    end
+    # x1 = ["1", "2"]
+    # y1 = ["x", "y"]
+    # z1 = [1 2; 3 4]
+
+    # x2 = ["1", "2"]
+    # y2 = ["x", "y"]
+    # z2 = [5 6; 7 8]
+    # clims = extrema([z1; 2 .* z1])
+    clims = extrema(z_data)
+
+
+    plots = []
+    for z in z_data
+        println(z)
+        push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
+    end
+
+    push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims,
+                 xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_title="cbar", grid=false))
+
+    l = @layout [Plots.grid(2, 1) a{0.01w}]
+    full_plot = plot(plots..., layout=l, link=:all)
+    # savefig(p_all, "shared_colorbar_julia.png")
+    return full_plot
+end
 
 
 

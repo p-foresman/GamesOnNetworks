@@ -18,3 +18,15 @@ colors = [palette(:default)[11], palette(:default)[2], palette(:default)[12], pa
 error_styles = [(:dash, nothing), (:solid, nothing)]
 test_plot_3 = memoryLengthTransitionTimeLinePlot("./sqlite/BehavioralSimulationSaves.sqlite"; game_id=1, number_agents=100, memory_length_list=[10, 13, 16, 19], errors=[0.05, 0.1], graph_ids=[5, 7, 8], sample_size=20, conf_intervals=true, legend_labels=legend_labels, colors=colors, error_styles=error_styles, plot_title="Behavioral")
 
+
+
+GamesOnNetworks.noise_vs_structure_heatmap_new("./sqlite/slurm_simulation_saves.sqlite";
+                                    game_id=1,
+                                    graph_ids=[27],
+                                    errors=[0.1, 0.2],
+                                    mean_degrees=[3.0, 5.0],
+                                    number_agents=1000,
+                                    memory_length=10,
+                                    starting_condition_id=1,
+                                    stopping_condition_id=1,
+                                    sample_size=4)

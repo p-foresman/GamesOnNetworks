@@ -27,6 +27,9 @@ mutable struct EquityPsychological <: StoppingCondition
     function EquityPsychological(strategy::Integer)
         return new("equity_psychological", Int8(strategy), 0., 0.)
     end
+    function EquityPsychological(stopping_condition::EquityPsychological) #used to get a "raw" version of the stopping condition to send to the database
+        return EquityPsychological(strategy(stopping_condition))
+    end
 end
 
 """
@@ -54,6 +57,9 @@ mutable struct EquityBehavioral <: StoppingCondition
     function EquityBehavioral(strategy::Integer)
         return new("equity_behavioral", Int8(strategy), 0., 0, 0)
     end
+    function EquityBehavioral(stopping_condition::EquityBehavioral) #used to get a "raw" version of the stopping condition to send to the database
+        return EquityBehavioral(strategy(stopping_condition))
+    end
 end
 
 """
@@ -69,6 +75,9 @@ struct PeriodCutoff <: StoppingCondition
 
     function PeriodCutoff(period_cutoff::Integer)
         return new("period_cutoff", period_cutoff)
+    end
+    function PeriodCutoff(stopping_condition::PeriodCutoff) #used to get a "raw" version of the stopping condition to send to the database
+        return PeriodCutoff(period_cutoff(stopping_condition))
     end
 end
 

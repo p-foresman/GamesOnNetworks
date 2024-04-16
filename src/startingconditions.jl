@@ -17,6 +17,9 @@ struct FractiousState <: StartingCondition
     function FractiousState()
         return new("fractious")
     end
+    function FractiousState(::FractiousState) #used to get a "raw" version of the starting condition to send to the database
+        return FractiousState()
+    end
 end
 
 """
@@ -31,6 +34,9 @@ struct EquityState <: StartingCondition
     function EquityState()
         return new("equity")
     end
+    function EquityState(::EquityState) #used to get a "raw" version of the starting condition to send to the database
+        return EquityState()
+    end
 end
 
 """
@@ -44,6 +50,9 @@ struct RandomState <: StartingCondition
 
     function RandomState()
         return new("random")
+    end
+    function RandomState(::RandomState) #used to get a "raw" version of the starting condition to send to the database
+        return RandomState()
     end
 end
 

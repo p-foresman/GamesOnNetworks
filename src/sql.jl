@@ -724,7 +724,7 @@ function execute_merge_full(db_filepath_master::String, db_filepath_merger::Stri
     SQLite.execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     SQLite.execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
-    SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    SQLite.execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     SQLite.execute(db, "DETACH DATABASE merge_db;")
     SQLite.close(db)
@@ -734,9 +734,9 @@ end
 # Merge temp distributed DBs into master DB.
 function execute_merge_temp(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
-    # SQLite.busy_timeout(db, 5000) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?)
+    SQLite.busy_timeout(db, 5000) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?)
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
-    SQLite.execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    SQLite.execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     SQLite.execute(db, "DETACH DATABASE merge_db;")
     SQLite.close(db)
@@ -1025,7 +1025,7 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
                                                         game_id::Integer,
                                                         graph_ids::Vector{<:Integer},
                                                         errors::Vector{<:AbstractFloat},
-                                                        mean_degrees::Vector{AbstractFloat},
+                                                        mean_degrees::Vector{<:AbstractFloat},
                                                         number_agents::Integer,
                                                         memory_length::Integer,
                                                         starting_condition_id::Integer,
