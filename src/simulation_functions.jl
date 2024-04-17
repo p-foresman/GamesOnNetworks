@@ -39,7 +39,8 @@ end
 function run_period!(model::SimModel, ::CompleteParams) #no chance of multiple components, can optimize
     for _ in 1:matches_per_period(model) #cached (should cache for each component!!)
         reset_arrays!(model)
-        set_players!(model, components(model, 1)) #only one component
+        # set_players!(model, components(model, 1)) #only one component
+        set_players!(model)
         play_game!(model)
     end
     return nothing
