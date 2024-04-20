@@ -53,7 +53,7 @@ const game_list = [Game{3, 3}("Bargaining Game", payoff_matrix)] # would game::G
 
 # const starting_condition_list = [FractiousState()]
 # const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
-const c100 = SimModel(game_list[1], SimParams(100, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), EquityPsychological(2))
+const c3 = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), CompleteParams(), FractiousState(), PeriodCutoff(10000))
 const er = SimModel(game_list[1], SimParams(100, 10, 0.1, random_seed=1234), ErdosRenyiParams(2.0), FractiousState(), EquityBehavioral(2))
 const sw2 = SimModel(game_list[1], SimParams(1000, 13, 0.1, random_seed=1234), SmallWorldParams(5.0, 0.01), FractiousState(), EquityBehavioral(2))
 const sf4 = SimModel(game_list[1], SimParams(1000, 10, 0.1, random_seed=1234), ScaleFreeParams(3.0, 2), FractiousState(), EquityBehavioral(2))
@@ -93,9 +93,9 @@ function test_model(model::SimModel)
 end
 
 
-GamesOnNetworks.noise_vs_structure_heatmap("./sqlite/slurm_simulation_saves_incomplete.sqlite";
+GamesOnNetworks.noise_vs_structure_heatmap_new("./sqlite/slurm_simulation_saves_incomplete.sqlite";
                                     game_id=1,
-                                    graph_ids=[1],
+                                    graph_ids=[18, 30],
                                     errors=[0.1, 0.2],
                                     mean_degrees=[3.0, 5.0],
                                     number_agents=1000,
