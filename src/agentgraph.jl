@@ -16,7 +16,7 @@ N = number of vertices,
 E = number of edges,
 C = number of connected components
 """
-struct ConnectedComponent{V, E}
+struct ConnectedComponent{V, E} #might instead want components to contain vertices. Then, a random vertex in a component can be picked for player 1 and a random neighbor of that vertex can be picked for player 2
     # vertices::VertexSet{V} #can delete for now to save allocations
     edges::RelationshipSet{E}
 
@@ -28,6 +28,8 @@ struct ConnectedComponent{V, E}
 end
 
 const ComponentSet{C} = SVector{C, ConnectedComponent}
+
+const EmptyComponentSet = ComponentSet{0}
 
 # vertices(component::ConnectedComponent) = getfield(component, :vertices)
 num_vertices(::ConnectedComponent{V, E}) where {V, E} = V
@@ -46,7 +48,7 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     # number_agents::Int
     number_hermits::Int
     
-    function AgentGraph(graph::Graph)
+    function AgentGraph(graph::Graph, ::GraphParams)
         N = nv(graph)
         E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
@@ -73,6 +75,12 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
         end
         components = ComponentSet{C}(components)
         return new{N, E, C}(graph, agents, components, number_hermits)
+    end
+    function AgentGraph(graph::Graph, ::CompleteParams)
+        N = nv(graph)
+        E = ne(graph)
+        agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
+        return new{N, E, 0}(graph, agents, EmptyComponentSet(), 0)
     end
 end
 

@@ -334,6 +334,14 @@ function set_players!(model::SimModel, component::ConnectedComponent)
     return nothing
 end
 
+#temp for complete_graph
+function set_players!(model::SimModel) #NOTE: this could be better
+    v = rand(vertices(graph(model)))
+    player!(model, 1, v)
+    player!(model, 2, rand(neighbors(graph(model), v)))
+    return nothing
+end
+
 """
     opponent_strategy_recollection(model::SimModel)
 

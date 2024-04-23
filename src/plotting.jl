@@ -466,7 +466,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
                                     legend_labels::Vector = [],
                                     colors::Vector = [],
                                     error_styles::Vector = [],
-                                    plot_title::Union{String, Nothing}=nothing)
+                                    plot_title::String="")
 
     sort!(graph_ids)
     sort!(errors)
