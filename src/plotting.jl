@@ -489,16 +489,8 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
             end
         end
     end
-    # x1 = ["1", "2"]
-    # y1 = ["x", "y"]
-    # z1 = [1 2; 3 4]
 
-    # x2 = ["1", "2"]
-    # y2 = ["x", "y"]
-    # z2 = [5 6; 7 8]
-    # clims = extrema([z1; 2 .* z1])
     clims = extrema(z_data)
-
 
     plots = []
     for z in z_data
@@ -509,7 +501,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims,
                  xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_title="cbar", grid=false))
 
-    l = @layout [Plots.grid(2, 1) a{0.01w}]
+    l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
     full_plot = plot(plots..., layout=l, link=:all)
     # savefig(p_all, "shared_colorbar_julia.png")
     return full_plot

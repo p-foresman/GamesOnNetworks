@@ -1,81 +1,21 @@
 using HypothesisTests, Distributions, StatsPlots, StatsBase, Graphs
 import Graphs: stochastic_block_model, erdos_renyi #import to extend
-
+include("../src/graphs.jl")
 
 TestType = ApproximateTwoSampleKSTest
 
-N = 1000
-# d = 0.05
-λ = 5 #(mean degree)
+N = 70
+d = 0.
+# λ = mean_degree(N, d)
+λ = 10
+println("λ = $λ")
 
 
-power_law_degree = 100
-rewiring_prob = 0.05
+power_law_degree = 2
+rewiring_prob = 0.02
 
-internal_p = 0.25
-external_p = 0.005
-
-
-possible_edge_count(N::Int) = Int((N * (N-1)) / 2)
-edge_density(N::Integer, λ::Real) = λ / N
-edge_count(N::Integer, d::Float64) = Int(round(d * possible_edge_count(N)))
-mean_degree(N::Int, d::Float64) = Int(round(N * d))
-
-# function erdos_renyi_density(n::Int, d::Float64; kwargs...)
-#     num_edges = get_edge_count(n, d)
-#     return erdos_renyi(n, num_edges; kwargs...)
-# end
-
-function erdos_renyi_rg(N::Integer, λ::Real; kwargs...)
-    num_edges = edge_count(N, edge_density(N, λ))
-    return erdos_renyi(N, num_edges; kwargs...) #we can use d or num_edges here (num_edges will be exact while d will slightly change)
-end
-# NOTE: edge probability == density for ER, so normal erdos_renyi(n, p) function is already in terms of density
-
-
-# function scale_free_density(n::Int, d::Float64, α::Int; kwargs...)
-#     num_edges = get_edge_count(n, d)
-#     return static_scale_free(n, num_edges, α; kwargs...)
-# end
-
-function scale_free_rg(N::Integer, λ::Real, α::Integer; kwargs...)
-    num_edges = edge_count(N, edge_density(N, λ))
-    return static_scale_free(N, num_edges, α; kwargs...)
-end
-
-# function small_world_density(n::Int, d::Float64, β::Float64; kwargs...)
-#     expected_degree = get_expected_degree(n, d)
-#     return watts_strogatz(n, expected_degree, β; kwargs...)
-# end
-
-
-"""
-    small_world_rg(N::Integer, λ::Real, β::Real; kwargs...)
-
-Constructor that uses the Graphs.watts_strogatz() method where λ = κ.
-"""
-function small_world_rg(N::Integer, λ::Real, β::Real; kwargs...)
-    return watts_strogatz(N, Int(round(λ)), β; kwargs...)
-end
-
-
-#NOTE: want to take in overall density as well to remain consistent with others (d). The other things fed are probabilities and inform the SBM
-# function stochastic_block_model(block_sizes::Vector{<:Integer}, d::Float64, in_block_probs::Vector{<:Real}, out_block_prob::Real)
-#     affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(in_block_probs, out_block_prob, block_sizes)
-#     N = sum(block_sizes)
-#     num_edges = get_edge_count(N, d)
-#     return SimpleGraph(N, num_edges, StochasticBlockModel(block_sizes, affinity_matrix))
-# end
-
-
-#NOTE: want to take in overall density as well to remain consistent with others (d). The other things fed are probabilities and inform the SBM
-function stochastic_block_model_rg(block_sizes::Vector{<:Integer}, λ::Real, in_block_probs::Vector{<:Real}, out_block_prob::Real)
-    affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(in_block_probs, out_block_prob, block_sizes)
-    N = sum(block_sizes)
-    num_edges = edge_count(N, edge_density(N, λ))
-    return SimpleGraph(N, num_edges, StochasticBlockModel(block_sizes, affinity_matrix))
-end
-
+internal_p = 1.0
+external_p = 0.05
 
 
 complete_degrees = degree(complete_graph(N))
@@ -98,13 +38,15 @@ sbm_graph = stochastic_block_model_rg(Int.([N/2, N/2]), λ, [internal_p, interna
 sbm_degrees = degree(sbm_graph)
 println("sbm: ", ne(sbm_graph))
 
-
+test_c_er = TestType(complete_degrees, er_degrees)
 test_er_sf = TestType(er_degrees, sf_degrees)
 test_er_sw = TestType(er_degrees, sw_degrees)
 test_sf_sw = TestType(sf_degrees, sw_degrees)
+p_c_er = pvalue(test_c_er)
 p_er_sf = pvalue(test_er_sf)
 p_er_sw = pvalue(test_er_sw)
 p_sf_sw = pvalue(test_sf_sw)
+println("p-value C and ER: ", round(p_c_er; digits=3))
 println("p-value ER and SF: ", round(p_er_sf; digits=3))
 println("p-value ER and SW: ", round(p_er_sw; digits=3))
 println("p-value SF and SW: ", round(p_sf_sw; digits=3))
@@ -116,15 +58,15 @@ println("p-value ER and SBM: ", round(p_er_sbm; digits=3))
 
 
 hist = histogram([er_degrees sf_degrees sw_degrees sbm_degrees]; bins = 20, normalize = :pdf, label = ["ER = $(round(p_er_sf; digits=3))" "SF = $(round(p_er_sw; digits=3))" "SW = $(round(p_sf_sw; digits=3))" "SBM = $(round(p_er_sbm; digits=3))"], fillalpha=0.4)
-hist2 = histogram(sf_degrees; bins = 20, normalize = :pdf, label = "SF", fillalpha=0.4)
-hist3 = histogram([er_degrees sf_degrees]; bins = 20, normalize = :pdf, label = ["ER = $(round(p_er_sf; digits=3))" "SF"], fillalpha=0.4)
+# hist2 = histogram(sf_degrees; bins = 20, normalize = :pdf, label = "SF", fillalpha=0.4)
+# hist3 = histogram([er_degrees sf_degrees]; bins = 20, normalize = :pdf, label = ["ER = $(round(p_er_sf; digits=3))" "SF"], fillalpha=0.4)
 
 # xrange = range(0, maximum(er_degrees); length = 100)
 # histogram(er_degrees; bins = 50, normalize = :pdf)
 # histogram!(xrange, er_degrees; color = :black, label = "analytic")
 # axislegend(ax)
 hist
-gplot(er_graph)
+# gplot(er_graph)
 # samples = 10000
 # pareto_dist = Pareto(1.38, 1)
 # X = map(x->round(x), rand(pareto_dist, samples))
