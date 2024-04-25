@@ -9,7 +9,7 @@
 possible_edge_count(N::Int) = Int((N * (N-1)) / 2)
 edge_density(N::Integer, λ::Real) = λ / (N - 1)
 edge_count(N::Integer, d::Float64) = Int(round(d * possible_edge_count(N)))
-mean_degree(N::Int, d::Float64) = Int(round(N * d))
+mean_degree(N::Int, d::Float64) = Int(round((N - 1) * d))
 
 function connected_component_vertices(g::AbstractGraph{T}) where {T}
     return filter(component -> length(component) > 1, connected_components(g))

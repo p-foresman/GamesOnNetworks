@@ -16,7 +16,7 @@ N = number of vertices,
 E = number of edges,
 C = number of connected components
 """
-struct ConnectedComponent{V, E} #might instead want components to contain vertices. Then, a random vertex in a component can be picked for player 1 and a random neighbor of that vertex can be picked for player 2
+struct ConnectedComponent{V, E} #might instead want components to contain vertices. Then, a random vertex in a component can be picked for player 1 and a random neighbor of that vertex can be picked for player 2. 
     # vertices::VertexSet{V} #can delete for now to save allocations
     edges::RelationshipSet{E}
 
