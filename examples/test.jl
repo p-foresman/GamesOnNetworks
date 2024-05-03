@@ -95,7 +95,7 @@ end
 
 GamesOnNetworks.noise_vs_structure_heatmap_new("./sqlite/slurm_simulation_saves_incomplete.sqlite";
                                     game_id=1,
-                                    graph_ids=[18, 30],
+                                    graph_params=[Dict{Symbol, Any}(:λ=>3.0), Dict{Symbol, Any}(:λ=>3.0, :β=>0.0)],
                                     errors=[0.1, 0.2],
                                     mean_degrees=[3.0, 5.0],
                                     number_agents=1000,

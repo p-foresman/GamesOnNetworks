@@ -1023,7 +1023,7 @@ end
 
 function query_simulations_for_noise_structure_heatmap(db_filepath::String;
                                                         game_id::Integer,
-                                                        graph_ids::Vector{<:Integer},
+                                                        graph_params::Vector{Dict},
                                                         errors::Vector{<:AbstractFloat},
                                                         mean_degrees::Vector{<:AbstractFloat},
                                                         number_agents::Integer,
@@ -1035,15 +1035,24 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
     if errors !== nothing
         length(errors) == 1 ? errors_sql *= "AND sim_params.error = $(errors[1])" : errors_sql *= "AND sim_params.error IN $(Tuple(errors))"
     end
-    graph_ids_sql = ""
-    if graph_ids !== nothing
-        length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
-    end
     mean_degrees_sql = ""
     if mean_degrees !== nothing
         length(mean_degrees) == 1 ? mean_degrees_sql *= "AND graphs.λ = $(mean_degrees[1])" : mean_degrees_sql *= "AND graphs.λ IN $(Tuple(mean_degrees))"
     end
-
+    graph_params_sql = "AND ("
+    if graph_params !== nothing
+        for graph in graph_params
+            graph_params_sql *= "("
+            for (param, value) in graph
+                graph_params_sql *= "graphs.$(string(param)) = $(value) AND "
+            end
+            graph_params_sql = rstrip(graph_params_sql, " AND ")
+            graph_params_sql *= ") OR"
+        end
+        graph_params_sql = rstrip(graph_params_sql, " OR")
+        graph_params_sql *= ")"
+    end
+    println(graph_params_sql)
 
     db = SQLite.DB("$db_filepath")
     SQLite.busy_timeout(db, 3000)

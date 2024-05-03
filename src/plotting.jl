@@ -453,9 +453,10 @@ end
 #     return sim_plot
 # end
 
+
 function noise_vs_structure_heatmap_new(db_filepath::String;
                                     game_id::Integer,
-                                    graph_ids::Vector{<:Integer},
+                                    graph_params::Vector{Dict{Symbol, <:Any}},
                                     errors::Vector{<:AbstractFloat},
                                     mean_degrees::Vector{<:AbstractFloat},
                                     number_agents::Integer,
@@ -468,17 +469,26 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
                                     error_styles::Vector = [],
                                     plot_title::String="")
 
-    sort!(graph_ids)
-    sort!(errors)
-    sort!(mean_degrees)
+    # sort!(graph_ids)
+    # sort!(errors)
+    # sort!(mean_degrees)
+
 
     x = string.(mean_degrees)
     y = string.(errors)
     # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
     # y_axis = fill(string.(errors), (length(graph_ids), 1))
+    graph_params_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
+    for graph in graph_params
+        for param in graph_params_list
+            if !(param in collect(keys(graph)))
+                graph[param] = nothing
+            end
+        end
+    end
 
-    z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_ids)))
-    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
+    z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params)))
+    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
     for (i, graph_id) in enumerate(graph_ids)
         filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
         for (x, mean_degree) in enumerate(mean_degrees)
