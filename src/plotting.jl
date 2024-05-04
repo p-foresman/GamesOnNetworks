@@ -456,7 +456,7 @@ end
 
 function noise_vs_structure_heatmap_new(db_filepath::String;
                                     game_id::Integer,
-                                    graph_params::Vector{Dict{Symbol, <:Any}},
+                                    graph_params_extra::Vector{<:Dict{Symbol, Any}},
                                     errors::Vector{<:AbstractFloat},
                                     mean_degrees::Vector{<:AbstractFloat},
                                     number_agents::Integer,
@@ -478,29 +478,49 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     y = string.(errors)
     # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
     # y_axis = fill(string.(errors), (length(graph_ids), 1))
-    graph_params_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
-    for graph in graph_params
-        for param in graph_params_list
-            if !(param in collect(keys(graph)))
-                graph[param] = nothing
-            end
+
+    # graph_params_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
+    # for graph in graph_params
+    #     for param in graph_params_list
+    #         if !(param in collect(keys(graph)))
+    #             graph[param] = nothing
+    #         end
+    #     end
+    # end
+    graph_params = Vector{Dict{Symbol, Any}}()
+    for λ in mean_degrees
+        for graph in graph_params_extra
+            g = deepcopy(graph)
+            g[:λ] = λ
+            push!(graph_params, g)
         end
     end
+    println(graph_params)
 
-    z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params)))
+    # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params_extra)))
+    z_data = fill(zeros(length(mean_degrees), length(errors)), (length(graph_params_extra)))
+
+    println(z_data)
     df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
-    for (i, graph_id) in enumerate(graph_ids)
-        filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
+    for (i, graph) in enumerate(graph_params_extra)
+        filtered_df = filter([:graph_type] => (type) -> type == graph[:graph_type], df) #NOTE: this is filtering by graph type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
+        # println(filtered_df)
         for (x, mean_degree) in enumerate(mean_degrees)
             for (y, error) in enumerate(errors)
                 more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
-                average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
+                println(more_filtered)
+                average_transition_time = sum(more_filtered.periods_elapsed) / nrow(more_filtered)
+                println(average_transition_time)
+                println("($i, $x, $y)")
                 z_data[i][x, y] = average_transition_time
             end
         end
     end
 
+    println(z_data)
+
     clims = extrema(z_data)
+    println(clims)
 
     plots = []
     for z in z_data
