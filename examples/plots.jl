@@ -1,4 +1,4 @@
-using Plots
+using GamesOnNetworks, Plots, SQLite, DataFrames
 
 #quick and dirty way to add graph type
 function add_graph_type(db_filepath)

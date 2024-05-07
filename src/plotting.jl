@@ -498,7 +498,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     println(graph_params)
 
     # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params_extra)))
-    z_data = fill(zeros(length(mean_degrees), length(errors)), (length(graph_params_extra)))
+    z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
 
     println(z_data)
     df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
@@ -519,19 +519,37 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
 
     println(z_data)
 
+    #this stuff needs to be removed!
+    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
+    z_data = zeros(length(mean_degrees), length(errors), length(graph_params_extra))
+    for i in eachindex(graph_params_extra)
+        for x in eachindex(mean_degrees)
+            for y in eachindex(errors)
+                z_data[i, x, y] = i + x + y
+            end
+        end
+    end
+    println(z_data)
+    # return z_data
+    
     clims = extrema(z_data)
     println(clims)
 
     plots = []
-    for z in z_data
-        println(z)
-        push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
+    # for z in z_data
+    #     println(z)
+    #     push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
+    # end
+    for z in eachindex(graph_params_extra)
+        println(z_data[z,:,:])
+        push!(plots, heatmap(x, y, z_data[z, :, :], clims=clims, c=:viridis, colorbar=false))
     end
 
     push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims,
-                 xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_title="cbar", grid=false))
+                 xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_title="Periods Elapsed", grid=false))
 
-    l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
+    # l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
+    l = @layout [Plots.grid(length(graph_params_extra), 1) a{0.01w}]
     full_plot = plot(plots..., layout=l, link=:all)
     # savefig(p_all, "shared_colorbar_julia.png")
     return full_plot
