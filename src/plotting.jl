@@ -363,44 +363,6 @@ function plot_fitted_degree_dist(D, g::SimpleGraph{Int})
 end
 
 
-function noise_vs_structure_heatmap(db_filepath::String;
-                                    game_id::Integer,
-                                    graph_ids::Vector{<:Integer},
-                                    errors::Vector{<:AbstractFloat},
-                                    mean_degrees::Vector{<:AbstractFloat},
-                                    number_agents::Integer,
-                                    memory_length::Integer,
-                                    starting_condition_id::Integer,
-                                    stopping_condition_id::Integer,
-                                    sample_size::Integer,
-                                    legend_labels::Vector = [],
-                                    colors::Vector = [],
-                                    error_styles::Vector = [],
-                                    plot_title::String=nothing)
-
-    sort!(graph_ids)
-    sort!(errors)
-    sort!(mean_degrees)
-    
-    x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
-    y_axis = fill(string.(errors), (length(graph_ids), 1))
-
-    z_axis = fill(zeros(length(errors), length(mean_degrees)), (length(graph_ids), 1))
-    z_lims = [0, 0] #[min, max]
-    # df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_ids=graph_ids, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
-    # for (i, graph_id) in enumerate(graph_ids)
-    #     filtered_df = filter([:graph_id] => (id) -> id == graph_id, df)
-    #     for (x, mean_degree) in enumerate(mean_degrees)
-    #         for (y, error) in enumerate(errors)
-    #             more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
-    #             average_transition_time = sum(more_filtered.periods_elapsed) / length(more_filtered)
-    #             z_axis[i][x, y] = average_transition_time
-    #         end
-    #     end
-    # end
-    return heatmap(x_axis, y_axis, z_axis, layout=(length(graph_ids), 1), clims=extrema(z_axis), colorbar_scale=:log10)#c=cgrad(scale=:log)) #4 plots vertically
-    # annotate!( vec(tuple.((1:length(x_axis))'.-0.5, (1:length(y)).-0.5, string.(z), :white)) )
-end
 
 # function memoryLengthTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
 #     memory_length_list !== nothing ? memory_length_list = sort(memory_lengths) : nothing
@@ -564,6 +526,84 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     return full_plot
 end
 
+
+
+function transition_times_vs_population_stopping_conditions(db_filepath::String;
+                                                            game_id::Integer,
+                                                            number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, starting_conditions::Vector{<:Integer}, stopping_conditions::Vector{<:Integer}, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [], plot_title::String=nothing)
+    number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
+    errors !== nothing ? errors = sort(errors) : nothing
+    graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
+    sort!(starting_conditions)
+    sort!(stopping_conditions)
+    
+
+    #initialize plot
+    x_label = "Number Agents"
+    x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
+    x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
+
+    legend_labels_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        legend_labels_map[graph_id] = legend_labels[index]
+    end
+
+    colors_map = Dict()
+    for (index, graph_id) in enumerate(graph_ids)
+        colors_map[graph_id] = colors[index]
+    end
+
+    error_styles_map = Dict()
+    for (index, error) in enumerate(errors)
+        error_styles_map[error] = error_styles[index]
+    end
+
+    sim_plot = plot(xlabel = x_label,
+                    xlims = x_lims,
+                    xticks = x_ticks,
+                    ylabel = "Transition Time",
+                    yscale = :log10,
+                    legend_position = :outertopright,
+                    size=(1300, 700),
+                    left_margin=10Plots.mm,
+                    bottom_margin=10Plots.mm,
+                    title=plot_title)
+
+
+    #wrangle data
+    df = querySimulationsForNumberAgentsLinePlot(db_filepath, game_id=game_id, number_agents_list=number_agents_list, memory_length=memory_length, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
+    plot_line_number = 1 #this will make the lines unordered***
+    for graph_id in graph_ids
+        for error in errors
+            filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
+
+            average_number_agents = Vector{Float64}([])
+
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            for (index, number_agents) in enumerate(number_agents_list)
+                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
+
+                confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+
+                push!(average_number_agents, confidence_interval[1]) #first element is the mean
+                push!(confidence_interval_lower, confidence_interval[2])
+                push!(confidence_interval_upper, confidence_interval[3])
+            end
+
+            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+
+            plot!(number_agents_list, average_number_agents, markershape = :circle, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id], linestyle=error_styles_map[error][1], label=legend_label)
+
+            if conf_intervals
+                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, fillcolor=colors_map[graph_id], fillstyle=error_styles_map[error][2], label=nothing)
+            end
+
+            plot_line_number += 1
+        end
+    end
+    return sim_plot
+end
 
 
 # function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
