@@ -34,3 +34,15 @@ GamesOnNetworks.noise_vs_structure_heatmap_new("./sqlite/slurm_simulation_saves_
                                     starting_condition_id=1,
                                     stopping_condition_id=1,
                                     sample_size=4)
+
+
+GamesOnNetworks.transition_times_vs_population_stopping_conditions("./sqlite/slurm_simulation_saves_incomplete.sqlite",
+                                                                    game_id=1,
+                                                                    number_agents_list=[10, 20, 30, 40],
+                                                                    memory_length=10,
+                                                                    errors=[0.1],
+                                                                    graph_ids=[61],
+                                                                    starting_condition_ids=[1],
+                                                                    stopping_condition_ids=[1, 2],
+                                                                    sample_size=4,
+                                                                    conf_intervals=false)

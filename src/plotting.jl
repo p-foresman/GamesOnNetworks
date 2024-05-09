@@ -530,12 +530,26 @@ end
 
 function transition_times_vs_population_stopping_conditions(db_filepath::String;
                                                             game_id::Integer,
-                                                            number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, starting_conditions::Vector{<:Integer}, stopping_conditions::Vector{<:Integer}, sample_size::Integer, conf_intervals::Bool = false, conf_level::AbstractFloat = 0.95, bootstrap_samples::Integer = 1000, legend_labels::Vector = [], colors::Vector = [], error_styles::Vector = [], plot_title::String=nothing)
+                                                            number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
+                                                            memory_length::Integer,
+                                                            errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                                                            graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
+                                                            starting_condition_ids::Vector{<:Integer},
+                                                            stopping_condition_ids::Vector{<:Integer},
+                                                            sample_size::Integer,
+                                                            conf_intervals::Bool = false,
+                                                            conf_level::AbstractFloat = 0.95,
+                                                            bootstrap_samples::Integer = 1000,
+                                                            legend_labels::Vector = [],
+                                                            colors::Vector = [],
+                                                            error_styles::Vector = [],
+                                                            plot_title::String="")
+
     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
-    sort!(starting_conditions)
-    sort!(stopping_conditions)
+    sort!(starting_condition_ids)
+    sort!(stopping_condition_ids)
     
 
     #initialize plot
@@ -543,20 +557,20 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
     x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
     x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
 
-    legend_labels_map = Dict()
-    for (index, graph_id) in enumerate(graph_ids)
-        legend_labels_map[graph_id] = legend_labels[index]
-    end
+    # legend_labels_map = Dict()
+    # for (index, graph_id) in enumerate(graph_ids)
+    #     legend_labels_map[graph_id] = legend_labels[index]
+    # end
 
-    colors_map = Dict()
-    for (index, graph_id) in enumerate(graph_ids)
-        colors_map[graph_id] = colors[index]
-    end
+    # colors_map = Dict()
+    # for (index, graph_id) in enumerate(graph_ids)
+    #     colors_map[graph_id] = colors[index]
+    # end
 
-    error_styles_map = Dict()
-    for (index, error) in enumerate(errors)
-        error_styles_map[error] = error_styles[index]
-    end
+    # error_styles_map = Dict()
+    # for (index, error) in enumerate(errors)
+    #     error_styles_map[error] = error_styles[index]
+    # end
 
     sim_plot = plot(xlabel = x_label,
                     xlims = x_lims,
@@ -571,35 +585,50 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
 
 
     #wrangle data
-    df = querySimulationsForNumberAgentsLinePlot(db_filepath, game_id=game_id, number_agents_list=number_agents_list, memory_length=memory_length, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
+    df = query_simulations_for_transition_time_vs_population_stopping_condition(db_filepath,
+                                                                                game_id=game_id,
+                                                                                number_agents_list=number_agents_list,
+                                                                                memory_length=memory_length,
+                                                                                errors=errors,
+                                                                                graph_ids=graph_ids,
+                                                                                starting_condition_ids=starting_condition_ids,
+                                                                                stopping_condition_ids=stopping_condition_ids,
+                                                                                sample_size=sample_size)
+
     plot_line_number = 1 #this will make the lines unordered***
     for graph_id in graph_ids
         for error in errors
-            filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
+            for starting_condition_id in starting_condition_ids
+                for stopping_condition_id in stopping_condition_ids
+                    filtered_df = filter([:error, :graph_id, :starting_condition_id, :stopping_condition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == starting_condition_id && stop == stopping_condition_id, df)
 
-            average_number_agents = Vector{Float64}([])
+                    average_number_agents = Vector{Float64}([])
 
-            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
-            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
-            for (index, number_agents) in enumerate(number_agents_list)
-                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
+                    conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+                    conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+                    for (index, number_agents) in enumerate(number_agents_list)
+                        filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
 
-                confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                        confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
 
-                push!(average_number_agents, confidence_interval[1]) #first element is the mean
-                push!(confidence_interval_lower, confidence_interval[2])
-                push!(confidence_interval_upper, confidence_interval[3])
+                        push!(average_number_agents, confidence_interval[1]) #first element is the mean
+                        if conf_intervals
+                            push!(confidence_interval_lower, confidence_interval[2])
+                            push!(confidence_interval_upper, confidence_interval[3])
+                        end
+                    end
+
+                    # legend_label = "$(legend_labels_map[graph_id]), error=$error"
+
+                    plot!(number_agents_list, average_number_agents, markershape = :circle)#, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id], linestyle=error_styles_map[error][1], label=legend_label)
+
+                    if conf_intervals
+                        plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2)#, fillcolor=colors_map[graph_id], fillstyle=error_styles_map[error][2], label=nothing)
+                    end
+
+                    plot_line_number += 1
+                end
             end
-
-            legend_label = "$(legend_labels_map[graph_id]), error=$error"
-
-            plot!(number_agents_list, average_number_agents, markershape = :circle, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id], linestyle=error_styles_map[error][1], label=legend_label)
-
-            if conf_intervals
-                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, fillcolor=colors_map[graph_id], fillstyle=error_styles_map[error][2], label=nothing)
-            end
-
-            plot_line_number += 1
         end
     end
     return sim_plot
