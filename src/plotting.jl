@@ -492,6 +492,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
         for graph in graph_params_extra
             g = deepcopy(graph)
             g[:λ] = λ
+            delete!(g, :title)
             push!(graph_params, g)
         end
     end
@@ -499,26 +500,29 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
 
     # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params_extra)))
     # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
-    z_data = zeros(length(graph_params_extra), length(mean_degrees), length(errors))
+    z_data = zeros(length(errors), length(mean_degrees), length(graph_params_extra))
 
     println(z_data)
     df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
-    for (i, graph) in enumerate(graph_params_extra)
+    for (graph_index, graph) in enumerate(graph_params_extra)
         filtered_df = filter([:graph_type] => (type) -> type == graph[:graph_type], df) #NOTE: this is filtering by graph type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
         # println(filtered_df)
-        for (x, mean_degree) in enumerate(mean_degrees)
-            for (y, error) in enumerate(errors)
+        for (col, mean_degree) in enumerate(mean_degrees)
+            for (row, error) in enumerate(errors)
                 more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
                 println(more_filtered)
                 average_transition_time = sum(more_filtered.periods_elapsed) / nrow(more_filtered)
                 println(average_transition_time)
-                println("($i, $x, $y)")
-                z_data[i, x, y] = average_transition_time
+                println("($row, $col, $graph_index)")
+                z_data[row, col, graph_index] = average_transition_time
+                println(log10(average_transition_time))
             end
         end
     end
 
-    println(z_data)
+    for i in eachindex(graph_params_extra)
+        println(z_data[:, :, i])
+    end
 
     #this stuff needs to be removed!
     # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
@@ -535,7 +539,6 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     clims_colorbar = extrema(z_data) #first get the extrema of the original data for the colorbar scale
     z_data = log10.(z_data) #then take the log of the data
     clims = extrema(z_data) #then get the extrema of the log of data for the heatmap colors
-
     println(clims)
 
     plots = []
@@ -543,17 +546,20 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     #     println(z)
     #     push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
     # end
-    for i in eachindex(graph_params_extra)
-        println(z_data[i,:,:])
-        push!(plots, heatmap(x, y, z_data[i, :, :], clims=clims, c=:viridis, colorbar=false))
+    for graph_index in eachindex(graph_params_extra)
+        println(z_data[:, :, graph_index])
+        title = "\n" * graph_params_extra[graph_index][:title]
+        x_ticks = graph_index == length(graph_params_extra)
+        x_label = x_ticks ? "Mean Degree" : ""
+        push!(plots, heatmap(x, y, z_data[:, :, graph_index], clims=clims, c=:viridis, colorbar=false, title=title, xlabel=x_label, ylabel="Error", xticks=x_ticks))
     end
 
     push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims_colorbar,
-                 xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_title="Periods Elapsed", colorbar_scale=:log10, grid=false))
+                 xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_scale=:log10, colorbar_title="Periods Elapsed", grid=false))
 
     # l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
     l = @layout [Plots.grid(length(graph_params_extra), 1) a{0.01w}]
-    full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000))
+    full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000), left_margin=10Plots.mm, right_margin=10Plots.mm, bottom_margin=10Plots.mm)
     # savefig(p_all, "shared_colorbar_julia.png")
     return full_plot
 end

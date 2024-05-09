@@ -26,9 +26,9 @@ end
 # heatmap
 GamesOnNetworks.noise_vs_structure_heatmap_new("./sqlite/slurm_simulation_saves_incomplete.sqlite";
                                     game_id=1,
-                                    graph_params_extra=[Dict{Symbol, Any}(:graph_type=>"er"), Dict{Symbol, Any}(:graph_type=>"sw", :β=>0.0)],
+                                    graph_params_extra=[Dict{Symbol, Any}(:title=>"Erdos-Renyi", :graph_type=>"er"), Dict{Symbol, Any}(:title=>"Small-World (β=0.0)", :graph_type=>"sw", :β=>0.0)],
                                     errors=[0.1, 0.2],
-                                    mean_degrees=[3.0, 5.0],
+                                    mean_degrees=[3.0, 5.0, 10.0],
                                     number_agents=1000,
                                     memory_length=10,
                                     starting_condition_id=1,
