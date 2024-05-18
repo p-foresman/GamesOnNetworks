@@ -438,7 +438,7 @@ end
 # end
 
 
-function noise_vs_structure_heatmap_new(db_filepath::String;
+function noise_vs_structure_heatmap(db_filepath::String;
                                     game_id::Integer,
                                     graph_params_extra::Vector{<:Dict{Symbol, Any}},
                                     errors::Vector{<:AbstractFloat},
@@ -489,7 +489,16 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     println(z_data)
     df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
     for (graph_index, graph) in enumerate(graph_params_extra)
-        filtered_df = filter([:graph_type] => (type) -> type == graph[:graph_type], df) #NOTE: this is filtering by graph type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
+        
+        function graph_filter(type, β, α, p_in, p_out)
+            type_match = type == graph[:graph_type]
+            β_match = haskey(graph, :β) ? β == graph[:β] : ismissing(β)
+            α_match = haskey(graph, :α) ? α == graph[:α] : ismissing(α)
+            p_in_match = haskey(graph, :p_in) ? p_in == graph[:p_in] : ismissing(p_in)
+            p_out_match = haskey(graph, :p_out) ? p_out == graph[:p_out] : ismissing(p_out)
+            return type_match && β_match && α_match && p_in_match && p_out_match
+        end
+        filtered_df = filter([:graph_type, :β, :α, :p_in, :p_out] => graph_filter, df) #NOTE: this is filtering by graph type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
         # println(filtered_df)
         for (col, mean_degree) in enumerate(mean_degrees)
             for (row, error) in enumerate(errors)
@@ -523,6 +532,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     clims_colorbar = extrema(z_data) #first get the extrema of the original data for the colorbar scale
     z_data = log10.(z_data) #then take the log of the data
     clims = extrema(z_data) #then get the extrema of the log of data for the heatmap colors
+    # clims = (log10(10), log10(100000))
     println(clims)
 
     plots = []
@@ -533,8 +543,10 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
     for graph_index in eachindex(graph_params_extra)
         println(z_data[:, :, graph_index])
         title = "\n" * graph_params_extra[graph_index][:title]
-        x_ticks = graph_index == length(graph_params_extra)
-        x_label = x_ticks ? "Mean Degree" : ""
+        # x_ticks = graph_index == length(graph_params_extra)
+        # x_label = x_ticks ? "Mean Degree" : ""
+        x_ticks = true
+        x_label = graph_index == length(graph_params_extra) ? "Mean Degree" : ""
         push!(plots, heatmap(x, y, z_data[:, :, graph_index], clims=clims, c=:viridis, colorbar=false, title=title, xlabel=x_label, ylabel="Error", xticks=x_ticks))
     end
 
@@ -543,7 +555,7 @@ function noise_vs_structure_heatmap_new(db_filepath::String;
 
     # l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
     l = @layout [Plots.grid(length(graph_params_extra), 1) a{0.01w}]
-    full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000), left_margin=10Plots.mm, right_margin=10Plots.mm, bottom_margin=10Plots.mm)
+    full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000), left_margin=10Plots.mm, right_margin=10Plots.mm)
     # savefig(p_all, "shared_colorbar_julia.png")
     return full_plot
 end
@@ -975,120 +987,131 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
 end
 
 
-# function numberAgentsTransitionTimeLinePlot(db_filepath::String; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
-#     gr()
-#     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
-#     errors !== nothing ? errors = sort(errors) : nothing
-#     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
+
+
+
+function transition_times_vs_graph_params_sweep(db_filepath::String;
+                                            game_id::Integer,
+                                            memory_length::Integer,
+                                            number_agents::Integer,
+                                            errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                                            graph_params_extra::Vector{<:Dict{Symbol, Any}},
+                                            sweep_param::Symbol,
+                                            starting_condition_id::Integer,
+                                            stopping_condition_id::Integer,
+                                            sample_size::Integer,
+                                            conf_intervals::Bool = false,
+                                            conf_level::AbstractFloat = 0.95,
+                                            bootstrap_samples::Integer = 1000,
+                                            legend_labels::Vector = [],
+                                            colors::Vector = [],
+                                            error_styles::Vector = [],
+                                            plot_title::String="", 
+                                            sim_plot::Union{Plots.Plot, Nothing}=nothing)
+
+    errors !== nothing ? errors = sort(errors) : nothing
     
+    graph_params = Vector{Dict{Symbol, Any}}()
+    sweep_param_values = []
+    for graph in graph_params_extra
+        g = deepcopy(graph)
+        # delete!(g, :title)
+        push!(graph_params, g)
+        push!(sweep_param_values, g[sweep_param]) #for finding xlims
+    end
+    println(graph_params)
 
-#     conf_level = 0.95 #new (make this a parameter)
+    #initialize plot
+    x_label = string(sweep_param)
+    # x_lims = (minimum(sweep_param_values) - 1, maximum(sweep_param_values) + 1)
+    # x_ticks = minimum(sweep_param_values) - 1:1:maximum(sweep_param_values) + 1
+    x_lims = (2, 11)
+    x_ticks = 2:1:11
 
+    legend_labels_map = Dict()
+    for index in eachindex(errors)
+        legend_labels_map[index] = legend_labels[index]
+    end
 
-#     x_label = "Number Agents"
-#     x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
-#     x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
+    colors_map = Dict()
+    for index in eachindex(errors)
+        colors_map[index] = colors[index]
+    end
 
-#     # sim_plot = plot(xlabel = x_label,
-#     #                 xlims = x_lims,
-#     #                 xticks = x_ticks,
-#     #                 ylabel = "Transition Time",
-#     #                 yscale = :log10,
-#     #                 legend_position = :outertopright)
-#     sim_plot = plot()
-
-
-
-#     df = querySimulationsForNumberAgentsLinePlot(db_filepath, game_id=game_id, number_agents_list=number_agents_list, memory_length=memory_length, errors=errors, graph_ids=graph_ids, sample_size=sample_size)
-#     # println(df)
-#     line_count = length(errors) * length(graph_ids)
-#     println("line count: " * "$line_count")
-#     series_matrix = zeros(length(number_agents_list), line_count) #this is an issue if memory_lengths/errors/graph_ids=nothing***
-#     plot_line_number = 1 #this will make the lines unordered***
-
-#     # y_lims = (0, maximum(df[:, :periods_elapsed]) + 100) #new
-
-#     println(series_matrix)
-#     legend_labels = Matrix(undef, 1, line_count)
-#     for graph_id in graph_ids
-#         for error in errors
-#             legend_labels[1, plot_line_number] = "graph: $graph_id, error: $error"
-#             filtered_df = filter([:error, :graph_id] => (err, id) -> err == error && id == graph_id, df)
-
-#             single_series_matrix = fill(Int64(0), length(number_agents_list), sample_size) #new
-#             confidence_interval_upper = Vector{Float64}([])
-#             confidence_interval_lower = Vector{Float64}([])
-            
-#             average_number_agents = zeros(length(number_agents_list))
-#             for (index, number_agents) in enumerate(number_agents_list)
-#                 filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
-#                 average_number_agents[index] = mean(filtered_df_per_num.periods_elapsed)
-
-#                 single_series_matrix[index, :] = filtered_df_per_num.periods_elapsed #new
-#                 confidence_interval = confint(OneSampleTTest(filtered_df_per_num.periods_elapsed))
-#                 push!(confidence_interval_lower, confidence_interval[1])
-#                 push!(confidence_interval_upper, confidence_interval[2])
-#                 println(single_series_matrix)
-#                 println(confidence_interval_upper)
-#                 println(confidence_interval_lower)
-
-#             end
-#             series_matrix[:, plot_line_number] = average_number_agents
-
-#             if plot_line_number == 1
-#                 plot!(number_agents_list,
-#                             average_number_agents,
-#                             label="$plot_line_number",
-#                             xlabel = x_label,
-#                             xlims = x_lims,
-#                             xticks = x_ticks,
-#                             # ylims = y_lims,
-#                             ylabel = "Transition Time",
-#                             yscale = :log10,
-#                             legend_position = :outertopright)
-#                 # errorline!(number_agents_list,
-#                 #                 single_series_matrix,
-#                 #                 errorstyle=:ribbon,
-#                 #                 label="$plot_line_number",
-#                 #                 xlabel = x_label,
-#                 #                 xlims = x_lims,
-#                 #                 xticks = x_ticks,
-#                 #                 # ylims = y_lims,
-#                 #                 ylabel = "Transition Time",
-#                 #                 # yscale = :log10,
-#                 #                 legend_position = :outertopright)
-#             else
-#                 plot!(number_agents_list,
-#                 average_number_agents)
-#                 # errorline!(number_agents_list, single_series_matrix, errorstyle=:ribbon)
-#             end
-
-#             plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0.2, fillalpha=0.2)
-
-#             plot_line_number += 1
-
-#         end
-#     end
-#     println(legend_labels)
-#     println(series_matrix)
-
-#     # println("plot line number: " * "$plot_line_number")
-
-#     # ribbon_vals = [[10 100 10 5000] (10, 5000) (10, 300)]
-#     #  (10, 40) (10, 100) (10, 200) (10, 200) (10, 1000); (10, 200) (10, 200) (10, 1000) (10, 200) (10, 200) (10, 1000) (10, 200) (10, 200); (10, 1000) (10, 200) (10, 200) (10, 1000) (10, 200) (10, 200) (10, 1000) (10, 200)]
-#     # sim_plot = plot(number_agents_list,
-#     #                 series_matrix,
-#     #                 ribbon = ribbon_vals,
-#     #                 label = legend_labels,
-#     #                 xlabel = x_label,
-#     #                 xlims = x_lims,
-#     #                 xticks = x_ticks,
-#     #                 ylabel = "Transition Time",
-#     #                 yscale = :log10,
-#     #                 legend_position = :outertopright,
-#     #                 linestyle = :solid,
-#     #                 markershape = :circle)
+    # error_styles_map = Dict()
+    # for (index, error) in enumerate(errors)
+    #     error_styles_map[error] = error_styles[index]
+    # end
+    if isnothing(sim_plot)
+        sim_plot = plot(xlabel = x_label,
+                        xlims = x_lims,
+                        xticks = x_ticks,
+                        ylabel = "Transition Time",
+                        yscale = :log10,
+                        legend_position = :topleft,
+                        size=(1300, 700),
+                        left_margin=10Plots.mm,
+                        bottom_margin=10Plots.mm,
+                        right_margin=10Plots.mm,
+                        title=plot_title,
+                        thickness_scaling=1.2
+        )
+    end
 
 
-#     return sim_plot
-# end
+    #wrangle data
+    df = query_simulations_for_transition_time_vs_graph_params_sweep(db_filepath,
+                                                                    game_id=game_id,
+                                                                    memory_length=memory_length,
+                                                                    number_agents=number_agents,
+                                                                    errors=errors,
+                                                                    graph_params=graph_params_extra,
+                                                                    starting_condition_id=starting_condition_id,
+                                                                    stopping_condition_id=stopping_condition_id,
+                                                                    sample_size=sample_size)
+    plot_line_number = 1 #this will make the lines unordered***
+    # for (graph_index, graph) in enumerate(graph_params_extra)
+
+        # function graph_filter(type, β, α, p_in, p_out)
+        #     type_match = type == graph[:graph_type]
+        #     β_match = haskey(graph, :β) ? β == graph[:β] : ismissing(β)
+        #     α_match = haskey(graph, :α) ? α == graph[:α] : ismissing(α)
+        #     p_in_match = haskey(graph, :p_in) ? p_in == graph[:p_in] : ismissing(p_in)
+        #     p_out_match = haskey(graph, :p_out) ? p_out == graph[:p_out] : ismissing(p_out)
+        #     return type_match && β_match && α_match && p_in_match && p_out_match
+        # end
+        # filtered_df = filter([:graph_type, :β, :α, :p_in, :p_out] => graph_filter, df)
+
+        for (index, error) in enumerate(errors)
+            filtered_df = filter(:error => err -> err == error, df)
+            # println(filtered_df)
+            average_transition_time = Vector{Float64}([])
+
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            for (index, sweep_param_val) in enumerate(sweep_param_values)
+                filtered_df_per_val = filter(sweep_param => val -> val == sweep_param_val, filtered_df)
+                # println(filtered_df_per_num)
+                confidence_interval = confint(bootstrap(mean, filtered_df_per_val.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                println(filtered_df_per_val)
+                println(confidence_interval[1])
+                push!(average_transition_time, confidence_interval[1]) #first element is the mean
+                if conf_intervals
+                    push!(confidence_interval_lower, confidence_interval[2])
+                    push!(confidence_interval_upper, confidence_interval[3])
+                end
+            end
+
+            legend_label = "$(legend_labels_map[index])ϵ=$error"
+
+            plot!(sweep_param_values, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[index], linecolor=colors_map[index])#, linestyle=error_styles_map[error][1])
+
+            if conf_intervals
+                plot!(sweep_param_values, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[index])#, fillstyle=error_styles_map[error][2])
+            end
+
+            plot_line_number += 1
+        end
+    return sim_plot
+end
+

@@ -1033,7 +1033,7 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_filepath::Stri
                                         WHERE RowNum <= $sample_size;
                                 ")
     df = DataFrame(query)
-    
+
     return df
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
@@ -1484,6 +1484,10 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
                                                 graphs.graph_type,
                                                 graphs.graph_params,
                                                 graphs.λ,
+                                                graphs.β,
+                                                graphs.α,
+                                                graphs.p_in,
+                                                graphs.p_out,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
@@ -1535,4 +1539,109 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
     # else
     #     return df
     # end
+end
+
+
+function query_simulations_for_transition_time_vs_graph_params_sweep(db_filepath::String;
+                                                                game_id::Integer,
+                                                                memory_length::Integer,
+                                                                number_agents::Integer,
+                                                                errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                                                                graph_params::Vector{<:Dict{Symbol, Any}},
+                                                                starting_condition_id::Integer,
+                                                                stopping_condition_id::Integer,
+                                                                sample_size::Integer
+    )    
+                                                                                
+    errors_sql = ""
+    if errors !== nothing
+        length(errors) == 1 ? errors_sql *= "AND sim_params.error = $(errors[1])" : errors_sql *= "AND sim_params.error IN $(Tuple(errors))"
+    end
+ 
+    graph_params_sql = "AND ("
+    for graph in graph_params
+        graph_params_sql *= "("
+        for (param, value) in graph
+            graph_params_sql *= "graphs.$(string(param)) = '$(value)' AND "
+        end
+        graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
+        graph_params_sql *= ") OR"
+    end
+    graph_params_sql = rstrip(graph_params_sql, collect(" OR"))
+    graph_params_sql *= ")"
+
+
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    query = DBInterface.execute(db, "
+                                        SELECT * FROM (
+                                            SELECT
+                                                ROW_NUMBER() OVER ( 
+                                                    PARTITION BY simulations.graph_id, sim_params.error
+                                                    ORDER BY sim_params.error
+                                                ) RowNum,
+                                                simulations.simulation_id,
+                                                sim_params.sim_params,
+                                                sim_params.number_agents,
+                                                sim_params.memory_length,
+                                                sim_params.error,
+                                                simulations.periods_elapsed,
+                                                graphs.graph_id,
+                                                graphs.graph,
+                                                graphs.graph_params,
+                                                graphs.λ,
+                                                graphs.β,
+                                                graphs.α,
+                                                graphs.p_in,
+                                                graphs.p_out,
+                                                games.game_name,
+                                                simulations.starting_condition_id,
+                                                simulations.stopping_condition_id
+                                            FROM simulations
+                                            INNER JOIN sim_params USING(sim_params_id)
+                                            INNER JOIN games USING(game_id)
+                                            INNER JOIN graphs USING(graph_id)
+                                            WHERE simulations.game_id = $game_id
+                                            AND simulations.starting_condition_id = $starting_condition_id
+                                            AND simulations.stopping_condition_id = $stopping_condition_id
+                                            AND sim_params.number_agents = $number_agents
+                                            $errors_sql
+                                            $graph_params_sql
+                                            )
+                                        WHERE RowNum <= $sample_size;
+                                ")
+    df = DataFrame(query)
+
+    return df
+    #error handling
+    function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
+    function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
+    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    
+    error_set = []
+    number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
+    errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+
+    SQLite.close(db)
+
+    for number_agents in number_agents_list
+        for error in errors
+            for graph_id in graph_ids
+                filtered_df = filter([:number_agents, :error, :graph_id] => (num, err, id) -> num == number_agents && err == error && id == graph_id, df)
+                if nrow(filtered_df) < sample_size
+                    push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id]\n")
+                end
+            end
+        end
+    end
+    if !isempty(error_set)
+        errors_formatted = ""
+        for err in error_set
+            errors_formatted *= err
+        end
+        throw(ErrorException("Not enough samples for the following simulations:\n$errors_formatted"))
+    else
+        return df
+    end
 end
