@@ -108,7 +108,7 @@ end
 
 function db_insert_graph(db_filepath::String, graph_params::GraphParams)
     graph = displayname(graph_params)
-    graph_type = String(graph_type(graph_params))
+    type = String(graph_type(graph_params))
     graph_params_string = JSON3.write(graph_params)
     db_params_dict = Dict{Symbol, Any}(:λ => nothing, :β => nothing, :α => nothing, :blocks => nothing, :p_in => nothing, :p_out => nothing) #allows for parameter-based queries
     
@@ -121,7 +121,7 @@ function db_insert_graph(db_filepath::String, graph_params::GraphParams)
     graph_row_id = nothing
     while graph_row_id === nothing
         try
-            graph_insert_result = execute_insert_graph(db_filepath, graph, graph_type, graph_params_string, db_params_dict)
+            graph_insert_result = execute_insert_graph(db_filepath, graph, type, graph_params_string, db_params_dict)
             #graph_status = graph_insert_result.status_message
             graph_row_id = graph_insert_result.insert_row_id
         catch

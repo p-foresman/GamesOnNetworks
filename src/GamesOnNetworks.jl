@@ -194,6 +194,7 @@ include("simulation_functions.jl")
 include("simulate.jl")
 
 #plotting functions
+include("analysis.jl")
 include("plotting.jl")
 
 end

@@ -1,7 +1,7 @@
 #analytical algorithm to find threshold in simulated time-series data
 #*** find the highest point that is returned to once it is crossed?
 # or, based on a number of samples, at which point is the fraction_M unlikely to return to 0 (get highest that returns to 0 for each and take average?)
-function find_threshold(db_filepath::String; sim_group_id::Integer)
+function find_threshold(db_filepath::String; sim_group_id::Integer, plot_title::String="")
     sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
     payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
     payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
@@ -44,6 +44,7 @@ function find_threshold(db_filepath::String; sim_group_id::Integer)
 
     threshold = 0.0
     index_cutoff = findlast(i -> i == 0.0, fraction_M)
+    println(index_cutoff)
     threshold = maximum(fraction_M[1:index_cutoff])
     # for m in fraction_M #find last 0 and find the max before it?
 
@@ -59,5 +60,5 @@ function find_threshold(db_filepath::String; sim_group_id::Integer)
                             xticks=[:none :none :auto],
                             ylabel=["Proportion H" "Proportion M" "Proportion L"],
                             size=(700, 700))
-    return time_series_plot
+    return time_series_plot, threshold, fraction_M
 end
