@@ -1,3 +1,6 @@
+#analytical algorithm to find threshold in simulated time-series data
+#*** find the highest point that is returned to once it is crossed?
+# or, based on a number of samples, at which point is the fraction_M unlikely to return to 0 (get highest that returns to 0 for each and take average?)
 function find_threshold(db_filepath::String; sim_group_id::Integer)
     sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
     payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
@@ -17,9 +20,9 @@ function find_threshold(db_filepath::String; sim_group_id::Integer)
     fraction_L = Vector()
     fraction_M = Vector()
     fraction_H = Vector()
-    # fractions = Vector()
-    threshold = 0.0
-    last_fraction_m = 0.0
+    # current_peak = Vector()
+    # threshold = 0.0
+    # last_fraction_m = 0.0
     for (periods_elapsed, agent_behaviors) in agent_dict
         push!(period_counts, periods_elapsed)
         # subfractions = Vector()
@@ -27,14 +30,25 @@ function find_threshold(db_filepath::String; sim_group_id::Integer)
         push!(fraction_L, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
         push!(fraction_M, fraction_m)
         push!(fraction_H, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
-        if fraction_m < last_fraction_m && last_fraction_m > threshold
-            peaks = last_fraction_m
-        end
-        last_fraction_m = fraction_m
+
+        # push!(current_peak, fraction_m)
+        # if fraction_m < threshold
+        # if fraction_m < last_fraction_m && last_fraction_m > threshold
+        #     peaks = last_fraction_m
+        # end
+        # last_fraction_m = fraction_m
 
         # println("$periods_elapsed: $subfractions")
         # push!(fractions, subfractions)
     end
+
+    threshold = 0.0
+    index_cutoff = findlast(i -> i == 0.0, fraction_M)
+    threshold = maximum(fraction_M[1:index_cutoff])
+    # for m in fraction_M #find last 0 and find the max before it?
+
+    # end
+
     time_series_plot = plot(period_counts,
                             [fraction_H fraction_M fraction_L],
                             ylims=(0.0, 1.0),
