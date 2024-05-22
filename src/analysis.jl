@@ -27,11 +27,10 @@ function find_threshold(db_filepath::String; sim_group_id::Integer)
         push!(fraction_L, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
         push!(fraction_M, fraction_m)
         push!(fraction_H, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
-        if fraction_m < last_fraction_m
-            
-
-        
-        threshold = fraction_m
+        if fraction_m < last_fraction_m && last_fraction_m > threshold
+            peaks = last_fraction_m
+        end
+        last_fraction_m = fraction_m
 
         # println("$periods_elapsed: $subfractions")
         # push!(fractions, subfractions)
