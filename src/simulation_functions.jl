@@ -17,7 +17,8 @@ function play_game!(model::SimModel)
     return nothing
 end
 
-matches_per_period(N::Integer) = Int(floor(N / 2)) #NOTE: hard coded for now
+# matches_per_period(N::Integer) = Int(floor(N / 2)) #NOTE: hard coded for now (put this in the ConnectedComponent struct)
+
 
 function run_period!(model::SimModel)
     run_period!(model, graph_params(model)) #multiple dispatch
@@ -26,8 +27,9 @@ end
 
 function run_period!(model::SimModel, ::GraphParams)
     for component in components(model) #each connected component plays its own period's worth of matches
-        for _ in 1:matches_per_period(num_vertices(component))
-        # for _ in 1:matches_per_period(model)
+        # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
+        # for _ in 1:Int(ceil(mpp))
+        for _ in 1:matches_per_period(component)
             reset_arrays!(model)
             set_players!(model, component)
             play_game!(model)

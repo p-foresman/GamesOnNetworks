@@ -1111,6 +1111,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_filepath::
                                                 graphs.graph_id,
                                                 graphs.graph,
                                                 graphs.graph_params,
+                                                graphs.λ,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id

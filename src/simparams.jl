@@ -3,7 +3,7 @@
 
 Type to define and store simulation parameters.
 """
-struct SimParams
+struct SimParams #NOTE: put periods_elapsed into SimParams (default 0) and allow user to define the matches_per_period (default 1?)
     number_agents::Int
     memory_length::Int
     error::Float64

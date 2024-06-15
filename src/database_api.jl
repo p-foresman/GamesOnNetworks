@@ -79,7 +79,7 @@ function db_insert_sim_group(db_filepath::String, description::String)
     while sim_group_id === nothing
         try
             sim_group_id = execute_insert_sim_group(db_filepath, description).insert_row_id
-        catch
+        catch #NOTE: NEED TO CATCH DATABASE IS BUSY ERROR ONLY!
             sleep(rand(0.1:0.1:4.0))
         end
     end

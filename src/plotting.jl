@@ -451,7 +451,8 @@ function noise_vs_structure_heatmap(db_filepath::String;
                                     legend_labels::Vector = [],
                                     colors::Vector = [],
                                     error_styles::Vector = [],
-                                    plot_title::String="")
+                                    plot_title::String="", 
+                                    bootstrap_samples::Integer=1000)
 
     # sort!(graph_ids)
     # sort!(errors)
@@ -504,7 +505,9 @@ function noise_vs_structure_heatmap(db_filepath::String;
             for (row, error) in enumerate(errors)
                 more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
                 println(more_filtered)
-                average_transition_time = mean(more_filtered.periods_elapsed)
+                scaled_periods_elapsed = more_filtered.periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
+                average_transition_time = mean(straps(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), 1)) #Gives the mean of the bootstrapped samples
+                # average_transition_time = mean(more_filtered.periods_elapsed)
                 println(average_transition_time)
                 println("($row, $col, $graph_index)")
                 z_data[row, col, graph_index] = average_transition_time
@@ -652,7 +655,7 @@ function transition_times_vs_memory_sweep(db_filepath::String;
                 end
             end
 
-            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+            legend_label = "$(legend_labels_map[graph_id])" #, error=$error"
 
             plot!(memory_length_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id])#, linestyle=error_styles_map[error][1])
 
@@ -667,7 +670,7 @@ function transition_times_vs_memory_sweep(db_filepath::String;
 end
 
 
-
+#NOTE: add a param for log scale or not
 function transition_times_vs_population_sweep(db_filepath::String;
                                                 game_id::Integer,
                                                 number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
@@ -694,7 +697,7 @@ function transition_times_vs_population_sweep(db_filepath::String;
     #initialize plot
     x_label = "Population"
     x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
-    x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
+    x_ticks = minimum(number_agents_list) - 10:100:maximum(number_agents_list) + 10
 
     legend_labels_map = Dict()
     for (index, graph_id) in enumerate(graph_ids)
@@ -715,7 +718,7 @@ function transition_times_vs_population_sweep(db_filepath::String;
                         xlims = x_lims,
                         xticks = x_ticks,
                         ylabel = "Transition Time",
-                        yscale = :log10,
+                        # yscale = :log10,
                         legend_position = :topleft,
                         size=(1300, 700),
                         left_margin=10Plots.mm,
@@ -748,7 +751,12 @@ function transition_times_vs_population_sweep(db_filepath::String;
             for (index, number_agents) in enumerate(number_agents_list)
                 filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
                 # println(filtered_df_per_num)
-                confidence_interval = confint(bootstrap(mean, filtered_df_per_num.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                mean_degree = filtered_df_per_num.λ[1] #all should be the same. NOTE: remove this
+                scaled_periods_elapsed = filtered_df_per_num.periods_elapsed #NOTE: remove this
+                if !ismissing(mean_degree) #NOTE: remove this
+                    scaled_periods_elapsed = scaled_periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
+                end
+                confidence_interval = confint(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
 
                 push!(average_transition_time, confidence_interval[1]) #first element is the mean
                 if conf_intervals
@@ -757,9 +765,9 @@ function transition_times_vs_population_sweep(db_filepath::String;
                 end
             end
 
-            legend_label = "$(legend_labels_map[graph_id]), error=$error"
+            legend_label = "$(legend_labels_map[graph_id])" #, error=$error"
 
-            plot!(number_agents_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id])#, linestyle=error_styles_map[error][1])
+            plot!(number_agents_list, average_transition_time, markershape=:circle, linewidth=2, label=legend_label, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id])#, linestyle=error_styles_map[error][1])
 
             if conf_intervals
                 plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[graph_id])#, fillstyle=error_styles_map[error][2])
@@ -1092,7 +1100,9 @@ function transition_times_vs_graph_params_sweep(db_filepath::String;
             for (index, sweep_param_val) in enumerate(sweep_param_values)
                 filtered_df_per_val = filter(sweep_param => val -> val == sweep_param_val, filtered_df)
                 # println(filtered_df_per_num)
-                confidence_interval = confint(bootstrap(mean, filtered_df_per_val.periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+                mean_degree = filtered_df_per_val.λ[1] #all should be the same. NOTE: remove this
+                scaled_periods_elapsed = filtered_df_per_val.periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
+                confidence_interval = confint(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
                 println(filtered_df_per_val)
                 println(confidence_interval[1])
                 push!(average_transition_time, confidence_interval[1]) #first element is the mean
