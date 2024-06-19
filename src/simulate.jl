@@ -25,6 +25,7 @@ function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed:
         print("Run $run of $run_count")
         flush(stdout)
         simulate(model, use_seed=use_seed)
+        println(model)
     end
 end
 
