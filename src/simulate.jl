@@ -28,7 +28,6 @@ function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed:
             model = regenerate_model(model)
         end
         simulate(model, use_seed=use_seed)
-        println(model)
     end
 end
 
