@@ -68,11 +68,18 @@ Get the possible strategies that can be played in the model.
 strategies(model::SimModel) = strategies(game(model))
 
 """
+    strategies(game::SimModel, player_number::Int)
+
+Get the possible strategies that can be played by the given player number in the model.
+"""
+strategies(model::SimModel, player_number::Int) = strategies(game(model), player_number)
+
+"""
     random_strategy(game::SimModel)
 
 Get a random strategy from the possible strategies that can be played in the model.
 """
-random_strategy(model::SimModel) = random_strategy(game(model))
+random_strategy(model::SimModel, player_number::Int) = random_strategy(game(model), player_number)
 
 
 # SimParams
@@ -329,17 +336,20 @@ player!(model::SimModel, player_number::Integer, agent_number::Integer) = player
 Choose a random relationship/edge in the specified component and set players to be the agents that the edge connects.
 """
 function set_players!(model::SimModel, component::ConnectedComponent)
-    edge::Graphs.SimpleEdge{Int} = random_edge(component)
-    vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
-    for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
-        player!(model, player_number, vertex_list[player_number])
-    end
+    v = rand(vertices(component))
+    player!(model, 1, v)
+    player!(model, 2, rand(neighbors(graph(model), v)))
+    # edge::Graphs.SimpleEdge{Int} = random_edge(component)
+    # vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
+    # for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
+    #     player!(model, player_number, vertex_list[player_number])
+    # end
     return nothing
 end
 
 #temp for complete_graph
 function set_players!(model::SimModel) #NOTE: this could be better
-    v = rand(vertices(graph(model)))
+    v = rand(Graphs.vertices(graph(model)))
     player!(model, 1, v)
     player!(model, 2, rand(neighbors(graph(model), v)))
     return nothing

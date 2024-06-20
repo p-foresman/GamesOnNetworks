@@ -1,8 +1,8 @@
 ################### Define Game Payoff Matrix and Strategies #######################
 
-const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
-                                            (0, 0) (50, 50) (50, 30);
-                                            (30, 70) (30, 50) (30, 30)])
+const payoff_matrix = [(0, 0) (0, 0) (70, 30);
+                        (0, 0) (50, 50) (50, 30);
+                        (30, 70) (30, 50) (30, 30)]
 #Check "global_StructTypes.jl" file and ensure that the size of this payoff matrix is listed under the "Game type" section
 
 # s1 = size(payoff_matrix, 1)

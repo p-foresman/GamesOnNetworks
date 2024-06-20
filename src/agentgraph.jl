@@ -17,8 +17,8 @@ E = number of edges,
 C = number of connected components
 """
 struct ConnectedComponent{V, E} #might instead want components to contain vertices. Then, a random vertex in a component can be picked for player 1 and a random neighbor of that vertex can be picked for player 2. 
-    # vertices::VertexSet{V} #can delete for now to save allocations
-    edges::RelationshipSet{E}
+    vertices::VertexSet{V} #can delete for now to save allocations
+    # edges::RelationshipSet{E} #can delete for now to save allocations
     matches_per_period::Int
 
     function ConnectedComponent(vertices::Vector{Int}, edges::Vector{Graphs.SimpleEdge})
@@ -26,7 +26,7 @@ struct ConnectedComponent{V, E} #might instead want components to contain vertic
         E = length(edges)
         d = E / possible_edge_count(V)
         matches_per_period = Int(ceil(d * V / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless)
-        return new{V, E}(RelationshipSet{E}(edges), matches_per_period)
+        return new{V, E}(VertexSet{V}(vertices), matches_per_period)
     end
 end
 
@@ -34,11 +34,11 @@ const ComponentSet{C} = SVector{C, ConnectedComponent}
 
 const EmptyComponentSet = ComponentSet{0}
 
-# vertices(component::ConnectedComponent) = getfield(component, :vertices)
+vertices(component::ConnectedComponent) = getfield(component, :vertices)
 num_vertices(::ConnectedComponent{V, E}) where {V, E} = V
-edges(component::ConnectedComponent) = getfield(component, :edges)
+# edges(component::ConnectedComponent) = getfield(component, :edges)
 num_edges(::ConnectedComponent{V, E}) where {V, E} = E
-random_edge(component::ConnectedComponent) = rand(edges(component))
+# random_edge(component::ConnectedComponent) = rand(edges(component))
 matches_per_period(component::ConnectedComponent) = getfield(component, :matches_per_period)
 
 

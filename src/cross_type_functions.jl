@@ -11,36 +11,36 @@ function initialize_graph!(graph_params::CompleteParams, game::Game, sim_params:
 end
 
 function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = nothing
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
     while true
-        graph = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
-        if ne(graph) >= 1 #simulation will break if graph has no edges
+        if ne(graph) >= 1 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
             break
         end
+        graph = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
     end
     agent_graph = AgentGraph(graph, graph_params)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = nothing
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
     while true
-        graph = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
         if ne(graph) >= 1
             break
         end
+        graph = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
     end
     agent_graph = AgentGraph(graph, graph_params)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
 function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = nothing
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
     while true
-        graph = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
         if ne(graph) >= 1
             break
         end
+        graph = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
     end
     agent_graph = AgentGraph(graph, graph_params)
     agentdata!(agent_graph, game, sim_params, starting_condition)
@@ -55,12 +55,12 @@ function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game,
         push!(p_in_vector, p_in(graph_params))
         push!(block_sizes_vector, block_size)
     end
-    graph = nothing
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
     while true
-        graph = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
         if ne(graph) >= 1
             break
         end
+        graph = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
     end
     agent_graph = AgentGraph(graph, graph_params)
     agentdata!(agent_graph, game, sim_params, starting_condition)
@@ -77,9 +77,9 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
     for (vertex, agent) in enumerate(agents(agent_graph))
         #set memory initialization
         if vertex % 2 == 0
-            recollection = strategies(game)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+            recollection = strategies(game, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
         else
-            recollection = strategies(game)[3]
+            recollection = strategies(game, 1)[3]
         end
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
@@ -94,7 +94,7 @@ end
 function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::EquityState)
     for agent in agents(agent_graph)
         #set memory initialization
-        recollection = strategies(game)[2]
+        recollection = strategies(game, 1)[2]
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
         choice!(agent, Choice(0))
@@ -112,7 +112,7 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
         rational_choice!(agent, Choice(0))
         choice!(agent, Choice(0))
         for _ in 1:memory_length(sim_params)
-            push!(memory(agent), random_strategy(game))
+            push!(memory(agent), random_strategy(game, 1))
         end
     end
     return nothing

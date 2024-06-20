@@ -83,7 +83,9 @@ rational_choice(agent::Agent) = getfield(agent, :rational_choice)
 
 Set an agent's 'rational' choice.
 """
-rational_choice!(agent::Agent, choice::Choice) = setfield!(agent, :rational_choice, choice)
+# rational_choice!(agent::Agent, choice::Choice) = setfield!(agent, :rational_choice, choice)
+rational_choice!(agent::Agent, choice::Integer) = setfield!(agent, :rational_choice, Choice(choice))
+
 
 """
     choice(agent::Agent)
@@ -97,7 +99,8 @@ choice(agent::Agent) = getfield(agent, :choice)
 
 Set an agent's choice.
 """
-choice!(agent::Agent, choice::Choice) = setfield!(agent, :choice, choice)
+# choice!(agent::Agent, choice::Choice) = setfield!(agent, :choice, choice)
+choice!(agent::Agent, choice::Integer) = setfield!(agent, :choice, Choice(choice)) #this is probably cleaner?
 
 
 # mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags

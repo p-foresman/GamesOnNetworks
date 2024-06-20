@@ -51,8 +51,8 @@ end
 
 function make_choices!(model::SimModel)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        rational_choice!(players(model, player_number), Choice(maximum_strategy(expected_utilities(model, player_number))))
-        choice!(players(model, player_number), rand() <= error_rate(model) ? random_strategy(model) : rational_choice(players(model, player_number)))
+        rational_choice!(players(model, player_number), maximum_strategy(expected_utilities(model, player_number)))
+        choice!(players(model, player_number), rand() <= error_rate(model) ? random_strategy(model, player_number) : rational_choice(players(model, player_number)))
     end
 end
 
@@ -223,7 +223,7 @@ end
 
 
 
-function count_strategy(memory_set::PerceptSequence, desired_strat::Int8)
+function count_strategy(memory_set::PerceptSequence, desired_strat::Integer)
     count::Int = 0
     for memory in memory_set
         if memory == desired_strat

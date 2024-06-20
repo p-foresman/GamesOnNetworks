@@ -23,9 +23,9 @@ const sim_group_id = db_insert_sim_group("Example Group Description") #optional
 Step 3: Set up the model that you want to simulate
     -this setup could be defined in a separate script if desired
 """
-const payoff_matrix = Matrix{Tuple{Int8, Int8}}([(0, 0) (0, 0) (70, 30);
-                                            (0, 0) (50, 50) (50, 30);
-                                            (30, 70) (30, 50) (30, 30)])
+const payoff_matrix = [(0, 0) (0, 0) (70, 30);
+                        (0, 0) (50, 50) (50, 30);
+                        (30, 70) (30, 50) (30, 30)]
 
 const model = SimModel(Game{3, 3}("Bargaining Game", payoff_matrix), 
                         SimParams(10, 10, 0.1),

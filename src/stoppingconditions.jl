@@ -19,13 +19,13 @@ period, stop.
 mutable struct EquityPsychological <: StoppingCondition
     name::String #change to type?? or remove and use the type itself
     # game::Game
-    strategy::Int8
+    strategy::Int
     sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     sufficient_transitioned::Float64
 
 
     function EquityPsychological(strategy::Integer)
-        return new("equity_psychological", Int8(strategy), 0., 0.)
+        return new("equity_psychological", strategy, 0., 0.)
     end
     function EquityPsychological(stopping_condition::EquityPsychological) #used to get a "raw" version of the stopping condition to send to the database
         return EquityPsychological(strategy(stopping_condition))
@@ -47,7 +47,7 @@ with the equity state for m number of periods in a row, stop.
 mutable struct EquityBehavioral <: StoppingCondition
     name::String
     # game::Game
-    strategy::Int8
+    strategy::Int
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFINITION: (1-error)*number_agents
     period_cutoff::Int #initialized to nothing (determine in simulation). DEFINITION: memory_length.
@@ -55,7 +55,7 @@ mutable struct EquityBehavioral <: StoppingCondition
     
 
     function EquityBehavioral(strategy::Integer)
-        return new("equity_behavioral", Int8(strategy), 0., 0, 0)
+        return new("equity_behavioral", strategy, 0., 0, 0)
     end
     function EquityBehavioral(stopping_condition::EquityBehavioral) #used to get a "raw" version of the stopping condition to send to the database
         return EquityBehavioral(strategy(stopping_condition))
