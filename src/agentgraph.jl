@@ -52,7 +52,7 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     # number_agents::Int
     number_hermits::Int
     
-    function AgentGraph(graph::Graph, ::GraphParams)
+    function AgentGraph(graph::Graph)
         N = nv(graph)
         E = ne(graph)
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
@@ -80,12 +80,12 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
         components = ComponentSet{C}(components)
         return new{N, E, C}(graph, agents, components, number_hermits)
     end
-    function AgentGraph(graph::Graph, ::CompleteParams)
-        N = nv(graph)
-        E = ne(graph)
-        agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
-        return new{N, E, 0}(graph, agents, EmptyComponentSet(), 0)
-    end
+    # function AgentGraph(graph::Graph, ::CompleteParams)
+    #     N = nv(graph)
+    #     E = ne(graph)
+    #     agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
+    #     return new{N, E, 0}(graph, agents, EmptyComponentSet(), 0)
+    # end
 end
 
 

@@ -5,7 +5,7 @@ Initialize and return an AgentGraph instance.
 """
 function initialize_graph!(graph_params::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
     graph = complete_graph(number_agents(sim_params))
-    agent_graph = AgentGraph(graph, graph_params)
+    agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
@@ -18,7 +18,7 @@ function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_param
         end
         graph = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
     end
-    agent_graph = AgentGraph(graph, graph_params)
+    agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
@@ -30,7 +30,7 @@ function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_param
         end
         graph = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
     end
-    agent_graph = AgentGraph(graph, graph_params)
+    agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
@@ -42,7 +42,7 @@ function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params
         end
         graph = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
     end
-    agent_graph = AgentGraph(graph, graph_params)
+    agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
@@ -62,7 +62,7 @@ function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game,
         end
         graph = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
     end
-    agent_graph = AgentGraph(graph, graph_params)
+    agent_graph = AgentGraph(graph)
     agentdata!(agent_graph, game, sim_params, starting_condition)
     return agent_graph
 end
