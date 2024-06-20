@@ -735,7 +735,7 @@ end
 # Merge temp distributed DBs into master DB.
 function execute_merge_temp(db_filepath_master::String, db_filepath_merger::String)
     db = SQLite.DB("$db_filepath_master")
-    SQLite.busy_timeout(db, 5000) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?)
+    SQLite.busy_timeout(db, rand(1:5000)) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?) NOTE: are all of these executes separate writes? can we put them all into one???
     SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     SQLite.execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
