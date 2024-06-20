@@ -17,19 +17,22 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed
     return periods_elapsed
 end
 
-function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false)
+function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false) #NOTE: should preserve_graph be in sim_params?
     show(model)
     flush(stdout) #flush buffer
 
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
         flush(stdout)
+        if !preserve_graph
+            model = regenerate_model(model)
+        end
         simulate(model, use_seed=use_seed)
         println(model)
     end
 end
 
-function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false)
+function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false)
     for model in model_list
         show(model)
         flush(stdout)
@@ -37,6 +40,9 @@ function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer 
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
             flush(stdout)
+            if !preserve_graph
+                model = regenerate_model(model)
+            end
             simulate(model, use_seed=use_seed)
         end
     end
@@ -71,7 +77,7 @@ function simulate(model::SimModel,  db_filepath::String; periods_elapsed::Int128
 end
 
 
-function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     if nworkers() > 1
@@ -87,6 +93,9 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
         flush(stdout)
+        if !preserve_graph
+            model = regenerate_model(model)
+        end
         simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
@@ -96,7 +105,7 @@ function simulate_distributed(model::SimModel, db_filepath::String; run_count::I
 end
 
 
-function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(uuid4())"
 
     if nworkers() > 1
@@ -113,6 +122,9 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
             flush(stdout)
+            if !preserve_graph
+                model = regenerate_model(model)
+            end
             simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
         end
     end
@@ -162,7 +174,7 @@ function simulate(model::SimModel, db_filepath::String, db_store_period::Integer
 end
 
 
-function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     
@@ -179,6 +191,9 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
     @sync @distributed for run in 1:run_count
         print("Run $run of $run_count")
         flush(stdout)
+        if !preserve_graph
+            model = regenerate_model(model)
+        end
         simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
@@ -188,7 +203,7 @@ function simulate_distributed(model::SimModel, db_filepath::String, db_store_per
 end
 
 
-function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing)
+function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(uuid4())"
 
     if nworkers() > 1
@@ -205,6 +220,9 @@ function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String
         @sync @distributed for run in 1:run_count
             print("Run $run of $run_count")
             flush(stdout)
+            if !preserve_graph
+                model = regenerate_model(model)
+            end
             simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
         end
     end

@@ -102,6 +102,7 @@ export
     model_id,
     displayname,
     reset_model!,
+    regenerate_model,
 
     # constructors
     construct_sim_params_list,

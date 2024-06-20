@@ -28,6 +28,9 @@ struct SimModel{S1, S2, L, N, E}
         pre_allocated_arrays = PreAllocatedArrays(payoff_matrix(game))
         return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
+    function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
+        return SimModel(game(model), sim_params(model), graph_params(model), starting_condition(model), stopping_condition(model), model_id(model))
+    end
 end
 
 
@@ -465,6 +468,10 @@ function reset_model!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTA
     initialize_stopping_condition!(model)
     reset_arrays!(model)
     return nothing
+end
+
+function regenerate_model(model::SimModel)
+    return SimModel(model)
 end
 
 
