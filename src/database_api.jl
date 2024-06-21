@@ -62,9 +62,11 @@ function db_collect_temp(db_filepath::String, directory_path::String; cleanup_di
                     println("An error has been caught in db_collect_temp():")
                     showerror(stdout, err)
                     flush(stdout)
-                    sleep(rand(0.1:0.1:5.0))
+                    sleep(rand(0.1:0.1:10.0))
                 end
             end
+            println("[$item_path] merged")
+            flush(stdout)
         else
             db_collect_temp(db_filepath, item_path, cleanup_directory=cleanup_directory)
         end
