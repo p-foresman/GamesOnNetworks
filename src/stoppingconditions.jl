@@ -18,7 +18,6 @@ period, stop.
 """
 mutable struct EquityPsychological <: StoppingCondition
     name::String #change to type?? or remove and use the type itself
-    # game::Game
     strategy::Int
     sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     sufficient_transitioned::Float64
@@ -46,12 +45,11 @@ with the equity state for m number of periods in a row, stop.
 """
 mutable struct EquityBehavioral <: StoppingCondition
     name::String
-    # game::Game
     strategy::Int
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
-    # agent_threshold::Union{Nothing, Float64} #initialized to nothing (determine in simulation). DEFINITION: (1-error)*number_agents
     period_cutoff::Int #initialized to nothing (determine in simulation). DEFINITION: memory_length.
     period_count::Int #initialized at 0
+    # func::Function #could hold the actual stopping condition function for easier user customization?
     
 
     function EquityBehavioral(strategy::Integer)

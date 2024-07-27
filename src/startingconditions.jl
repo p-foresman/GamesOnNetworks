@@ -12,7 +12,6 @@ Type denoting the "fractious state" starting condition.
 """
 struct FractiousState <: StartingCondition
     name::String
-    # game::Game
 
     function FractiousState()
         return new("fractious")
@@ -29,7 +28,6 @@ Type denoting the "equity state" starting condition.
 """
 struct EquityState <: StartingCondition
     name::String
-    # game::Game
 
     function EquityState()
         return new("equity")
@@ -46,7 +44,6 @@ Type denoting the "random state" starting condition.
 """
 struct RandomState <: StartingCondition
     name::String
-    # game::Game
 
     function RandomState()
         return new("random")

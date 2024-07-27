@@ -1,9 +1,9 @@
-#constructor for individual agents with relevant fields (mutable to update object later)
-const Percept = Int8
+const Choice = Int8
+const Percept = Int8 #Int8 to save memory?
 const PerceptSequence = Vector{Percept}
 const TaggedPercept = Tuple{Symbol, Int8}
 const TaggedPerceptSequence = Vector{TaggedPercept}
-const Choice = Int8
+
 
 # abstract type Agent end
 
@@ -12,29 +12,27 @@ const Choice = Int8
 
 Basic Agent type. Agents are nodes of the AgentGraph and are players in games.
 """
-mutable struct Agent #could make a TaggedAgent as well to separate tags
+mutable struct Agent
     name::String
-    # tag::Union{Nothing, Symbol} #NOTE: REMOVE
     is_hermit::Bool
-    wealth::Int #is this necessary? #NOTE: REMOVE
     memory::PerceptSequence
     rational_choice::Choice
     choice::Choice
 
-    function Agent(name::String, is_hermit::Bool, wealth::Int, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
-        return new(name, is_hermit, wealth, memory, rational_choice, choice)
+    function Agent(name::String, is_hermit::Bool, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, is_hermit, memory, rational_choice, choice)
     end
-    function Agent(name::String, wealth::Int, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
-        return new(name, false, wealth, memory, rational_choice, choice)
+    function Agent(name::String, memory::PerceptSequence, rational_choice::Choice, choice::Choice) #initialize choice at 0 (representing no choice)
+        return new(name, false, memory, rational_choice, choice)
     end
     function Agent(name::String, is_hermit::Bool)
-        return new(name, is_hermit, 0, PerceptSequence([]), Choice(0), Choice(0))
+        return new(name, is_hermit, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent(name::String)
-        return new(name, false, 0, PerceptSequence([]), Choice(0), Choice(0))
+        return new(name, false, PerceptSequence([]), Choice(0), Choice(0))
     end
     function Agent()
-        return new("", false, 0, PerceptSequence([]), Choice(0), Choice(0))
+        return new("", false, PerceptSequence([]), Choice(0), Choice(0))
     end
 end
 
@@ -83,7 +81,6 @@ rational_choice(agent::Agent) = getfield(agent, :rational_choice)
 
 Set an agent's 'rational' choice.
 """
-# rational_choice!(agent::Agent, choice::Choice) = setfield!(agent, :rational_choice, choice)
 rational_choice!(agent::Agent, choice::Integer) = setfield!(agent, :rational_choice, Choice(choice))
 
 
@@ -99,13 +96,12 @@ choice(agent::Agent) = getfield(agent, :choice)
 
 Set an agent's choice.
 """
-# choice!(agent::Agent, choice::Choice) = setfield!(agent, :choice, choice)
-choice!(agent::Agent, choice::Integer) = setfield!(agent, :choice, Choice(choice)) #this is probably cleaner?
+choice!(agent::Agent, choice::Integer) = setfield!(agent, :choice, Choice(choice))
 
 
 # mutable struct TaggedAgent #could make a TaggedAgent as well to separate tags
 #     name::String
-#     tag::Union{Nothing, Symbol} #NOTE: REMOVE
+#     tag::Union{Symbol} #NOTE: REMOVE
 #     is_hermit::Bool
 #     wealth::Int #is this necessary? #NOTE: REMOVE
 #     memory::PerceptSequence

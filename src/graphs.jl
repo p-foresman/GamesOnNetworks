@@ -1,10 +1,6 @@
-# # An extended implementation of Graphs.jl 'static_scale_free' which allows the user to input the ratio of possible edges
-# function scale_free(n::Int, α::Float64, m_scaler::Float64)
-#     m_possible = (n * (n-1)) / 2
-#     m = Int(round(m_scaler * m_possible))
-#     return static_scale_free(n, m, α)
-# end
-
+"""
+Extension of Graphs.jl
+"""
 
 possible_edge_count(N::Int) = Int((N * (N-1)) / 2)
 edge_density(N::Integer, λ::Real) = λ / (N - 1)

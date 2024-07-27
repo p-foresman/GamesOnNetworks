@@ -133,7 +133,7 @@ end
 
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
-function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
+function calculateExpectedOpponentProbs(::Game{S1, S2}, memory_set::PerceptSequence) where {S1, S2}
     # length = size(game.payoff_matrix, 1) #for symmetric games only
     opponent_strategy_recollection = zeros(Int, S1)
     for memory in memory_set
@@ -144,7 +144,7 @@ function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSe
 end
 
 
-function calculateExpectedUtilities(game::Game{S1, S2, L}, opponent_probs) where {S1, S2, L} #for symmetric games only!
+function calculateExpectedUtilities(game::Game{S1, S2}, opponent_probs) where {S1, S2} #for symmetric games only!
     payoff_matrix = payoff_matrix(game)
     player_expected_utilities = zeros(Float32, S1)
     @inbounds for column in axes(payoff_matrix(game), 2) #column strategies

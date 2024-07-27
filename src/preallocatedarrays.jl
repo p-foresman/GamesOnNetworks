@@ -1,3 +1,5 @@
+# const Players = Vector{Agent}
+
 """
     GamesOnNetworks.PreAllocatedArrays
 

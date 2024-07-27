@@ -4,27 +4,19 @@
 Type to define and store simulation parameters.
 """
 struct SimParams #NOTE: put periods_elapsed into SimParams (default 0) and allow user to define the matches_per_period (default 1?)
-    number_agents::Int
+    number_agents::Int #switch to 'population'
     memory_length::Int
     error::Float64
     matches_per_period::Int
-    tags::Union{Nothing, Tuple{Symbol, Symbol, Float64}}
-    # tag1::Symbol #could make tags a vararg to have any given number of tags #NOTE: REMOVE
-    # tag2::Symbol #NOTE: REMOVE
-    # tag1_proportion::Float64 #NOTE: REMOVE
-    random_seed::Int #probably don't need a random seed in every SimParams struct
+    random_seed::Int #probably don't need a random seed in every SimParams struct?
 
-    #all keyword arguments
-    # function SimParams(number_agents::Int, memory_length::Int, error::Float64; tag1::Symbol, tag2::Symbol, tag1_proportion::Float64, random_seed::Int)
-    #     matches_per_period = floor(number_agents / 2)
-    #     # sufficient_equity = (1 - error) * memory_length
-    #     return new(number_agents, memory_length, error, matches_per_period, tag1, tag2, tag1_proportion, random_seed)
-    # end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64; tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64; random_seed::Union{Nothing, Int} = nothing)
+        @assert number_agents >= 2 "'population' must be >= 2"
+        @assert memory_length >= 1 "'memory_length' must be positive"
+        @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
         if random_seed === nothing random_seed = 1234 end
         matches_per_period = floor(number_agents / 2) #NOTE: hard-coded for now
-        # sufficient_equity = (1 - error) * memory_length
-        return new(number_agents, memory_length, error, matches_per_period, tags, random_seed)
+        return new(number_agents, memory_length, error, matches_per_period, random_seed)
     end
     function SimParams()
         return new()
