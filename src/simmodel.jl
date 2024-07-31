@@ -10,9 +10,9 @@ L = length of Game payoff_matrix (S1*S2)
 N = number of agents/vertices
 E = number of relationships/edges
 """
-struct SimModel{S1, S2, L, N, E}
+struct SimModel{S1, S2, N, E}
     id::Union{Nothing, Int}
-    game::Game{S1, S2, L}
+    game::Game{S1, S2}
     sim_params::SimParams
     graph_params::GraphParams
     starting_condition::StartingCondition
@@ -20,13 +20,13 @@ struct SimModel{S1, S2, L, N, E}
     agent_graph::AgentGraph{N, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2, L}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
         agent_graph = initialize_graph!(graph_params, game, sim_params, starting_condition)
         N = nv(graph(agent_graph))
         E = ne(graph(agent_graph))
         initialize_stopping_condition!(stopping_condition, sim_params, agent_graph)
         pre_allocated_arrays = PreAllocatedArrays(payoff_matrix(game))
-        return new{S1, S2, L, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
+        return new{S1, S2, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
     function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
         return SimModel(game(model), sim_params(model), graph_params(model), starting_condition(model), stopping_condition(model), model_id(model))
