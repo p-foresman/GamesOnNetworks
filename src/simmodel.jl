@@ -418,7 +418,6 @@ Get the cached expected utilities for playing each strategy for both players.
 """
 expected_utilities(model::SimModel) = expected_utilities(pre_allocated_arrays(model))
 
-
 """
     expected_utilities(model::SimModel, player_number::Integer)
 
