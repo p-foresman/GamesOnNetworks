@@ -1,32 +1,31 @@
 """
-    SimModel{S1, S2, L, N, E}
+    SimModel{S1, S2, V, E}
 
 A type which defines the entire model for simulation. Contains Game, SimParams, GraphParams, StartingCondition,
 StoppingCondition, AgentGraph, and PreAllocatedArrays.
 
 S1 = row dimension of Game instance
 S2 = column dimension of Game instance
-L = length of Game payoff_matrix (S1*S2)
-N = number of agents/vertices
+V = number of agents/vertices
 E = number of relationships/edges
 """
-struct SimModel{S1, S2, N, E}
+struct SimModel{S1, S2, V, E}
     id::Union{Nothing, Int}
     game::Game{S1, S2}
     sim_params::SimParams
     graph_params::GraphParams
     starting_condition::StartingCondition
     stopping_condition::StoppingCondition
-    agent_graph::AgentGraph{N, E}
+    agent_graph::AgentGraph{V, E}
     pre_allocated_arrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2}, sim_params::SimParams, graph_params::GraphParams, starting_condition::StartingCondition, stopping_condition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2}
         agent_graph = initialize_graph!(graph_params, game, sim_params, starting_condition)
-        N = nv(graph(agent_graph))
+        V = nv(graph(agent_graph))
         E = ne(graph(agent_graph))
         initialize_stopping_condition!(stopping_condition, sim_params, agent_graph)
         pre_allocated_arrays = PreAllocatedArrays(payoff_matrix(game))
-        return new{S1, S2, N, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
+        return new{S1, S2, V, E}(id, game, sim_params, graph_params, starting_condition, stopping_condition, agent_graph, pre_allocated_arrays)
     end
     function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
         return SimModel(game(model), sim_params(model), graph_params(model), starting_condition(model), stopping_condition(model), model_id(model))
@@ -93,9 +92,9 @@ sim_params(model::SimModel) = getfield(model, :sim_params)
 """
     number_agents(sim_params::SimModel)
 
-Get the population size simulation parameter N of the model.
+Get the population size simulation parameter of the model.
 """
-number_agents(model::SimModel) = number_agents(sim_params(model))
+number_agents(model::SimModel{S1, S2, V, E}) where {S1, S2, V, E} = V #number_agents(sim_params(model)) #NOTE: do this change for all?
 
 """
     memory_length(sim_params::SimModel)
@@ -417,7 +416,6 @@ opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::
 Get the cached expected utilities for playing each strategy for both players.
 """
 expected_utilities(model::SimModel) = expected_utilities(pre_allocated_arrays(model))
-
 
 """
     expected_utilities(model::SimModel, player_number::Integer)
