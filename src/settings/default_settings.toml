@@ -1,0 +1,13 @@
+# settings config for GamesOnNetworks
+
+[database]
+default = "sqlite.default" #change this to point towards the database you'd like to use
+
+#sqlite database is provided by default
+[database.sqlite]
+
+[database.sqlite.default]
+path = "./GamesOnNetworks.sqlite"
+
+#configure your own postgres database here
+[database.postgres.my_postgres_db]

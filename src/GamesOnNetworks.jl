@@ -129,6 +129,7 @@ export
     multipleTimeSeriesPlot,
 
     #utility
+    load_settings,
     resetprocs,
 
     #graph constructors
@@ -190,6 +191,7 @@ include("simmodel.jl")
 include("sql.jl")
 include("database_api.jl")
 
+
 #simulation functions
 include("simulation_functions.jl")
 include("simulate.jl")
@@ -197,5 +199,8 @@ include("simulate.jl")
 #plotting functions
 include("analysis.jl")
 include("plotting.jl")
+
+#include default settings
+include("settings/settings.jl")
 
 end
