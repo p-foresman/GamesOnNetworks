@@ -19,14 +19,14 @@ end
 
 
 
-if isfile("./settings.toml")
+if isfile("./GamesOnNetworks.toml")
     #load the user's settings config
-    load_settings("./settings.toml")
+    load_settings("./GamesOnNetworks.toml")
 else
     #load the default settings which come with the package
     default_settings_path = joinpath(@__DIR__, "default_settings.toml")
     load_settings(default_settings_path)
 
     #give the user the default .toml file to customize if desired
-    cp(default_settings_path, "settings.toml")
+    cp(default_settings_path, "GamesOnNetworks.toml")
 end
