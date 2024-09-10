@@ -11,6 +11,7 @@ Get the default GamesOnNetworks.toml config file. CAUTION: setting overwrite=tru
 """
 function get_default_config(;overwrite::Bool=false)
     cp(default_config_path, user_config_path, force=overwrite)
+    chmod(user_config_path, 0o777) #make sure the file is writable
 end
 
 """
