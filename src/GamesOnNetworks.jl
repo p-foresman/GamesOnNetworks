@@ -129,7 +129,6 @@ export
     multipleTimeSeriesPlot,
 
     #utility
-    load_settings,
     resetprocs,
 
     #graph constructors
@@ -201,6 +200,6 @@ include("analysis.jl")
 include("plotting.jl")
 
 #include default settings
-include("settings/settings.jl")
+include("settings/config.jl")
 
 end
