@@ -24,8 +24,9 @@ if isfile("./settings.toml")
     load_settings("./settings.toml")
 else
     #load the default settings which come with the package
-    load_settings("src/settings/default_settings.toml")
+    default_settings_path = joinpath(@__DIR__, "src/settings/default_settings.toml")
+    load_settings(default_settings_path)
 
     #give the user the default .toml file to customize if desired
-    cp("src/settings/default_settings.toml", "settings.toml")
+    cp(default_settings_path, "settings.toml")
 end
