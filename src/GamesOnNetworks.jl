@@ -186,9 +186,18 @@ include("cross_type_functions.jl")
 #SimModel type and methods
 include("simmodel.jl")
 
-#sql functions and api to sql functions
-include("sql.jl")
-include("database_api.jl")
+
+
+
+
+#include default config and configure
+#note: database-related functions are included within this file
+include("settings/config.jl")
+configure()
+
+# #sql functions and api to sql functions
+# include("sql.jl")
+# include("database_api.jl")
 
 
 #simulation functions
@@ -198,8 +207,5 @@ include("simulate.jl")
 #plotting functions
 include("analysis.jl")
 include("plotting.jl")
-
-#include default settings
-include("settings/config.jl")
 
 end

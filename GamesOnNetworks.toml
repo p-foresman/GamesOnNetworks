@@ -20,3 +20,4 @@ path = "./GamesOnNetworks.sqlite"
 
 # configure your own postgres databases below. For example:
 # [database.postgres.my_postgres_db]
+[database.postgres.my]
