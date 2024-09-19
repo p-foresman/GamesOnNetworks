@@ -33,12 +33,14 @@ function Settings(settings::Dict{String, Any})
     if db_type == "sqlite"
         @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
         @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-        # db_insert = db_insert_game
-    else #db_type == "postgres"
-        # db_insert = db_insert_graph
+    elseif db_type == "postgres"
+        @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
+        @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
+        @assert haskey(db_info, "port") "database config table [database.postgres.$db_name] must contain 'port' variable"
+        @assert haskey(db_info, "password") "database config table [database.postgres.$db_name] must contain 'password' variable"
     end
 
-    return Settings(settings, db_type, db_name, db_info)#, db_insert)
+    return Settings(settings, db_type, db_name, db_info)
 end
 
 function Settings(config_path::String)
@@ -69,12 +71,12 @@ Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks pack
 function configure()
     if isfile(user_config_path)
         #load the user's settings config
-        println("configuring GamesOnNetworks using GamesOnNetworks.toml...")
+        println("configuring GamesOnNetworks using GamesOnNetworks.toml")
         GamesOnNetworks.SETTINGS = Settings(user_config_path)
 
     else
         #load the default config which come with the package
-        println("configuring using the default config...")
+        println("configuring using the default config")
         GamesOnNetworks.SETTINGS = Settings(default_config_path)
     
         #give the user the default .toml file to customize if desired
@@ -82,10 +84,13 @@ function configure()
     end
 
     #load database functions (different for different database types)
-    local_src_path = chop(@__DIR__, tail=8)
+    local_src_path = dirname(@__DIR__) #absolute path to src/
     include(joinpath(local_src_path, "database/$(SETTINGS.db_type)/database_api.jl"))
     include(joinpath(local_src_path, "database/$(SETTINGS.db_type)/sql.jl"))
 
     #initialize the database
+    println("initializing databse [$(SETTINGS.db_type).$(SETTINGS.db_name)]")
     Base.invokelatest(db_init)
+    println("database initialized")
+    println("configuration complete")
 end

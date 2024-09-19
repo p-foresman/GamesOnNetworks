@@ -146,6 +146,7 @@ using
     DataFrames,
     JSON3,
     SQLite,
+    LibPQ,
     UUIDs,
     Distributed,
     Plots,

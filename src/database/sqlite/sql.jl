@@ -1,6 +1,8 @@
+Database() = SQLite.DB("$db_filepath")
+
 function execute_init_full(db_filepath::String)
     #create or connect to database
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     #create 'games' table (currently only the "bargaining game" exists)
     SQLite.execute(db, "
@@ -135,7 +137,7 @@ end
 #this DB only needs tables for simulations and agents. These will be collected into the master DB later
 function execute_init_temp(db_filepath::String)
     #create or connect to database
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
 
     #create 'simulations' table which contains information specific to each simulation
@@ -196,7 +198,7 @@ end
 
 
 function execute_insert_game(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO games
@@ -226,7 +228,7 @@ function execute_insert_game(db_filepath::String, game_name::String, game::Strin
 end
 
 function execute_insert_graph(db_filepath::String, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     insert_string_columns = "graph, graph_type, graph_params, "
     insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
@@ -263,7 +265,7 @@ function execute_insert_graph(db_filepath::String, graph::String, graph_type::St
 end
 
 function execute_insert_sim_params(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_params
@@ -297,7 +299,7 @@ function execute_insert_sim_params(db_filepath::String, sim_params::SimParams, s
 end
 
 function execute_insert_starting_condition(db_filepath::String, starting_condition_name::String, starting_condition_str::String)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO starting_conditions
@@ -324,7 +326,7 @@ function execute_insert_starting_condition(db_filepath::String, starting_conditi
 end
 
 function execute_insert_stopping_condition(db_filepath::String, stopping_condition_name::String, stopping_condition_str::String)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO stopping_conditions
@@ -351,7 +353,7 @@ function execute_insert_stopping_condition(db_filepath::String, stopping_conditi
 end
 
 function execute_insert_sim_group(db_filepath::String, description::String)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT OR IGNORE INTO sim_groups
@@ -382,7 +384,7 @@ function execute_insert_simulation(db, sim_group_id::Union{Integer, Nothing}, pr
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
     prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
 
-    # db = SQLite.DB("$db_filepath")
+    # db = Database()
     # SQLite.busy_timeout(db, 3000)
     status = SQLite.execute(db, "
                                     INSERT INTO simulations
@@ -421,7 +423,7 @@ function execute_insert_simulation(db, sim_group_id::Union{Integer, Nothing}, pr
 end
 
 function execute_insert_agents(db, simulation_uuid::String, agent_list::Vector{String})
-    # db = SQLite.DB("$db_filepath")
+    # db = Database()
     # SQLite.busy_timeout(db, 3000)
     values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
@@ -459,7 +461,7 @@ function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id
     agent_values_string = rstrip(agent_values_string, [' ', ','])
 
     #open DB connection
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
 
     #first insert simulation with simulation_uuid
@@ -512,7 +514,7 @@ end
 
 
 function execute_query_games(db_filepath::String, game_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -525,7 +527,7 @@ function execute_query_games(db_filepath::String, game_id::Integer)
 end
 
 function execute_query_graphs(db_filepath::String, graph_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -538,7 +540,7 @@ function execute_query_graphs(db_filepath::String, graph_id::Integer)
 end
 
 function execute_query_sim_params(db_filepath::String, sim_params_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -551,7 +553,7 @@ function execute_query_sim_params(db_filepath::String, sim_params_id::Integer)
 end
 
 function execute_query_starting_conditions(db_filepath::String, starting_condition_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -564,7 +566,7 @@ function execute_query_starting_conditions(db_filepath::String, starting_conditi
 end
 
 function execute_query_stopping_conditions(db_filepath::String, stopping_condition_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -577,7 +579,7 @@ function execute_query_stopping_conditions(db_filepath::String, stopping_conditi
 end
 
 function execute_query_sim_groups(db_filepath::String, sim_group_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -590,7 +592,7 @@ function execute_query_sim_groups(db_filepath::String, sim_group_id::Integer)
 end
 
 function execute_query_simulations(db_filepath::String, simulation_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -603,7 +605,7 @@ function execute_query_simulations(db_filepath::String, simulation_id::Integer)
 end
 
 function execute_query_agents(db_filepath::String, simulation_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -617,7 +619,7 @@ function execute_query_agents(db_filepath::String, simulation_id::Integer)
 end
 
 function execute_query_simulations_for_restore(db_filepath::String, simulation_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT
@@ -647,7 +649,7 @@ function execute_query_simulations_for_restore(db_filepath::String, simulation_i
 end
 
 function execute_query_agents_for_restore(db_filepath::String, simulation_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT agent
@@ -663,7 +665,7 @@ end
 
 #NOTE: FIX
 # function querySimulationsByGroup(db_filepath::String, sim_group_id::Int)
-#     db = SQLite.DB("$db_filepath")
+#     db = Database()
 #     SQLite.busy_timeout(db, 3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT
@@ -690,7 +692,7 @@ end
 
 #this function allows for RAM space savings during large iterative simulations
 function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT
@@ -705,7 +707,7 @@ function querySimulationIDsByGroup(db_filepath::String, sim_group_id::Int)
 end
 
 function execute_delete_simulation(db_filepath::String, simulation_id::Int)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     SQLite.execute(db, "PRAGMA foreign_keys = ON;") #turn on foreign key support to allow cascading deletes
     status = SQLite.execute(db, "DELETE FROM simulations WHERE simulation_id = $simulation_id;")
@@ -753,7 +755,7 @@ function querySimulationsForBoxPlot(db_filepath::String; game_id::Integer, numbe
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
     
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -820,7 +822,7 @@ function querySimulationsForMemoryLengthLinePlot(db_filepath::String; game_id::I
     end
 
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -905,7 +907,7 @@ function querySimulationsForNumberAgentsLinePlot(db_filepath::String; game_id::I
     end
 
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -997,7 +999,7 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_filepath::Stri
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -1093,7 +1095,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_filepath::
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -1198,7 +1200,7 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
 
     println(stopping_condition_ids_sql)
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -1303,7 +1305,7 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
 
     println(stopping_condition_ids_sql)
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -1377,7 +1379,7 @@ end
 
 
 function querySimulationsForTimeSeries(db_filepath::String;sim_group_id::Integer)
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
 
     #query the simulation info (only need one row since each entry in the timeseries group will have the same info)
@@ -1468,7 +1470,7 @@ function query_simulations_for_noise_structure_heatmap(db_filepath::String;
         graph_params_sql *= ")"
     end
     
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (
@@ -1572,7 +1574,7 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_filepath
     graph_params_sql *= ")"
 
 
-    db = SQLite.DB("$db_filepath")
+    db = Database()
     SQLite.busy_timeout(db, 3000)
     query = DBInterface.execute(db, "
                                         SELECT * FROM (

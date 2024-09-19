@@ -1,12 +1,31 @@
-function execute_init_full(db_filepath::String)
+function add_test_table()
+    db = Database()
+    LibPQ.execute(db, "create table if not exists test (id integer primary key generated always as identity, val integer);")
+    LibPQ.close(db)
+end
+
+function add_test_val(val::Int)
+    db = Database()
+    LibPQ.execute(db, "insert into test (val) values ($val);")
+    LibPQ.close(db)
+end
+
+
+Database() = LibPQ.Connection("dbname=$(SETTINGS.db_name)
+                            user=$(SETTINGS.db_info["user"])
+                            host=$(SETTINGS.db_info["host"])
+                            port=$(SETTINGS.db_info["port"])
+                            password=$(SETTINGS.db_info["password"])")
+
+function execute_init_full()
     #create or connect to database
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+    db = Database()
+
     #create 'games' table (currently only the "bargaining game" exists)
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS games
                             (
-                                game_id INTEGER PRIMARY KEY,
+                                game_id integer primary key generated always as identity,
                                 game_name TEXT NOT NULL,
                                 game TEXT NOT NULL,
                                 payoff_matrix_size TEXT NOT NULL,
@@ -15,10 +34,10 @@ function execute_init_full(db_filepath::String)
                     ")
 
     #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS graphs
                             (
-                                graph_id INTEGER PRIMARY KEY,
+                                graph_id integer primary key generated always as identity,
                                 graph TEXT NOT NULL,
                                 graph_type TEXT NOT NULL,
                                 graph_params TEXT NOT NULL,
@@ -33,34 +52,33 @@ function execute_init_full(db_filepath::String)
                     ")
 
     #create 'sim_params' table which contains information specific to each simulation
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS sim_params
                             (
-                                sim_params_id INTEGER PRIMARY KEY,
+                                sim_params_id integer primary key generated always as identity,
                                 number_agents INTEGER NOT NULL,
                                 memory_length INTEGER NOT NULL,
                                 error REAL NOT NULL,
                                 sim_params TEXT NOT NULL,
                                 use_seed BOOLEAN NOT NULL,
-                                UNIQUE(sim_params, use_seed),
-                                CHECK (use_seed in (0, 1))
+                                UNIQUE(sim_params, use_seed)
                             );
                     ")
 
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS starting_conditions
                             (
-                                starting_condition_id INTEGER PRIMARY KEY,
+                                starting_condition_id integer primary key generated always as identity,
                                 name TEXT NOT NULL,
                                 starting_condition TEXT NOT NULL,
                                 UNIQUE(name, starting_condition)
                             );
                     ")
 
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS stopping_conditions
                             (
-                                stopping_condition_id INTEGER PRIMARY KEY,
+                                stopping_condition_id integer primary key generated always as identity,
                                 name TEXT NOT NULL,
                                 stopping_condition TEXT NOT NULL,
                                 UNIQUE(name, stopping_condition)
@@ -68,20 +86,20 @@ function execute_init_full(db_filepath::String)
                     ")
 
     #create 'sim_groups' table to group simulations and give the groups an easy-access description (version control is handled with the prev_simulation_id column in the individual simulation saves)
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS sim_groups
                             (
-                                sim_group_id INTEGER PRIMARY KEY,
+                                sim_group_id integer primary key generated always as identity,
                                 description TEXT DEFAULT NULL,
                                 UNIQUE(description)
                             );
                     ")
 
     #create 'simulations' table which contains information specific to each simulation
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS simulations
                             (
-                                simulation_id INTEGER PRIMARY KEY,
+                                simulation_id integer primary key generated always as identity,
                                 simulation_uuid TEXT NOT NULL,
                                 sim_group_id INTEGER DEFAULT NULL,
                                 prev_simulation_uuid TEXT DEFAULT NULL,
@@ -118,10 +136,10 @@ function execute_init_full(db_filepath::String)
                     ")
 
     #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
-    SQLite.execute(db, "
+    LibPQ.execute(db, "
                             CREATE TABLE IF NOT EXISTS agents
                             (
-                                agent_id INTEGER PRIMARY KEY,
+                                agent_id integer primary key generated always as identity,
                                 simulation_uuid TEXT NOT NULL,
                                 agent TEXT NOT NULL,
                                 FOREIGN KEY (simulation_uuid)
@@ -129,7 +147,7 @@ function execute_init_full(db_filepath::String)
                                     ON DELETE CASCADE
                             );
                     ")
-    SQLite.close(db)
+    LibPQ.close(db)
 end
 
 #this DB only needs tables for simulations and agents. These will be collected into the master DB later
@@ -195,11 +213,10 @@ end
 
 
 
-function execute_insert_game(db_filepath::String, game_name::String, game::String, payoff_matrix_size::String)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO games
+function execute_insert_game(game_name::String, game::String, payoff_matrix_size::String)
+    db = Database()
+    result = LibPQ.execute(db, "
+                                    INSERT INTO games
                                     (
                                         game_name,
                                         game,
@@ -210,24 +227,26 @@ function execute_insert_game(db_filepath::String, game_name::String, game::Strin
                                         '$game_name',
                                         '$game',
                                         '$payoff_matrix_size'
-                                    );
+                                    )
+                                    ON CONFLICT (game_name, game) DO UPDATE
+                                        SET game_name = games.game_name
+                                    RETURNING game_id;
                             ")
-    query = DBInterface.execute(db, "
-                                        SELECT game_id
-                                        FROM games
-                                        WHERE game_name = '$game_name'
-                                        AND game = '$game';
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+    # query = LibPQ.execute(db, "
+    #                                     SELECT game_id
+    #                                     FROM games
+    #                                     WHERE game_name = '$game_name'
+    #                                     AND game = '$game';
+    #                             ")
+    df = DataFrame(result)
+    println(df)
     insert_row = df[1, :game_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: games]... INSERT STATUS: [$status] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): games]... INSERT STATUS: [OK] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_graph(db_filepath::String, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+function execute_insert_graph(graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
+    db = Database()
     insert_string_columns = "graph, graph_type, graph_params, "
     insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
     for (param, value) in db_graph_params_dict
@@ -239,34 +258,35 @@ function execute_insert_graph(db_filepath::String, graph::String, graph_type::St
     insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
     insert_string_values = rstrip(insert_string_values, [' ', ','])
 
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO graphs
+    result = LibPQ.execute(db, "
+                                    INSERT INTO graphs
                                     (
                                         $insert_string_columns
                                     )
                                     VALUES
                                     (
                                         $insert_string_values
-                                    );
+                                    )
+                                    ON CONFLICT (graph, graph_params) DO UPDATE
+                                        SET graph_type = graphs.graph_type
+                                    RETURNING graph_id;
                             ")
-    query = DBInterface.execute(db, "
-                                        SELECT graph_id
-                                        FROM graphs
-                                        WHERE graph = '$graph'
-                                        AND graph_params = '$graph_params_str';
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+    # query = LibPQ.execute(db, "
+    #                                     SELECT graph_id
+    #                                     FROM graphs
+    #                                     WHERE graph = '$graph'
+    #                                     AND graph_params = '$graph_params_str';
+    #                             ")
+    df = DataFrame(result)
     insert_row = df[1, :graph_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs]... INSERT STATUS: [$status] GRAPH_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): graphs]... INSERT STATUS: [OK] GRAPH_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_sim_params(db_filepath::String, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO sim_params
+function execute_insert_sim_params(sim_params::SimParams, sim_params_str::String, use_seed::String)
+    db = Database()
+    result = LibPQ.execute(db, "
+                                    INSERT INTO sim_params
                                     (
                                         number_agents,
                                         memory_length,
@@ -280,27 +300,28 @@ function execute_insert_sim_params(db_filepath::String, sim_params::SimParams, s
                                         $(sim_params.memory_length),
                                         $(sim_params.error),
                                         '$sim_params_str',
-                                        $use_seed
-                                );
+                                        '$use_seed'
+                                    )
+                                    ON CONFLICT (sim_params, use_seed) DO UPDATE
+                                        SET use_seed = sim_params.use_seed
+                                    RETURNING sim_params_id;
                             ")
-    query = DBInterface.execute(db, "
-                                        SELECT sim_params_id
-                                        FROM sim_params
-                                        WHERE sim_params = '$sim_params_str'
-                                        AND use_seed = $use_seed;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+    # query = DBInterface.execute(db, "
+    #                                     SELECT sim_params_id
+    #                                     FROM sim_params
+    #                                     WHERE sim_params = '$sim_params_str'
+    #                                     AND use_seed = $use_seed;
+    #                             ")
+    df = DataFrame(result) #must create a DataFrame to acces query data
     insert_row = df[1, :sim_params_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_params]... INSERT STATUS: [$status] SIM_PARAMS_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): sim_params]... INSERT STATUS: [OK] SIM_PARAMS_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_starting_condition(db_filepath::String, starting_condition_name::String, starting_condition_str::String)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO starting_conditions
+function execute_insert_starting_condition(starting_condition_name::String, starting_condition_str::String)
+    db = Database()
+    result = LibPQ.execute(db, "
+                                    INSERT INTO starting_conditions
                                     (
                                         name,
                                         starting_condition
@@ -309,25 +330,26 @@ function execute_insert_starting_condition(db_filepath::String, starting_conditi
                                     (
                                         '$starting_condition_name',
                                         '$(starting_condition_str)'
-                                );
+                                    )
+                                    ON CONFLICT (name, starting_condition) DO UPDATE
+                                        SET name = starting_conditions.name
+                                    RETURNING starting_condition_id;
                             ")
-    query = DBInterface.execute(db, "
-                                        SELECT starting_condition_id
-                                        FROM starting_conditions
-                                        WHERE starting_condition = '$starting_condition_str';
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+    # query = DBInterface.execute(db, "
+    #                                     SELECT starting_condition_id
+    #                                     FROM starting_conditions
+    #                                     WHERE starting_condition = '$starting_condition_str';
+    #                             ")
+    df = DataFrame(result) #must create a DataFrame to acces query data
     insert_row = df[1, :starting_condition_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: starting_conditions]... INSERT STATUS: [$status] STARTING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): starting_conditions]... INSERT STATUS: [OK] STARTING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_stopping_condition(db_filepath::String, stopping_condition_name::String, stopping_condition_str::String)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO stopping_conditions
+function execute_insert_stopping_condition(stopping_condition_name::String, stopping_condition_str::String)
+    db = Database()
+    result = LibPQ.execute(db, "
+                                    INSERT INTO stopping_conditions
                                     (
                                         name,
                                         stopping_condition
@@ -336,120 +358,123 @@ function execute_insert_stopping_condition(db_filepath::String, stopping_conditi
                                     (
                                         '$stopping_condition_name',
                                         '$(stopping_condition_str)'
-                                );
+                                    )
+                                    ON CONFLICT (name, stopping_condition) DO UPDATE
+                                        SET name = stopping_conditions.name
+                                    RETURNING stopping_condition_id;
                             ")
-    query = DBInterface.execute(db, "
-                                        SELECT stopping_condition_id
-                                        FROM stopping_conditions
-                                        WHERE stopping_condition = '$stopping_condition_str';
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+    # query = DBInterface.execute(db, "
+    #                                     SELECT stopping_condition_id
+    #                                     FROM stopping_conditions
+    #                                     WHERE stopping_condition = '$stopping_condition_str';
+    #                             ")
+    df = DataFrame(result) #must create a DataFrame to acces query data
     insert_row = df[1, :stopping_condition_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: stopping_conditions]... INSERT STATUS: [$status] STOPPING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): stopping_conditions]... INSERT STATUS: [OK] STOPPING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_sim_group(db_filepath::String, description::String)
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT OR IGNORE INTO sim_groups
+function execute_insert_sim_group(description::String)
+    db = Database()
+    result = LibPQ.execute(db, "
+                                    INSERT INTO sim_groups
                                     (
                                         description
                                     )
                                     VALUES
                                     (
                                         '$description'
-                                );
+                                    )
+                                    ON CONFLICT (description) DO UPDATE
+                                        SET description = sim_groups.description
+                                    RETURNING sim_group_id;
                             ")
     
-    query = DBInterface.execute(db, "
-                                        SELECT sim_group_id
-                                        FROM sim_groups
-                                        WHERE description = '$description'
-                                ")
-    df = DataFrame(query)
+    # query = DBInterface.execute(db, "
+    #                                     SELECT sim_group_id
+    #                                     FROM sim_groups
+    #                                     WHERE description = '$description'
+    #                             ")
+    df = DataFrame(result)
     insert_row = df[1, :sim_group_id]
-    SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_groups]... INSERT STATUS: [$status] SIM_GROUP_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+    LibPQ.close(db)
+    return (status_message = "PostgreSQL [$(SETTINGS.db_name): sim_groups]... INSERT STATUS: [OK] SIM_GROUP_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
-function execute_insert_simulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
-    uuid = "$(uuid4())"
+# function execute_insert_simulation(db, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+#     uuid = "$(uuid4())"
     
-    sim_group_id === nothing ? sim_group_id = "NULL" : nothing
-    prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
+#     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
+#     prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
 
-    # db = SQLite.DB("$db_filepath")
-    # SQLite.busy_timeout(db, 3000)
-    status = SQLite.execute(db, "
-                                    INSERT INTO simulations
-                                    (
-                                        simulation_uuid,
-                                        sim_group_id,
-                                        prev_simulation_uuid,
-                                        game_id,
-                                        graph_id,
-                                        sim_params_id,
-                                        starting_condition_id,
-                                        stopping_condition_id,
-                                        graph_adj_matrix,
-                                        rng_state,
-                                        periods_elapsed
-                                    )
-                                    VALUES
-                                    (
-                                        '$uuid',
-                                        $sim_group_id,
-                                        '$prev_simulation_uuid',
-                                        $(db_id_tuple.game_id),
-                                        $(db_id_tuple.graph_id),
-                                        $(db_id_tuple.sim_params_id),
-                                        $(db_id_tuple.starting_condition_id),
-                                        $(db_id_tuple.stopping_condition_id),
-                                        '$graph_adj_matrix_str',
-                                        '$rng_state',
-                                        $periods_elapsed
-                                );
-                            ")
-    insert_row = SQLite.last_insert_rowid(db)
-    # SQLite.close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations]... INSERT STATUS: [$status] SIMULATION_ID: [$insert_row]", insert_row_id = insert_row, uuid = uuid)
-    return tuple_to_return
-end
+#     # db = SQLite.DB("$db_filepath")
+#     # SQLite.busy_timeout(db, 3000)
+#     status = SQLite.execute(db, "
+#                                     INSERT INTO simulations
+#                                     (
+#                                         simulation_uuid,
+#                                         sim_group_id,
+#                                         prev_simulation_uuid,
+#                                         game_id,
+#                                         graph_id,
+#                                         sim_params_id,
+#                                         starting_condition_id,
+#                                         stopping_condition_id,
+#                                         graph_adj_matrix,
+#                                         rng_state,
+#                                         periods_elapsed
+#                                     )
+#                                     VALUES
+#                                     (
+#                                         '$uuid',
+#                                         $sim_group_id,
+#                                         '$prev_simulation_uuid',
+#                                         $(db_id_tuple.game_id),
+#                                         $(db_id_tuple.graph_id),
+#                                         $(db_id_tuple.sim_params_id),
+#                                         $(db_id_tuple.starting_condition_id),
+#                                         $(db_id_tuple.stopping_condition_id),
+#                                         '$graph_adj_matrix_str',
+#                                         '$rng_state',
+#                                         $periods_elapsed
+#                                 );
+#                             ")
+#     insert_row = SQLite.last_insert_rowid(db)
+#     # SQLite.close(db)
+#     tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations]... INSERT STATUS: [$status] SIMULATION_ID: [$insert_row]", insert_row_id = insert_row, uuid = uuid)
+#     return tuple_to_return
+# end
 
-function execute_insert_agents(db, simulation_uuid::String, agent_list::Vector{String})
-    # db = SQLite.DB("$db_filepath")
-    # SQLite.busy_timeout(db, 3000)
-    values_string = "" #construct a values string to insert multiple agents into db table
-    for agent in agent_list
-        values_string *= "('$simulation_uuid', '$agent'), "
-    end
-    values_string = rstrip(values_string, [' ', ','])
-    #println(values_string)
+# function execute_insert_agents(db, simulation_uuid::String, agent_list::Vector{String})
+#     # db = SQLite.DB("$db_filepath")
+#     # SQLite.busy_timeout(db, 3000)
+#     values_string = "" #construct a values string to insert multiple agents into db table
+#     for agent in agent_list
+#         values_string *= "('$simulation_uuid', '$agent'), "
+#     end
+#     values_string = rstrip(values_string, [' ', ','])
+#     #println(values_string)
      
-    status = SQLite.execute(db, "
-                                    INSERT INTO agents
-                                    (
-                                        simulation_uuid,
-                                        agent
-                                    )
-                                    VALUES
-                                        $values_string;
-                            ")
-    # SQLite.close(db)
-    return (status_message = "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]")
-end
+#     status = SQLite.execute(db, "
+#                                     INSERT INTO agents
+#                                     (
+#                                         simulation_uuid,
+#                                         agent
+#                                     )
+#                                     VALUES
+#                                         $values_string;
+#                             ")
+#     # SQLite.close(db)
+#     return (status_message = "SQLite [SimulationSaves: agents]... INSERT STATUS: [$status]")
+# end
 
 
-function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function execute_insert_simulation_with_agents(sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
     simulation_uuid = "$(uuid4())"
     
     #prepare simulation SQL
     sim_group_id === nothing ? sim_group_id = "NULL" : nothing
-    prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
+    prev_simulation_uuid = prev_simulation_uuid === nothing ?  "null" : "'$prev_simulation_uuid'"
 
     #prepare agents SQL
     agent_values_string = "" #construct a values string to insert multiple agents into db table
@@ -459,11 +484,10 @@ function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id
     agent_values_string = rstrip(agent_values_string, [' ', ','])
 
     #open DB connection
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
+    db = Database()
 
     #first insert simulation with simulation_uuid
-    simulation_status = SQLite.execute(db, "
+    result = LibPQ.execute(db, "
                                     INSERT INTO simulations
                                     (
                                         simulation_uuid,
@@ -482,7 +506,7 @@ function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id
                                     (
                                         '$simulation_uuid',
                                         $sim_group_id,
-                                        '$prev_simulation_uuid',
+                                        $prev_simulation_uuid,
                                         $(db_id_tuple.game_id),
                                         $(db_id_tuple.graph_id),
                                         $(db_id_tuple.sim_params_id),
@@ -491,11 +515,8 @@ function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id
                                         '$graph_adj_matrix_str',
                                         '$rng_state',
                                         $periods_elapsed
-                                );
-                            ")
+                                    );
 
-    #then insert agents with FK of simulation_uuid 
-    agents_status = SQLite.execute(db, "
                                     INSERT INTO agents
                                     (
                                         simulation_uuid,
@@ -504,10 +525,10 @@ function execute_insert_simulation_with_agents(db_filepath::String, sim_group_id
                                     VALUES
                                         $agent_values_string;
                             ")
-    SQLite.close(db)
 
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations & agents]... SIMULATION INSERT STATUS: [$simulation_status] AGENTS INSERT STATUS: [$agents_status] SIMULATION_UUID: [$simulation_uuid]", simulation_uuid = simulation_uuid)
-    return tuple_to_return
+    LibPQ.close(db)
+
+    return (status_message = "PostgreSQL [SimulationSaves: simulations & agents]... SIMULATION INSERT STATUS: [OK] AGENTS INSERT STATUS: [OK] SIMULATION_UUID: [$simulation_uuid]", simulation_uuid = simulation_uuid)
 end
 
 

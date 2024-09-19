@@ -1,7 +1,13 @@
 # settings config for GamesOnNetworks
 
+use_database = true
+use_distributed = true
+use_seed = false
+
+
 [database]
-default = "sqlite.default" #change this to point towards the database you'd like to use
+use = "true"
+default = "postgres.test" #change this to point towards the database you'd like to use
 
 
 # sqlite database is provided by default
@@ -20,4 +26,8 @@ path = "./GamesOnNetworks.sqlite"
 
 # configure your own postgres databases below. For example:
 # [database.postgres.my_postgres_db]
-[database.postgres.my]
+[database.postgres.test]
+user = "postgres"
+host = "localhost"
+port = "5432"
+password = "root"
