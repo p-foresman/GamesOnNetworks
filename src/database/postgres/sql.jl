@@ -1,25 +1,30 @@
 function add_test_table()
-    db = Database()
+    db = DBConnection()
     LibPQ.execute(db, "create table if not exists test (id integer primary key generated always as identity, val integer);")
     LibPQ.close(db)
 end
 
 function add_test_val(val::Int)
-    db = Database()
+    db = DBConnection()
     LibPQ.execute(db, "insert into test (val) values ($val);")
     LibPQ.close(db)
 end
 
 
-Database() = LibPQ.Connection("dbname=$(SETTINGS.db_name)
-                            user=$(SETTINGS.db_info["user"])
-                            host=$(SETTINGS.db_info["host"])
-                            port=$(SETTINGS.db_info["port"])
-                            password=$(SETTINGS.db_info["password"])")
+
+DBConnection() = DBConnection(SETTINGS.database)
+
+DBConnection(db_info::PostgresDB) = LibPQ.Connection("dbname=$(db_info.name)
+                                                user=$(db_info.user)
+                                                host=$(db_info.host)
+                                                port=$(db_info.port)
+                                                password=$(db_info.password)")
+                                                
+DBConnection(db_info::SQLiteDB) = SQLite.DB(db_info.filepath)
 
 function execute_init_full()
     #create or connect to database
-    db = Database()
+    db = DBConnection()
 
     #create 'games' table (currently only the "bargaining game" exists)
     LibPQ.execute(db, "
@@ -214,7 +219,7 @@ end
 
 
 function execute_insert_game(game_name::String, game::String, payoff_matrix_size::String)
-    db = Database()
+    db = DBConnection()
     result = LibPQ.execute(db, "
                                     INSERT INTO games
                                     (
@@ -246,7 +251,7 @@ function execute_insert_game(game_name::String, game::String, payoff_matrix_size
 end
 
 function execute_insert_graph(graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = Database()
+    db = DBConnection()
     insert_string_columns = "graph, graph_type, graph_params, "
     insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
     for (param, value) in db_graph_params_dict
@@ -284,7 +289,7 @@ function execute_insert_graph(graph::String, graph_type::String, graph_params_st
 end
 
 function execute_insert_sim_params(sim_params::SimParams, sim_params_str::String, use_seed::String)
-    db = Database()
+    db = DBConnection()
     result = LibPQ.execute(db, "
                                     INSERT INTO sim_params
                                     (
@@ -319,7 +324,7 @@ function execute_insert_sim_params(sim_params::SimParams, sim_params_str::String
 end
 
 function execute_insert_starting_condition(starting_condition_name::String, starting_condition_str::String)
-    db = Database()
+    db = DBConnection()
     result = LibPQ.execute(db, "
                                     INSERT INTO starting_conditions
                                     (
@@ -347,7 +352,7 @@ function execute_insert_starting_condition(starting_condition_name::String, star
 end
 
 function execute_insert_stopping_condition(stopping_condition_name::String, stopping_condition_str::String)
-    db = Database()
+    db = DBConnection()
     result = LibPQ.execute(db, "
                                     INSERT INTO stopping_conditions
                                     (
@@ -375,7 +380,7 @@ function execute_insert_stopping_condition(stopping_condition_name::String, stop
 end
 
 function execute_insert_sim_group(description::String)
-    db = Database()
+    db = DBConnection()
     result = LibPQ.execute(db, "
                                     INSERT INTO sim_groups
                                     (
@@ -484,7 +489,7 @@ function execute_insert_simulation_with_agents(sim_group_id::Union{Integer, Noth
     agent_values_string = rstrip(agent_values_string, [' ', ','])
 
     #open DB connection
-    db = Database()
+    db = DBConnection()
 
     #first insert simulation with simulation_uuid
     result = LibPQ.execute(db, "

@@ -4,43 +4,80 @@ import Pkg
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
 const user_config_path = "GamesOnNetworks.toml"
 
+abstract type Database end
+
+struct PostgresDB <: Database
+    name::String
+    user::String
+    host::String
+    port::String
+    password::String
+end
+
+struct SQLiteDB <: Database
+    name::String
+    filepath::String
+end
+
+db_type(database::SQLiteDB) = "sqlite"
+db_type(database::PostgresDB) = "postgres"
 
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
-    db_type::String
-    db_name::String
-    db_info::Dict{String, String} #Base.ImmutableDict{String, String}
+    use_seed::Bool
+    use_distributed::Bool
+    database::Union{Database, Nothing} #if nothing, not using database
+    # db_type::String
+    # db_name::String
+    # db_info::Dict{String, String} #Base.ImmutableDict{String, String}
     # db_insert::Function
 end
 
 function Settings(settings::Dict{String, Any})
-    @assert haskey(settings, "database") "config file must have a [database] table"
-    @assert settings["database"] isa Dict "[database] must be a table (Dict)"
-    @assert haskey(settings["database"], "default") "config file must have a 'default' database path in the [database] table using dot notation of the form \"db_type.db_name\""
-    @assert settings["database"]["default"] isa String "the denoted default database must be a String"
+    @assert haskey(settings, "use_seed") "config file must have a 'use_seed' variable"
+    use_seed = settings["use_seed"]
+    @assert use_seed isa Bool "'use_seed' value must be a Bool"
 
-    parsed_db_key_path = split(settings["database"]["default"], ".")
-    @assert length(parsed_db_key_path) == 2 "'default' database path must be of the form \"db_type.db_name\""
 
-    db_type::String, db_name::String = parsed_db_key_path
-    @assert db_type == "sqlite" || db_type == "postgres" "'db_type in the 'default' database path (of the form \"db_type.db_name\") must be 'sqlite' or 'postgres'"
-    @assert haskey(settings["database"], db_type) "config file does not contain table [database.$db_type]"
-    @assert settings["database"][db_type] isa Dict "[database.db_type] must be a table (Dict)"
-    @assert haskey(settings["database"][db_type], db_name) "config file does not contain table [database.$db_type.$db_name]"
-    @assert settings["database"][db_type][db_name] isa Dict "[database.db_type.db_name] must be a table (Dict)"
+    @assert haskey(settings, "use_distributed") "config file must have a 'use_distributed' variable"
+    use_distributed = settings["use_distributed"]
+    @assert use_distributed isa Bool "'use_distributed' value must be a Bool"
 
-    db_info = settings["database"][db_type][db_name]
-    if db_type == "sqlite"
-        @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
-        @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-    elseif db_type == "postgres"
-        @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
-        @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
-        @assert haskey(db_info, "port") "database config table [database.postgres.$db_name] must contain 'port' variable"
-        @assert haskey(db_info, "password") "database config table [database.postgres.$db_name] must contain 'password' variable"
+    @assert haskey(settings, "databases") "config file must have a [databases] table"
+    databases = settings["databases"]
+    database = nothing #selected database
+    @assert databases isa Dict "[databases] must be a table (Dict)"
+    @assert haskey(databases, "selected") "config file must have a 'selected' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string if not using a database"
+    selected_db = databases["selected"]
+    @assert selected_db isa String "the denoted default database must be a String (can be an empty string if not using a database)"
+
+    #if selected_db exists, must validate selected database. Otherwise, not using database
+    if !isempty(selected_db)
+        parsed_db_key_path = split(selected_db, ".")
+        @assert length(parsed_db_key_path) == 2 "'selected' database path must be of the form \"db_type.db_name\""
+    
+        db_type::String, db_name::String = parsed_db_key_path
+        @assert db_type == "sqlite" || db_type == "postgres" "'db_type in the 'selected' database path (of the form \"db_type.db_name\") must be 'sqlite' or 'postgres'"
+        @assert haskey(databases, db_type) "config file does not contain table [databases.$db_type]"
+        @assert databases[db_type] isa Dict "[databases.$db_type] must be a table (Dict)"
+        @assert haskey(databases[db_type], db_name) "config file does not contain table [databases.$db_type.$db_name]"
+        @assert databases[db_type][db_name] isa Dict "[databases.$db_type.$db_name] must be a table (Dict)"
+    
+        db_info = databases[db_type][db_name]
+        if db_type == "sqlite"
+            @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
+            @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
+            database = SQLiteDB(db_name, db_info["path"])
+        elseif db_type == "postgres"
+            @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
+            @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
+            @assert haskey(db_info, "port") "database config table [database.postgres.$db_name] must contain 'port' variable"
+            @assert haskey(db_info, "password") "database config table [database.postgres.$db_name] must contain 'password' variable"
+            database = PostgresDB(db_name, db_info["user"], db_info["host"], db_info["port"], db_info["password"])
+        end
     end
 
-    return Settings(settings, db_type, db_name, db_info)
+    return Settings(settings, use_seed, use_distributed, database)
 end
 
 function Settings(config_path::String)
@@ -83,13 +120,16 @@ function configure()
         get_default_config()
     end
 
+    #NOTE: THE FOLLOWING SHOULD ONLY RUN IF DATABASE IS NOT NOTHING
+
     #load database functions (different for different database types)
     local_src_path = dirname(@__DIR__) #absolute path to src/
-    include(joinpath(local_src_path, "database/$(SETTINGS.db_type)/database_api.jl"))
-    include(joinpath(local_src_path, "database/$(SETTINGS.db_type)/sql.jl"))
+
+    include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/database_api.jl"))
+    include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/sql.jl"))
 
     #initialize the database
-    println("initializing databse [$(SETTINGS.db_type).$(SETTINGS.db_name)]")
+    println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
     Base.invokelatest(db_init)
     println("database initialized")
     println("configuration complete")
