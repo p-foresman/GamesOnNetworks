@@ -6,7 +6,7 @@ use_seed = false
 
 
 [databases]
-selected = ""
+selected = "postgres.test"
 # use_store_period = false
 # store_period = 0
 

@@ -163,7 +163,7 @@ function execute_insert_game(db_info::PostgresDB, game_name::String, game::Strin
     println(df)
     insert_row = df[1, :game_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): games]... INSERT STATUS: [OK] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): games]... INSERT STATUS: [OK] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 function execute_insert_graph(db_info::PostgresDB, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
@@ -195,7 +195,7 @@ function execute_insert_graph(db_info::PostgresDB, graph::String, graph_type::St
     df = DataFrame(result)
     insert_row = df[1, :graph_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): graphs]... INSERT STATUS: [OK] GRAPH_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): graphs]... INSERT STATUS: [OK] GRAPH_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 function execute_insert_sim_params(db_info::PostgresDB, sim_params::SimParams, sim_params_str::String, use_seed::String)
@@ -224,7 +224,7 @@ function execute_insert_sim_params(db_info::PostgresDB, sim_params::SimParams, s
     df = DataFrame(result)
     insert_row = df[1, :sim_params_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): sim_params]... INSERT STATUS: [OK] SIM_PARAMS_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): sim_params]... INSERT STATUS: [OK] SIM_PARAMS_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 function execute_insert_starting_condition(db_info::PostgresDB, starting_condition_name::String, starting_condition_str::String)
@@ -247,7 +247,7 @@ function execute_insert_starting_condition(db_info::PostgresDB, starting_conditi
     df = DataFrame(result)
     insert_row = df[1, :starting_condition_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): starting_conditions]... INSERT STATUS: [OK] STARTING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): starting_conditions]... INSERT STATUS: [OK] STARTING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 function execute_insert_stopping_condition(db_info::PostgresDB, stopping_condition_name::String, stopping_condition_str::String)
@@ -270,7 +270,7 @@ function execute_insert_stopping_condition(db_info::PostgresDB, stopping_conditi
     df = DataFrame(result)
     insert_row = df[1, :stopping_condition_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): stopping_conditions]... INSERT STATUS: [OK] STOPPING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): stopping_conditions]... INSERT STATUS: [OK] STOPPING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 function execute_insert_sim_group(db_info::PostgresDB, description::String)
@@ -291,7 +291,7 @@ function execute_insert_sim_group(db_info::PostgresDB, description::String)
     df = DataFrame(result)
     insert_row = df[1, :sim_group_id]
     LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(SETTINGS.db_name): sim_groups]... INSERT STATUS: [OK] SIM_GROUP_ID: [$insert_row]]", insert_row_id = insert_row)
+    return (status_message = "PostgreSQL [$(db_info.name): sim_groups]... INSERT STATUS: [OK] SIM_GROUP_ID: [$insert_row]]", insert_row_id = insert_row)
 end
 
 

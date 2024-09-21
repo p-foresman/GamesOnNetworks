@@ -41,7 +41,7 @@ Step 4: Run simulation on the constructed model
     -a variety of simulation options are shown
 """
 
-simulate_distributed(model, true, run_count=10) #simple simulation. returns periods elapsed
+simulate(model) #simple simulation. returns periods elapsed
 # simulate(model, db_filepath) #add db_filepath to store simulation data in the sqlite file
 # simulate(model, db_filepath, 100) #add a db store period to store simulation data periodically
 
