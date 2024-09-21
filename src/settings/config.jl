@@ -133,9 +133,11 @@ function configure()
     # println("database initialized")
     # println("configuration complete")
 
-    #initialize the database
-    println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
-    db_init()
-    println("database initialized")
+    if !isnothing(SETTINGS.database)
+        #initialize the database
+        println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
+        db_init()
+        println("database initialized")
+    end
     println("configuration complete")
 end

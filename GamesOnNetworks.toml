@@ -1,11 +1,12 @@
 # settings config for GamesOnNetworks
 
 use_distributed = true
+#run_count = 1
 use_seed = false
 
 
 [databases]
-selected = "postgres.test"
+selected = ""
 # use_store_period = false
 # store_period = 0
 

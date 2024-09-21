@@ -111,8 +111,8 @@ export
 
     #simulation
     simulate,
-    simulate_distributed,
-    simulation_iterator,
+    # simulate_distributed,
+    # simulation_iterator,
 
     # determine_agent_behavior, #NOTE: FIX THIS
 

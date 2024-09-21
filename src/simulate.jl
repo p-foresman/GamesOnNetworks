@@ -8,17 +8,17 @@ function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), db_sim_g
     end
 end
 
-function simulate(model_list::Vector{<:SimModel}; preserve_graph::Bool=false)
-    for model in model_list
-        show(model)
-        flush(stdout)
+# function simulate(model_list::Vector{<:SimModel}; preserve_graph::Bool=false)
+#     for model in model_list
+#         show(model)
+#         flush(stdout)
 
-        simulate(model, preserve_graph)
-    end
-end
+#         simulate(model, preserve_graph)
+#     end
+# end
 
 function _simulate(model::SimModel, ::Nothing; periods_elapsed::Int128 = Int128(0), kwargs...)
-    if SETTINGS.use_seed && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
+    if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
         Random.seed!(random_seed(model))
     end
 
@@ -56,17 +56,17 @@ function _simulate(model::SimModel, ::Database; periods_elapsed::Int128 = Int128
 end
 
 
-function _simulate_distributed(model::SimModel, ::Nothing; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false, kwargs...) #NOTE: should preserve_graph be in sim_params?
+function _simulate_distributed(model::SimModel, ::Nothing; use_seed::Bool = false, preserve_graph::Bool=false, kwargs...) #NOTE: should preserve_graph be in sim_params?
     show(model)
     flush(stdout) #flush buffer
 
-    @sync @distributed for run in 1:run_count
-        print("Run $run of $run_count")
+    @sync @distributed for process in 1:nworkers()
+        print("Process $process of $(nworkers())")
         flush(stdout)
         if !preserve_graph
             model = regenerate_model(model)
         end
-        simulate(model, use_seed=use_seed)
+        _simulate(model, nothing, use_seed=use_seed)
     end
 end
 
@@ -90,7 +90,7 @@ function _simulate_distributed(model::SimModel, db_info::SQLiteDB; use_seed::Boo
         if !preserve_graph
             model = regenerate_model(model)
         end
-        simulate(model, db_info, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+        _simulate(model, db_info, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
     if nworkers() > 1
@@ -128,105 +128,54 @@ end
 
 ############################### simulate with no db ################################
 
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false)
-    if use_seed == true
-        Random.seed!(random_seed(model))
-    end
+# function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false)
+#     if use_seed == true
+#         Random.seed!(random_seed(model))
+#     end
 
-    while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
-        run_period!(model)
-        periods_elapsed += 1
-    end
+#     while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
+#         run_period!(model)
+#         periods_elapsed += 1
+#     end
 
-    println(" --> periods elapsed: $periods_elapsed")
-    return periods_elapsed
-end
+#     println(" --> periods elapsed: $periods_elapsed")
+#     return periods_elapsed
+# end
 
-function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false) #NOTE: should preserve_graph be in sim_params?
-    show(model)
-    flush(stdout) #flush buffer
+# function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false) #NOTE: should preserve_graph be in sim_params?
+#     show(model)
+#     flush(stdout) #flush buffer
 
-    @sync @distributed for run in 1:run_count
-        print("Run $run of $run_count")
-        flush(stdout)
-        if !preserve_graph
-            model = regenerate_model(model)
-        end
-        simulate(model, use_seed=use_seed)
-    end
-end
+#     @sync @distributed for run in 1:run_count
+#         print("Run $run of $run_count")
+#         flush(stdout)
+#         if !preserve_graph
+#             model = regenerate_model(model)
+#         end
+#         simulate(model, use_seed=use_seed)
+#     end
+# end
 
-function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false)
-    for model in model_list
-        show(model)
-        flush(stdout)
+# function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false)
+#     for model in model_list
+#         show(model)
+#         flush(stdout)
 
-        @sync @distributed for run in 1:run_count
-            print("Run $run of $run_count")
-            flush(stdout)
-            if !preserve_graph
-                model = regenerate_model(model)
-            end
-            simulate(model, use_seed=use_seed)
-        end
-    end
-end
+#         @sync @distributed for run in 1:run_count
+#             print("Run $run of $run_count")
+#             flush(stdout)
+#             if !preserve_graph
+#                 model = regenerate_model(model)
+#             end
+#             simulate(model, use_seed=use_seed)
+#         end
+#     end
+# end
 
 
 
 
 ################################# simulate with db_filepath and no db_store_period #####################################
-
-function simulate(model::SimModel, use_db::Bool; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
-    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(random_seed(model))
-    end
-
-    if db_id_tuple === nothing
-        db_id_tuple = construct_db_id_tuple(model, use_seed=use_seed)
-    end
-
-    # @timeit to "simulate" begin
-    while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
-        #play a period worth of games
-        # @timeit to "period" runPeriod!(model, to)
-        run_period!(model)
-        periods_elapsed += 1
-    end
-    # end
-    println(" --> periods elapsed: $periods_elapsed")
-    flush(stdout) #flush buffer
-    db_status = db_insert_simulation(db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
-    return (periods_elapsed, db_status)
-end
-
-
-function simulate_distributed(model::SimModel, use_db::Bool; use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
-    # distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
-
-    # if nworkers() > 1
-    #     println("\nSimulation Distributed UUID: $distributed_uuid")
-    #     db_init_distributed(distributed_uuid)
-    # end
-
-    db_id_tuple = construct_db_id_tuple(model, use_seed=use_seed)
-
-    show(model)
-    flush(stdout) #flush buffer
-
-    @sync @distributed for process in 1:nworkers() #NOTE: run_count could be number workers
-        print("Process $process of $(nworkers())")
-        flush(stdout)
-        if !preserve_graph
-            model = regenerate_model(model)
-        end
-        simulate(model, true, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple) #, distributed_uuid=distributed_uuid)
-    end
-
-    # if nworkers() > 1
-    #     db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
-    # end
-end
 
 
 
@@ -282,164 +231,28 @@ end
 # end
 
 
-function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
-    distributed_uuid = "$(uuid4())"
+# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+#     distributed_uuid = "$(uuid4())"
 
-    if nworkers() > 1
-        println("\nSimulation Distributed UUID: $distributed_uuid")
-        db_init_distributed(distributed_uuid)
-    end
-
-    for model in model_list
-        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
-
-        show(model)
-        flush(stdout) #flush buffer
-
-        @sync @distributed for run in 1:run_count
-            print("Run $run of $run_count")
-            flush(stdout)
-            if !preserve_graph
-                model = regenerate_model(model)
-            end
-            simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
-        end
-    end
-
-    if nworkers() > 1
-        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
-    end
-end
-
-
-
-
-
-################################ simulate with db_filepath and db_store_period ##################################
-
-function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
-    if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
-        Random.seed!(random_seed(model))
-    end
-
-    if db_id_tuple === nothing 
-        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
-    end
-
-    # @timeit to "simulate" begin
-    db_status = nothing #NOTE: THIS SHOULD BE TYPED
-    already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
-    while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
-        #play a period worth of games
-        # @timeit to "period" runPeriod!(model, to)
-        run_period!(model)
-        periods_elapsed += 1
-        already_pushed = false
-        if periods_elapsed % db_store_period == 0 #push incremental results to DB
-            db_status = db_insert_simulation(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
-            prev_simulation_uuid = db_status.simulation_uuid
-            already_pushed = true
-        end
-    end
-    # end
-    println(" --> periods elapsed: $periods_elapsed")
-    flush(stdout) #flush buffer
-    if already_pushed == false #push final results to DB at filepath
-        db_status = db_insert_simulation(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
-    end
-    return (periods_elapsed, db_status)
-end
-
-
-function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
-    distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
-
-    
-    if nworkers() > 1
-        println("\nSimulation Distributed UUID: $distributed_uuid")
-        db_init_distributed(distributed_uuid)
-    end
-
-    db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
-
-    show(model)
-    flush(stdout) #flush buffer
-
-    @sync @distributed for run in 1:run_count
-        print("Run $run of $run_count")
-        flush(stdout)
-        if !preserve_graph
-            model = regenerate_model(model)
-        end
-        simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
-    end
-
-    if nworkers() > 1
-        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
-    end
-end
-
-
-function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
-    distributed_uuid = "$(uuid4())"
-
-    if nworkers() > 1
-        println("\nSimulation Distributed UUID: $distributed_uuid")
-        db_init_distributed(distributed_uuid)
-    end
-
-    for model in model_list
-        db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
-
-        show(model)
-        flush(stdout) #flush buffer
-
-        @sync @distributed for run in 1:run_count
-            print("Run $run of $run_count")
-            flush(stdout)
-            if !preserve_graph
-                model = regenerate_model(model)
-            end
-            simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
-        end
-    end
-
-    if nworkers() > 1
-        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
-    end
-end
-
-
-
-# #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
-# function distributedSimulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
-#     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-
-#     if length(model_list) != parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"])
-#         throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
+#     if nworkers() > 1
+#         println("\nSimulation Distributed UUID: $distributed_uuid")
+#         db_init_distributed(distributed_uuid)
 #     end
 
-#     model = model_list[slurm_task_id]
-     
-#     println("\n\n\n")
-#     println(displayname(model.graph_params))
-#     println(displayname(model.sim_params))
-#     flush(stdout) #flush buffer
+#     for model in model_list
+#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
 
-#     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
-#     db_init_distributed(distributed_uuid)
+#         show(model)
+#         flush(stdout) #flush buffer
 
-#     db_id_tuple = (
-#                    game_id = pushGameToDB(db_filepath, model.game),
-#                    graph_id = pushGraphToDB(db_filepath, model.graph_params),
-#                    sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
-#                    starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
-#                    stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.starting_condition)
-#                   )
-
-#     @sync @distributed for run in 1:run_count
-#         print("Run $run of $run_count")
-#         simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+#         @sync @distributed for run in 1:run_count
+#             print("Run $run of $run_count")
+#             flush(stdout)
+#             if !preserve_graph
+#                 model = regenerate_model(model)
+#             end
+#             simulate(model, db_filepath, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+#         end
 #     end
 
 #     if nworkers() > 1
@@ -449,52 +262,188 @@ end
 
 
 
-# #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
-# function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
-#     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-#     graph_count = length(graph_params_list)
-#     # sim_params_count = length(sim_params_list)
-#     # slurm_array_length = graph_count * sim_params_count
-#     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
-#     graph_params = graph_params_list[graph_index]
-#     # sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
-#     sim_params_index = ceil(Int64, slurm_task_id / graph_count) #allows for iteration of graph_params over each sim_param
-#     sim_params = sim_params_list[sim_params_index]
-     
-#     println("\n\n\n")
-#     println(displayname(graph_params))
-#     println(displayname(sim_params))
+
+
+# ################################ simulate with db_filepath and db_store_period ##################################
+
+# function simulate(model::SimModel, db_filepath::String, db_store_period::Integer; periods_elapsed::Int128 = Int128(0), use_seed::Bool = false, db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+#     if use_seed == true && prev_simulation_uuid === nothing #set seed only if the simulation has no past runs
+#         Random.seed!(random_seed(model))
+#     end
+
+#     if db_id_tuple === nothing 
+#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#     end
+
+#     # @timeit to "simulate" begin
+#     db_status = nothing #NOTE: THIS SHOULD BE TYPED
+#     already_pushed::Bool = false #for the special case that simulation data is pushed to the db periodically and one of these pushes happens to fall on the last period of the simulation
+#     while !is_stopping_condition(model, stopping_condition(model), periods_elapsed)
+#         #play a period worth of games
+#         # @timeit to "period" runPeriod!(model, to)
+#         run_period!(model)
+#         periods_elapsed += 1
+#         already_pushed = false
+#         if periods_elapsed % db_store_period == 0 #push incremental results to DB
+#             db_status = db_insert_simulation(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+#             prev_simulation_uuid = db_status.simulation_uuid
+#             already_pushed = true
+#         end
+#     end
+#     # end
+#     println(" --> periods elapsed: $periods_elapsed")
 #     flush(stdout) #flush buffer
+#     if already_pushed == false #push final results to DB at filepath
+#         db_status = db_insert_simulation(db_filepath, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+#     end
+#     return (periods_elapsed, db_status)
+# end
 
-#     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
-#     db_init_distributed(distributed_uuid)
 
-#     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
-#     db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
-#     db_sim_params_id = db_filepath !== nothing ? pushSimParamsToDB(db_filepath, sim_params, use_seed) : nothing
+# function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+#     distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
+
+    
+#     if nworkers() > 1
+#         println("\nSimulation Distributed UUID: $distributed_uuid")
+#         db_init_distributed(distributed_uuid)
+#     end
+
+#     db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+
+#     show(model)
+#     flush(stdout) #flush buffer
 
 #     @sync @distributed for run in 1:run_count
 #         print("Run $run of $run_count")
-#         simulate(game, sim_params, graph_params, starting_condition, stopping_condition, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_game_id=db_game_id, db_graph_id=db_graph_id, db_sim_params_id=db_sim_params_id, distributed_uuid=distributed_uuid)
+#         flush(stdout)
+#         if !preserve_graph
+#             model = regenerate_model(model)
+#         end
+#         simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
 #     end
 
-#     if db_filepath !== nothing && nworkers() > 1
+#     if nworkers() > 1
+#         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
+#     end
+# end
+
+
+# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+#     distributed_uuid = "$(uuid4())"
+
+#     if nworkers() > 1
+#         println("\nSimulation Distributed UUID: $distributed_uuid")
+#         db_init_distributed(distributed_uuid)
+#     end
+
+#     for model in model_list
+#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+
+#         show(model)
+#         flush(stdout) #flush buffer
+
+#         @sync @distributed for run in 1:run_count
+#             print("Run $run of $run_count")
+#             flush(stdout)
+#             if !preserve_graph
+#                 model = regenerate_model(model)
+#             end
+#             simulate(model, db_filepath, db_store_period, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+#         end
+#     end
+
+#     if nworkers() > 1
 #         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
 #     end
 # end
 
 
 
-#used to continue a simulation
-# function simGroupIterator(db_sim_group_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Int = 0)
-#     simulation_ids_df = querySimulationIDsByGroup(db_filepath, db_sim_group_id)
-#     for row in eachrow(simulation_ids_df)
-#         continueSimulation(row[:simulation_id], db_store=db_store, db_filepath=db_filepath, db_store_period=db_store_period)
-#     end
-# end
+# # #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
+# # function distributedSimulationIterator(model_list::Vector{SimModel}; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
+# #     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+
+# #     if length(model_list) != parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"])
+# #         throw(ErrorException("Slurm array task count and number of models in the model list differ.\nSLURM_ARRAY_TASK_COUNT: $(parse(Int64, ENV["SLURM_ARRAY_TASK_COUNT"]))\nNumber of models: $(length(model_list))"))
+# #     end
+
+# #     model = model_list[slurm_task_id]
+     
+# #     println("\n\n\n")
+# #     println(displayname(model.graph_params))
+# #     println(displayname(model.sim_params))
+# #     flush(stdout) #flush buffer
+
+# #     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
+# #     db_init_distributed(distributed_uuid)
+
+# #     db_id_tuple = (
+# #                    game_id = pushGameToDB(db_filepath, model.game),
+# #                    graph_id = pushGraphToDB(db_filepath, model.graph_params),
+# #                    sim_params_id = pushSimParamsToDB(db_filepath, model.sim_params, use_seed),
+# #                    starting_condition_id = pushStartingConditionToDB(db_filepath, model.starting_condition),
+# #                    stopping_condition_id = pushStoppingConditionToDB(db_filepath, model.starting_condition)
+# #                   )
+
+# #     @sync @distributed for run in 1:run_count
+# #         print("Run $run of $run_count")
+# #         simulate(model, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+# #     end
+
+# #     if nworkers() > 1
+# #         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
+# #     end
+# # end
 
 
-# function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Integer = 0)
-#     prev_sim = db_restore_model(db_filepath, db_simulation_id)
-#     sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_uuid=prev_sim.prev_simulation_uuid)
-# end
+
+# # #NOTE: use MVectors for size validation! (sim_params_list_array length should be the same as db_sim_group_id_list length)
+# # function distributedSimulationIterator(game::Game, sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition::StartingCondition, stopping_condition::StoppingCondition; run_count::Integer = 1, use_seed::Bool = false, db_filepath::String, db_store_period::Union{Integer, Nothing} = nothing, db_sim_group_id::Integer)
+# #     slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
+# #     graph_count = length(graph_params_list)
+# #     # sim_params_count = length(sim_params_list)
+# #     # slurm_array_length = graph_count * sim_params_count
+# #     graph_index = (slurm_task_id % graph_count) == 0 ? graph_count : slurm_task_id % graph_count
+# #     graph_params = graph_params_list[graph_index]
+# #     # sim_params_index = (slurm_task_id % sim_params_count) == 0 ? sim_params_count : slurm_task_id % sim_params_count
+# #     sim_params_index = ceil(Int64, slurm_task_id / graph_count) #allows for iteration of graph_params over each sim_param
+# #     sim_params = sim_params_list[sim_params_index]
+     
+# #     println("\n\n\n")
+# #     println(displayname(graph_params))
+# #     println(displayname(sim_params))
+# #     flush(stdout) #flush buffer
+
+# #     distributed_uuid = "$(displayname(graph_params))__$(displayname(sim_params))_TASKID=$slurm_task_id"
+# #     db_init_distributed(distributed_uuid)
+
+# #     db_game_id = db_filepath !== nothing ? pushGameToDB(db_filepath, game) : nothing
+# #     db_graph_id = db_filepath !== nothing ? pushGraphToDB(db_filepath, graph_params) : nothing
+# #     db_sim_params_id = db_filepath !== nothing ? pushSimParamsToDB(db_filepath, sim_params, use_seed) : nothing
+
+# #     @sync @distributed for run in 1:run_count
+# #         print("Run $run of $run_count")
+# #         simulate(game, sim_params, graph_params, starting_condition, stopping_condition, use_seed=use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=db_sim_group_id, db_game_id=db_game_id, db_graph_id=db_graph_id, db_sim_params_id=db_sim_params_id, distributed_uuid=distributed_uuid)
+# #     end
+
+# #     if db_filepath !== nothing && nworkers() > 1
+# #         db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
+# #     end
+# # end
+
+
+
+# #used to continue a simulation
+# # function simGroupIterator(db_sim_group_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Int = 0)
+# #     simulation_ids_df = querySimulationIDsByGroup(db_filepath, db_sim_group_id)
+# #     for row in eachrow(simulation_ids_df)
+# #         continueSimulation(row[:simulation_id], db_store=db_store, db_filepath=db_filepath, db_store_period=db_store_period)
+# #     end
+# # end
+
+
+# # function continueSimulation(db_simulation_id::Integer; db_store::Bool = false, db_filepath::String, db_store_period::Integer = 0)
+# #     prev_sim = db_restore_model(db_filepath, db_simulation_id)
+# #     sim_results = simulateTransitionTime(prev_sim.game, prev_sim.sim_params, prev_sim.graph_params, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_sim_group_id=prev_sim.sim_group_id, prev_simulation_uuid=prev_sim.prev_simulation_uuid)
+# # end
