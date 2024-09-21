@@ -6,6 +6,8 @@ use_seed = false
 
 [databases]
 selected = "postgres.test"
+# use_store_period = false
+# store_period = 0
 
 [databases.sqlite.default]
 path = "./GamesOnNetworks.sqlite"

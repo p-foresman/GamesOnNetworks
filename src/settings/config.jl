@@ -4,23 +4,24 @@ import Pkg
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
 const user_config_path = "GamesOnNetworks.toml"
 
-abstract type Database end
 
-struct PostgresDB <: Database
-    name::String
-    user::String
-    host::String
-    port::String
-    password::String
-end
+# abstract type Database end
 
-struct SQLiteDB <: Database
-    name::String
-    filepath::String
-end
+# struct PostgresDB <: Database
+#     name::String
+#     user::String
+#     host::String
+#     port::String
+#     password::String
+# end
 
-db_type(database::SQLiteDB) = "sqlite"
-db_type(database::PostgresDB) = "postgres"
+# struct SQLiteDB <: Database
+#     name::String
+#     filepath::String
+# end
+
+# db_type(database::SQLiteDB) = "sqlite"
+# db_type(database::PostgresDB) = "postgres"
 
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
@@ -120,17 +121,21 @@ function configure()
         get_default_config()
     end
 
-    #NOTE: THE FOLLOWING SHOULD ONLY RUN IF DATABASE IS NOT NOTHING
+    # #load database functions (different for different database types)
+    # local_src_path = dirname(@__DIR__) #absolute path to src/
 
-    #load database functions (different for different database types)
-    local_src_path = dirname(@__DIR__) #absolute path to src/
+    # include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/database_api.jl"))
+    # include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/sql.jl"))
 
-    include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/database_api.jl"))
-    include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/sql.jl"))
+    # #initialize the database
+    # println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
+    # Base.invokelatest(db_init)
+    # println("database initialized")
+    # println("configuration complete")
 
     #initialize the database
     println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
-    Base.invokelatest(db_init)
+    db_init()
     println("database initialized")
     println("configuration complete")
 end

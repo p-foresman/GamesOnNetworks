@@ -145,8 +145,8 @@ using
     StaticArrays,
     DataFrames,
     JSON3,
-    SQLite,
-    LibPQ,
+    # SQLite,
+    # LibPQ,
     UUIDs,
     Distributed,
     Plots,
@@ -161,7 +161,7 @@ using
     TimerOutputs
 
 #basic utility functions
-include("utility_functions.jl")
+include("utility.jl")
 
 #extensions of Graphs.jl graph constructors
 include("graphs.jl")
@@ -187,19 +187,8 @@ include("cross_type_functions.jl")
 #SimModel type and methods
 include("simmodel.jl")
 
-
-
-
-
-#include default config and configure
-#note: database-related functions are included within this file
-include("settings/config.jl")
-configure()
-
-# #sql functions and api to sql functions
-# include("sql.jl")
-# include("database_api.jl")
-
+#api to sqlite and postgresql functionality
+include("database/database_api.jl")
 
 #simulation functions
 include("simulation_functions.jl")
@@ -208,5 +197,9 @@ include("simulate.jl")
 #plotting functions
 include("analysis.jl")
 include("plotting.jl")
+
+#include default config and configure
+include("settings/config.jl")
+configure()
 
 end
