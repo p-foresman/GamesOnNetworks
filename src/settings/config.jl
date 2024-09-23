@@ -26,7 +26,8 @@ const user_config_path = "GamesOnNetworks.toml"
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
     use_seed::Bool
-    use_distributed::Bool
+    # use_distributed::Bool
+    procs::Int
     database::Union{Database, Nothing} #if nothing, not using database
     # db_type::String
     # db_name::String
@@ -40,9 +41,13 @@ function Settings(settings::Dict{String, Any})
     @assert use_seed isa Bool "'use_seed' value must be a Bool"
 
 
-    @assert haskey(settings, "use_distributed") "config file must have a 'use_distributed' variable"
-    use_distributed = settings["use_distributed"]
-    @assert use_distributed isa Bool "'use_distributed' value must be a Bool"
+    # @assert haskey(settings, "use_distributed") "config file must have a 'use_distributed' variable"
+    # use_distributed = settings["use_distributed"]
+    # @assert use_distributed isa Bool "'use_distributed' value must be a Bool"
+
+    @assert haskey(settings, "processes") "config file must have a 'processes' variable"
+    procs = settings["processes"]
+    @assert procs isa Int && procs >= 1 "'processes' value must be a positive Int (>=1)"
 
     @assert haskey(settings, "databases") "config file must have a [databases] table"
     databases = settings["databases"]
@@ -78,7 +83,7 @@ function Settings(settings::Dict{String, Any})
         end
     end
 
-    return Settings(settings, use_seed, use_distributed, database)
+    return Settings(settings, use_seed, procs, database)
 end
 
 function Settings(config_path::String)
@@ -109,35 +114,41 @@ Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks pack
 function configure()
     if isfile(user_config_path)
         #load the user's settings config
-        println("configuring GamesOnNetworks using GamesOnNetworks.toml")
+        myid() == 1 && println("configuring GamesOnNetworks using GamesOnNetworks.toml")
         GamesOnNetworks.SETTINGS = Settings(user_config_path)
 
     else
         #load the default config which come with the package
-        println("configuring using the default config")
+        myid() == 1 && println("configuring using the default config")
         GamesOnNetworks.SETTINGS = Settings(default_config_path)
     
         #give the user the default .toml file to customize if desired
-        get_default_config()
+        myid() == 1 && get_default_config()
     end
 
-    # #load database functions (different for different database types)
-    # local_src_path = dirname(@__DIR__) #absolute path to src/
+    if myid() == 1
+        if !isnothing(SETTINGS.database)
+            #initialize the database
+            print("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
+            @suppress db_init() #suppress the stdout stream
+            println("database initialized")
+        end
 
-    # include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/database_api.jl"))
-    # include(joinpath(local_src_path, "database/$(db_type(SETTINGS.database))/sql.jl"))
-
-    # #initialize the database
-    # println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
-    # Base.invokelatest(db_init)
-    # println("database initialized")
-    # println("configuration complete")
-
-    if !isnothing(SETTINGS.database)
-        #initialize the database
-        println("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]")
-        db_init()
-        println("database initialized")
+        resetprocs() #resets the process count to 1 for proper reconfigure
+        if SETTINGS.procs > 1
+            #initialize distributed processes with GamesOnNetworks available in their individual scopes
+            print("adding $(SETTINGS.procs) distributed processes... ")
+            procs = addprocs(SETTINGS.procs)
+            @everywhere procs begin
+                eval(quote
+                    include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl"))
+                    using .GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
+                end)
+            end
+            println("$(SETTINGS.procs) processes initialized")
+        else
+            println("1 process initialized")
+        end
+        println("configuration complete")
     end
-    println("configuration complete")
 end

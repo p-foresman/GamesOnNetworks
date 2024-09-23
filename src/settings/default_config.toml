@@ -1,7 +1,7 @@
 # settings config for GamesOnNetworks
 
-use_distributed = true
 use_seed = false
+processes = 2
 
 # sqlite database is provided by default
 [databases]

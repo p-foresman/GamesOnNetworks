@@ -19,8 +19,9 @@ function db_init_distributed(distributed_uuid::String) #creates a sparate sqlite
     temp_dirpath = distributed_uuid * "/"
     mkdir(temp_dirpath)
     for worker in workers()
-        temp_filepath = temp_dirpath * "$worker.sqlite"
-        execute_init_temp(temp_filepath)
+        # temp_filepath = temp_dirpath * "$worker.sqlite"
+        db_info = SQLiteDB("temp$(worker)", temp_dirpath * "$worker.sqlite")
+        execute_init_temp(db_info)
     end
     return nothing
 end
@@ -50,15 +51,16 @@ function db_collect_distributed(db_filepath::String, distributed_uuid::String) #
 end
 
 
-function db_collect_temp(db_filepath::String, directory_path::String; cleanup_directory::Bool = false)
+function db_collect_temp(db_info_master::SQLiteDB, directory_path::String; cleanup_directory::Bool = false)
     contents = readdir(directory_path)
     for item in contents
         item_path = directory_path * "/" * item
         if isfile(item_path)
+            db_info_merger = SQLiteDB("temp", item_path)
             success = false
             while !success
                 try
-                    execute_merge_temp(db_filepath, item_path)
+                    execute_merge_temp(db_info_master, db_info_merger)
                     success = true
                 catch err
                     println("An error has been caught in db_collect_temp():")
@@ -70,7 +72,7 @@ function db_collect_temp(db_filepath::String, directory_path::String; cleanup_di
             println("[$item_path] merged")
             flush(stdout)
         else
-            db_collect_temp(db_filepath, item_path, cleanup_directory=cleanup_directory)
+            db_collect_temp(db_info_master, item_path, cleanup_directory=cleanup_directory)
         end
     end
     cleanup_directory && rm(directory_path, recursive=true)
@@ -210,7 +212,8 @@ function db_insert_simulation(db_info::SQLiteDB, sim_group_id::Union{Integer, No
     if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
         # temp_dirpath = tempdirpath(db_filepath)
         temp_dirpath = distributed_uuid * "/"
-        db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
+        # db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
+        db_info = SQLiteDB("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
     end
 
 

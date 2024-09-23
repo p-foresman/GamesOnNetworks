@@ -55,12 +55,12 @@ end
 db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
 
 
-function construct_db_id_tuple(model::SimModel; use_seed::Bool = false)
+function construct_db_id_tuple(model::SimModel)
     db_info = SETTINGS.database
     db_id_tuple::DatabaseIdTuple = (
                     game_id = db_insert_game(db_info, model.game),
                     graph_id = db_insert_graph(db_info, model.graph_params),
-                    sim_params_id = db_insert_sim_params(db_info, model.sim_params, use_seed),
+                    sim_params_id = db_insert_sim_params(db_info, model.sim_params, SETTINGS.use_seed),
                     starting_condition_id = db_insert_starting_condition(db_info, model.starting_condition),
                     stopping_condition_id = db_insert_stopping_condition(db_info, model.stopping_condition)
                     )

@@ -1,11 +1,14 @@
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
-function simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), db_sim_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing, preserve_graph::Bool=false)
-    if SETTINGS.use_distributed
-        return _simulate_distributed(model, SETTINGS.database, db_sim_group_id=db_sim_group_id, preserve_graph=preserve_graph)
-    else
-        return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_sim_group_id=db_sim_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
-    end
+#NOTE: clean this stuff up
+
+function simulate(model::SimModel; db_sim_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+    _simulate_distributed(model, SETTINGS.database, db_sim_group_id=db_sim_group_id, preserve_graph=preserve_graph)
+    # if nworkers() > 1
+    #     return _simulate_distributed(model, SETTINGS.database, db_sim_group_id=db_sim_group_id, preserve_graph=preserve_graph)
+    # else
+    #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_sim_group_id=db_sim_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
+    # end
 end
 
 # function simulate(model_list::Vector{<:SimModel}; preserve_graph::Bool=false)
@@ -38,7 +41,7 @@ function _simulate(model::SimModel, ::Database; periods_elapsed::Int128 = Int128
 
 
     if isnothing(db_id_tuple)
-        db_id_tuple = construct_db_id_tuple(model, use_seed=use_seed)
+        db_id_tuple = construct_db_id_tuple(model)
     end
 
     # @timeit to "simulate" begin
@@ -56,7 +59,7 @@ function _simulate(model::SimModel, ::Database; periods_elapsed::Int128 = Int128
 end
 
 
-function _simulate_distributed(model::SimModel, ::Nothing; use_seed::Bool = false, preserve_graph::Bool=false, kwargs...) #NOTE: should preserve_graph be in sim_params?
+function _simulate_distributed(model::SimModel, ::Nothing; preserve_graph::Bool=false, kwargs...) #NOTE: should preserve_graph be in sim_params?
     show(model)
     flush(stdout) #flush buffer
 
@@ -66,12 +69,12 @@ function _simulate_distributed(model::SimModel, ::Nothing; use_seed::Bool = fals
         if !preserve_graph
             model = regenerate_model(model)
         end
-        _simulate(model, nothing, use_seed=use_seed)
+        _simulate(model, nothing)
     end
 end
 
 
-function _simulate_distributed(model::SimModel, db_info::SQLiteDB; use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+function _simulate_distributed(model::SimModel, db_info::SQLiteDB; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     if nworkers() > 1
@@ -79,7 +82,7 @@ function _simulate_distributed(model::SimModel, db_info::SQLiteDB; use_seed::Boo
         db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = construct_db_id_tuple(model, use_seed=use_seed)
+    db_id_tuple = construct_db_id_tuple(model)
 
     show(model)
     flush(stdout) #flush buffer
@@ -90,18 +93,18 @@ function _simulate_distributed(model::SimModel, db_info::SQLiteDB; use_seed::Boo
         if !preserve_graph
             model = regenerate_model(model)
         end
-        _simulate(model, db_info, use_seed=use_seed, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
+        _simulate(model, db_info, db_sim_group_id=db_sim_group_id, db_id_tuple=db_id_tuple, distributed_uuid=distributed_uuid)
     end
 
     if nworkers() > 1
-        db_collect_temp(db_filepath, distributed_uuid, cleanup_directory=true)
+        db_collect_temp(db_info, distributed_uuid, cleanup_directory=true)
     end
 end
 
 
-function _simulate_distributed(model::SimModel, db_info::PostgresDB; use_seed::Bool = false, db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+function _simulate_distributed(model::SimModel, db_info::PostgresDB; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
 
-    db_id_tuple = construct_db_id_tuple(model, use_seed=use_seed)
+    db_id_tuple = construct_db_id_tuple(model)
 
     show(model)
     flush(stdout) #flush buffer

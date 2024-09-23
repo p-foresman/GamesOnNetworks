@@ -158,7 +158,8 @@ using
     Bootstrap,
     DataStructures,
     # Memoize,
-    TimerOutputs
+    TimerOutputs,
+    Suppressor
 
 #basic utility functions
 include("utility.jl")
@@ -200,6 +201,9 @@ include("plotting.jl")
 
 #include default config and configure
 include("settings/config.jl")
-configure()
+
+function __init__()
+    configure()
+end
 
 end
