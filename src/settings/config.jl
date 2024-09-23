@@ -139,10 +139,14 @@ function configure()
             #initialize distributed processes with GamesOnNetworks available in their individual scopes
             print("adding $(SETTINGS.procs) distributed processes... ")
             procs = addprocs(SETTINGS.procs)
+            project_path = splitdir(Pkg.project().path)[1]
             @everywhere procs begin
                 eval(quote
-                    include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl"))
-                    using .GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
+                    # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl"))
+                    # using .GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
+                    import Pkg
+                    Pkg.activate($$project_path)
+                    using GamesOnNetworks
                 end)
             end
             println("$(SETTINGS.procs) processes initialized")
