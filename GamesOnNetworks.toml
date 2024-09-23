@@ -1,7 +1,7 @@
 # settings config for GamesOnNetworks
 
 use_seed = false
-processes = 1
+processes = 2
 
 [databases]
 selected = "sqlite.default"

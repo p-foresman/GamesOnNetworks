@@ -146,6 +146,7 @@ function configure()
                     # using .GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                     import Pkg
                     Pkg.activate($$project_path)
+                    println(Pkg.status())
                     using GamesOnNetworks
                 end)
             end
