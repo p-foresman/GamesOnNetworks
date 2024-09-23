@@ -142,12 +142,11 @@ function configure()
             project_path = splitdir(Pkg.project().path)[1]
             @everywhere procs begin
                 eval(quote
-                    # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl"))
-                    # using .GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
+                    # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
+                    # using .GamesOnNetworks
                     import Pkg
-                    Pkg.activate($$project_path)
-                    println(Pkg.status())
-                    using GamesOnNetworks
+                    Pkg.activate($$project_path) #must activate the local project environment to gain access to the GamesOnNetworks package
+                    using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                 end)
             end
             println("$(SETTINGS.procs) processes initialized")
