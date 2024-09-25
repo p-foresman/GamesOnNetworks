@@ -34,14 +34,14 @@ function _simulate(model::SimModel, ::Nothing; periods_elapsed::Int128 = Int128(
     return periods_elapsed
 end
 
-function _simulate(model::SimModel, ::Database; periods_elapsed::Int128 = Int128(0), db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, db_info::Database; periods_elapsed::Int128 = Int128(0), db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
 
 
     if isnothing(db_id_tuple)
-        db_id_tuple = construct_db_id_tuple(model)
+        db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
     end
 
     # @timeit to "simulate" begin
@@ -54,7 +54,7 @@ function _simulate(model::SimModel, ::Database; periods_elapsed::Int128 = Int128
     # end
     println(" --> periods elapsed: $periods_elapsed")
     flush(stdout) #flush buffer
-    db_status = db_insert_simulation(db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
+    db_status = db_insert_simulation(db_info, db_sim_group_id, prev_simulation_uuid, db_id_tuple, agent_graph(model), periods_elapsed, distributed_uuid)
     return (periods_elapsed, db_status)
 end
 
@@ -82,7 +82,7 @@ function _simulate_distributed(model::SimModel, db_info::SQLiteDB; db_sim_group_
         db_init_distributed(distributed_uuid)
     end
 
-    db_id_tuple = construct_db_id_tuple(model)
+    db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -104,7 +104,7 @@ end
 
 function _simulate_distributed(model::SimModel, db_info::PostgresDB; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
 
-    db_id_tuple = construct_db_id_tuple(model)
+    db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
 
     show(model)
     flush(stdout) #flush buffer
@@ -188,7 +188,7 @@ end
 #     end
 
 #     if db_id_tuple === nothing 
-#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#         db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 #     end
 
 #     # @timeit to "simulate" begin
@@ -214,7 +214,7 @@ end
 #         db_init_distributed(distributed_uuid)
 #     end
 
-#     db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#     db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 
 #     show(model)
 #     flush(stdout) #flush buffer
@@ -243,7 +243,7 @@ end
 #     end
 
 #     for model in model_list
-#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#         db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 
 #         show(model)
 #         flush(stdout) #flush buffer
@@ -275,7 +275,7 @@ end
 #     end
 
 #     if db_id_tuple === nothing 
-#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#         db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 #     end
 
 #     # @timeit to "simulate" begin
@@ -312,7 +312,7 @@ end
 #         db_init_distributed(distributed_uuid)
 #     end
 
-#     db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#     db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 
 #     show(model)
 #     flush(stdout) #flush buffer
@@ -341,7 +341,7 @@ end
 #     end
 
 #     for model in model_list
-#         db_id_tuple = construct_db_id_tuple(model, db_filepath, use_seed=use_seed)
+#         db_id_tuple = db_construct_id_tuple(model, db_filepath, use_seed=use_seed)
 
 #         show(model)
 #         flush(stdout) #flush buffer

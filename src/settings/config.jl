@@ -130,7 +130,10 @@ function configure()
         if !isnothing(SETTINGS.database)
             #initialize the database
             print("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
+            # out = stdout
+            # redirect_stdout(devnull)
             @suppress db_init() #suppress the stdout stream
+            # redirect_stdout(out)
             println("database initialized")
         end
 
@@ -145,7 +148,7 @@ function configure()
                     # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
                     # using .GamesOnNetworks
                     import Pkg
-                    Pkg.activate($$project_path) #must activate the local project environment to gain access to the GamesOnNetworks package
+                    Pkg.activate($$project_path; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
                     using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                 end)
             end

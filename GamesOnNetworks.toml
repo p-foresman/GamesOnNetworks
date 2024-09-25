@@ -1,10 +1,10 @@
 # settings config for GamesOnNetworks
 
 use_seed = false
-processes = 2
+processes = 10
 
 [databases]
-selected = "sqlite.default"
+selected = "postgres.test"
 # use_store_period = false
 # store_period = 0
 

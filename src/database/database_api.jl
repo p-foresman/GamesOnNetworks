@@ -55,12 +55,24 @@ end
 db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
 
 
-function construct_db_id_tuple(model::SimModel)
+#not sure which method below is better (or if it matters at all). leaning towards second one to keep SETTINGS calls as high in the call stack as possible in an effort to optimize
+function db_construct_id_tuple(model::SimModel)
     db_info = SETTINGS.database
     db_id_tuple::DatabaseIdTuple = (
                     game_id = db_insert_game(db_info, model.game),
                     graph_id = db_insert_graph(db_info, model.graph_params),
                     sim_params_id = db_insert_sim_params(db_info, model.sim_params, SETTINGS.use_seed),
+                    starting_condition_id = db_insert_starting_condition(db_info, model.starting_condition),
+                    stopping_condition_id = db_insert_stopping_condition(db_info, model.stopping_condition)
+                    )
+    return db_id_tuple
+end
+
+function db_construct_id_tuple(db_info::Database, model::SimModel, use_seed::Bool)
+    db_id_tuple::DatabaseIdTuple = (
+                    game_id = db_insert_game(db_info, model.game),
+                    graph_id = db_insert_graph(db_info, model.graph_params),
+                    sim_params_id = db_insert_sim_params(db_info, model.sim_params, use_seed),
                     starting_condition_id = db_insert_starting_condition(db_info, model.starting_condition),
                     stopping_condition_id = db_insert_stopping_condition(db_info, model.stopping_condition)
                     )
