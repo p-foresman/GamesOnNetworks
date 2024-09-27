@@ -1,6 +1,8 @@
 include("sql.jl")
 
+
 function db_init(db_info::SQLiteDB)
+    mkpath(dirname(db_info.filepath)) #create the directory path if it doesn't already exist
     success = false
     while !success
         try

@@ -1,18 +1,19 @@
 # settings config for GamesOnNetworks
 
 use_seed = false
-processes = 2
+processes = 1
 
 # sqlite database is provided by default
 [databases]
+# use = true
 selected = "sqlite.default"
 
 [databases.sqlite.default]
-path = "./GamesOnNetworks.sqlite"
+path = "GamesOnNetworks.sqlite"
 
 # add more sqlite databases below. For example:
 # [databases.sqlite.my_sqlite_db]
-# path = "./my/sqlite/database/path.sqlite"
+# path = "my/sqlite/database/path.sqlite"
 
 
 # postgres database must be configured by the user

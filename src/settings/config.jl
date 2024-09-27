@@ -1,7 +1,7 @@
 using TOML
 import Pkg
 
-const project_dirpath = splitdir(Pkg.project().path)[1]
+const project_dirpath = dirname(Pkg.project().path)
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
 const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
 
@@ -74,7 +74,7 @@ function Settings(settings::Dict{String, Any})
         if db_type == "sqlite"
             @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
             @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-            database = SQLiteDB(db_name, db_info["path"])
+            database = SQLiteDB(db_name, joinpath(project_dirpath, db_info["path"]))
         elseif db_type == "postgres"
             @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
             @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
@@ -103,6 +103,7 @@ Get the default GamesOnNetworks.toml config file. CAUTION: setting overwrite=tru
 function get_default_config(;overwrite::Bool=false)
     cp(default_config_path, user_config_path, force=overwrite)
     chmod(user_config_path, 0o777) #make sure the file is writable
+    println("default config file added to project directory as 'GamesOnNetworks.toml'. Use this file to configure package settings.")
 end
 
 
