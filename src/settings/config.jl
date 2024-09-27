@@ -1,8 +1,9 @@
 using TOML
 import Pkg
 
+const project_dirpath = splitdir(Pkg.project().path)[1]
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
-const user_config_path = "GamesOnNetworks.toml"
+const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
 
 
 # abstract type Database end
@@ -142,13 +143,12 @@ function configure()
             #initialize distributed processes with GamesOnNetworks available in their individual scopes
             print("adding $(SETTINGS.procs) distributed processes... ")
             procs = addprocs(SETTINGS.procs)
-            project_path = splitdir(Pkg.project().path)[1]
             @everywhere procs begin
                 eval(quote
                     # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
                     # using .GamesOnNetworks
                     import Pkg
-                    Pkg.activate($$project_path; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
+                    Pkg.activate($$project_dirpath; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
                     using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                 end)
             end
