@@ -2,10 +2,10 @@ using TOML
 import Pkg
 
 const project_dirpath = dirname(Pkg.project().path)
-println("project path: $project_dirpath")
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
 const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
-println("user config path: $user_config_path")
+# println("project path: $project_dirpath")
+# println("user config path: $user_config_path")
 
 
 # abstract type Database end
@@ -76,7 +76,7 @@ function Settings(settings::Dict{String, Any})
         if db_type == "sqlite"
             @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
             @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-            database = SQLiteDB(db_name, joinpath(project_dirpath, db_info["path"]))
+            database = SQLiteDB(db_name, normpath(joinpath(project_dirpath, db_info["path"])))
         elseif db_type == "postgres"
             @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
             @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
@@ -137,8 +137,11 @@ function configure()
             # out = stdout
             # redirect_stdout(devnull)
             @suppress db_init() #suppress the stdout stream
-            # redirect_stdout(out)
-            println("database initialized")
+            if SETTINGS.database isa SQLiteDB
+                println("SQLite database file initialized at $(SETTINGS.database.filepath)")
+            else
+                println("PostgreSQL database initialized")
+            end
         end
 
         resetprocs() #resets the process count to 1 for proper reconfigure
