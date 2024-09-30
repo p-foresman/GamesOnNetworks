@@ -1,12 +1,13 @@
 using SQLite
 
-function DBConnection(db_info::SQLiteDB; busy_timeout::Int=3000)
-    db = SQLite.DB(db_info.filepath)
-    SQLite.busy_timeout(db, busy_timeout)
-    return db
-end
-close(db_info::SQLiteDB) = SQLite.close(db)
-execute(db_info::SQLiteDB, sql::String) = SQLite.execute(db, sql)
+DBConnection(db_info::SQLiteDB) = SQLite.DB(db_info.filepath)
+# function DBConnection(db_info::SQLiteDB; busy_timeout::Int=3000)
+#     db = SQLite.DB(db_info.filepath)
+#     SQLite.busy_timeout(db, busy_timeout)
+#     return db
+# end
+# close(db_info::SQLiteDB) = SQLite.close(db)
+# execute(db_info::SQLiteDB, sql::String) = SQLite.execute(db, sql)
 
 function execute_init_full(db_info::SQLiteDB)
     #create or connect to database
