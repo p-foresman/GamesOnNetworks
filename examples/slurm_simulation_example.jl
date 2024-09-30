@@ -37,7 +37,7 @@ Step 5: Construct the model to simulate
     -get the SLURM_ARRAY_TASK_ID environment variable to use to construct the unique model for this slurm task
 """
 const slurm_task_id = parse(Int64, ENV["SLURM_ARRAY_TASK_ID"])
-const model = select_and_construct_model(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, model_number=slurm_task_id)
+const model = select_and_construct_model(game_list=game_list, sim_params_list=sim_params_list, graph_params_list=graph_params_list, starting_condition_list=starting_condition_list, stopping_condition_list=stopping_condition_list, model_number=1)
 
 """
 Step 6: Run simulation on the constructed model

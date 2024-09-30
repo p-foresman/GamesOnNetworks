@@ -7,16 +7,15 @@ struct SimParams #NOTE: put periods_elapsed into SimParams (default 0) and allow
     number_agents::Int #switch to 'population'
     memory_length::Int
     error::Float64
-    matches_per_period::Int
     random_seed::Int #probably don't need a random seed in every SimParams struct?
+    # matches_per_period::Function #allow users to define their own matches per period as a function of other parameters?
 
     function SimParams(number_agents::Int, memory_length::Int, error::Float64; random_seed::Union{Nothing, Int} = nothing)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
         if random_seed === nothing random_seed = 1234 end
-        matches_per_period = floor(number_agents / 2) #NOTE: hard-coded for now
-        return new(number_agents, memory_length, error, matches_per_period, random_seed)
+        return new(number_agents, memory_length, error, random_seed)
     end
     function SimParams()
         return new()
@@ -84,12 +83,12 @@ Base.show(sim_params::SimParams) = println(displayname(sim_params))
 
 Construct a list of SimParams instances with various parameter combinations.
 """
-function construct_sim_params_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
+function construct_sim_params_list(;number_agents_list::Vector{Int}, memory_length_list::Vector{Int}, error_list::Vector{Float64}, random_seed::Union{Nothing, Int} = nothing)
     sim_params_list = Vector{SimParams}([])
     for number_agents in number_agents_list
         for memory_length in memory_length_list
             for error in error_list
-                new_sim_params_set = SimParams(number_agents, memory_length, error, tags=tags, random_seed=random_seed)
+                new_sim_params_set = SimParams(number_agents, memory_length, error, random_seed=random_seed)
                 push!(sim_params_list, new_sim_params_set)
             end
         end

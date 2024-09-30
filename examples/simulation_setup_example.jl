@@ -37,20 +37,10 @@ Graph types available with relevant type constructors and parameters (structs fo
 =#
 
 const graph_params_list = [
-    # CompleteParams(),
-    # ErdosRenyiParams(1.0),
-    # ErdosRenyiParams(2.0),
-    # ErdosRenyiParams(3.0),
-    # ErdosRenyiParams(4.0),
-    # ErdosRenyiParams(5.0),
-    # SmallWorldParams(4, 0.6),
-    ScaleFreeParams(2.0, 0.2),
-    # ScaleFreeParams(4.0),
-    # ScaleFreeParams(8.0),
-    # StochasticBlockModelParams(2, 5.0, 0.5)
+    CompleteParams()
 ]
 
 const starting_condition_list = [FractiousState()]
 const stopping_condition_list = [EquityBehavioral(2), EquityPsychological(2)]
 
-const model = SimModel(game_list[1], sim_params_list[2], graph_params_list[1], starting_condition_list[1], stopping_condition_list[2])
+# const model = SimModel(game_list[1], sim_params_list[2], graph_params_list[1], starting_condition_list[1], stopping_condition_list[2])

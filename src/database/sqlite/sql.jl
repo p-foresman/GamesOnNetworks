@@ -1,6 +1,12 @@
 using SQLite
 
-DBConnection(db_info::SQLiteDB) = SQLite.DB(db_info.filepath)
+function DBConnection(db_info::SQLiteDB; busy_timeout::Int=3000)
+    db = SQLite.DB(db_info.filepath)
+    SQLite.busy_timeout(db, busy_timeout)
+    return db
+end
+close(db_info::SQLiteDB) = SQLite.close(db)
+execute(db_info::SQLiteDB, sql::String) = SQLite.execute(db, sql)
 
 function execute_init_full(db_info::SQLiteDB)
     #create or connect to database
@@ -652,10 +658,10 @@ end
 
 
 # Merge two SQLite files. These db files MUST have the same schema
-function execute_merge_full(db_filepath_master::String, db_filepath_merger::String)
-    db = SQLite.DB("$db_filepath_master")
+function execute_merge_full(db_info_master::SQLiteDB, db_info_merger::SQLiteDB)
+    db = DBConnection(db_info_master)
     SQLite.busy_timeout(db, 5000)
-    SQLite.execute(db, "ATTACH DATABASE '$db_filepath_merger' as merge_db;")
+    SQLite.execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
     SQLite.execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
     SQLite.execute(db, "INSERT OR IGNORE INTO graphs(graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out) SELECT graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out FROM merge_db.graphs;")
     SQLite.execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
