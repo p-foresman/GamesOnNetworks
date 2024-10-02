@@ -2,7 +2,19 @@
 
 #NOTE: clean this stuff up
 
+function timeout(model::SimModel, db_info::Union{Nothing, DBInfo}; exit_code::Int=85)
+    if isnothing(SETTINGS.database) #if database functionality isn't active, simply exit when timeout is reached
+        return () -> exit(exit_code)
+    else
+        return () -> (begin
+            db_checkpoint(db_info, db_info, exit_code=exit_code)
+            exit(exit_code)
+        end)
+    end
+end
+
 function simulate(model::SimModel; db_sim_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+    timer = Timer(timeout(model, SETTINGS.database))
     _simulate_distributed(model, SETTINGS.database, db_sim_group_id=db_sim_group_id, preserve_graph=preserve_graph)
     # if nworkers() > 1
     #     return _simulate_distributed(model, SETTINGS.database, db_sim_group_id=db_sim_group_id, preserve_graph=preserve_graph)
@@ -34,7 +46,7 @@ function _simulate(model::SimModel, ::Nothing; periods_elapsed::Int128 = Int128(
     return periods_elapsed
 end
 
-function _simulate(model::SimModel, db_info::Database; periods_elapsed::Int128 = Int128(0), db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, db_info::DBInfo; periods_elapsed::Int128 = Int128(0), db_sim_group_id::Union{Nothing, Integer} = nothing, db_id_tuple::Union{Nothing, DatabaseIdTuple} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
@@ -74,7 +86,7 @@ function _simulate_distributed(model::SimModel, ::Nothing; preserve_graph::Bool=
 end
 
 
-function _simulate_distributed(model::SimModel, db_info::SQLiteDB; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+function _simulate_distributed(model::SimModel, db_info::SQLiteInfo; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
     distributed_uuid = "$(displayname(game(model)))__$(displayname(graph_params(model)))__$(displayname(sim_params(model)))__Start=$(displayname(starting_condition(model)))__Stop=$(displayname(stopping_condition(model)))__TASKID=$(model_id(model))"
 
     if nworkers() > 1
@@ -102,7 +114,7 @@ function _simulate_distributed(model::SimModel, db_info::SQLiteDB; db_sim_group_
 end
 
 
-function _simulate_distributed(model::SimModel, db_info::PostgresDB; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+function _simulate_distributed(model::SimModel, db_info::PostgresInfo; db_sim_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
 
     db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
 

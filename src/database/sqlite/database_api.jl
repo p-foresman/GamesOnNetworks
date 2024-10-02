@@ -1,7 +1,7 @@
 include("sql.jl")
 
 
-function db_init(db_info::SQLiteDB)
+function db_init(db_info::SQLiteInfo)
     mkpath(dirname(db_info.filepath)) #create the directory path if it doesn't already exist
     success = false
     while !success
@@ -22,7 +22,7 @@ function db_init_distributed(distributed_uuid::String) #creates a sparate sqlite
     mkdir(temp_dirpath)
     for worker in workers()
         # temp_filepath = temp_dirpath * "$worker.sqlite"
-        db_info = SQLiteDB("temp$(worker)", temp_dirpath * "$worker.sqlite")
+        db_info = SQLiteInfo("temp$(worker)", temp_dirpath * "$worker.sqlite")
         execute_init_temp(db_info)
     end
     return nothing
@@ -53,12 +53,12 @@ function db_collect_distributed(db_filepath::String, distributed_uuid::String) #
 end
 
 
-function db_collect_temp(db_info_master::SQLiteDB, directory_path::String; cleanup_directory::Bool = false)
+function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cleanup_directory::Bool = false)
     contents = readdir(directory_path)
     for item in contents
         item_path = directory_path * "/" * item
         if isfile(item_path)
-            db_info_merger = SQLiteDB("temp", item_path)
+            db_info_merger = SQLiteInfo("temp", item_path)
             success = false
             while !success
                 try
@@ -81,7 +81,7 @@ function db_collect_temp(db_info_master::SQLiteDB, directory_path::String; clean
 end
 
 
-function db_insert_sim_group(db_info::SQLiteDB, description::String)
+function db_insert_sim_group(db_info::SQLiteInfo, description::String)
     # println("Inserting from worker ", myid())
     sim_group_id = nothing
     while sim_group_id === nothing
@@ -94,27 +94,24 @@ function db_insert_sim_group(db_info::SQLiteDB, description::String)
     return sim_group_id
 end
 
-function db_insert_game(db_info::SQLiteDB, game::Game)
+function db_insert_game(db_info::SQLiteInfo, game::Game)
     game_name = game.name
     game_json_str = JSON3.write(game)
-    payoff_matrix_size = JSON3.write(size(game.payoff_matrix))
+    payoff_matrix_size = JSON3.write(size(game))
 
-    game_row_id = nothing
-    while game_row_id === nothing
+    game_id = nothing
+    while isnothing(game_id)
         try
-            game_insert_result = execute_insert_game(db_info, game_name, game_json_str, payoff_matrix_size)
-            game_row_id = game_insert_result.insert_row_id
+            game_id = execute_insert_game(db_info, game_name, game_json_str, payoff_matrix_size)
         catch
             sleep(rand(0.1:0.1:4.0))
         end
     end
 
-    #game_status = game_insert_result.status_message
-
-    return game_row_id
+    return game_id
 end
 
-function db_insert_graph(db_info::SQLiteDB, graph_params::GraphParams)
+function db_insert_graph(db_info::SQLiteInfo, graph_params::GraphParams)
     graph = displayname(graph_params)
     type = String(graph_type(graph_params))
     graph_params_string = JSON3.write(graph_params)
@@ -126,21 +123,19 @@ function db_insert_graph(db_info::SQLiteDB, graph_params::GraphParams)
         end
     end
 
-    graph_row_id = nothing
-    while graph_row_id === nothing
+    graph_id = nothing
+    while isnothing(graph_id)
         try
-            graph_insert_result = execute_insert_graph(db_info, graph, type, graph_params_string, db_params_dict)
-            #graph_status = graph_insert_result.status_message
-            graph_row_id = graph_insert_result.insert_row_id
+            graph_id = execute_insert_graph(db_info, graph, type, graph_params_string, db_params_dict)
         catch
             sleep(rand(0.1:0.1:4.0))
         end
     end
 
-    return graph_row_id
+    return graph_id
 end
 
-function db_insert_sim_params(db_info::SQLiteDB, sim_params::SimParams, use_seed::Bool)
+function db_insert_sim_params(db_info::SQLiteInfo, sim_params::SimParams, use_seed::Bool)
     sim_params_json_str = JSON3.write(sim_params)
 
     if use_seed == true
@@ -149,55 +144,49 @@ function db_insert_sim_params(db_info::SQLiteDB, sim_params::SimParams, use_seed
         seed_bool = 0
     end
 
-    sim_params_row_id = nothing
-    while sim_params_row_id === nothing
+    sim_params_id = nothing
+    while isnothing(sim_params_id)
         try
-            sim_params_insert_result = execute_insert_sim_params(db_info, sim_params, sim_params_json_str, seed_bool)
-            #sim_params_status = sim_params_insert_result.status_message
-            sim_params_row_id = sim_params_insert_result.insert_row_id
+            sim_params_id = execute_insert_sim_params(db_info, sim_params, sim_params_json_str, seed_bool)
         catch
             sleep(rand(0.1:0.1:4.0))
         end
     end
 
-    return sim_params_row_id
+    return sim_params_id
 end
 
-function db_insert_starting_condition(db_info::SQLiteDB, starting_condition::StartingCondition)
+function db_insert_starting_condition(db_info::SQLiteInfo, starting_condition::StartingCondition)
     starting_condition_json_str = JSON3.write(typeof(starting_condition)(starting_condition)) #generates a "raw" starting condition object for the database
 
-    starting_condition_row_id = nothing
-    while starting_condition_row_id === nothing
+    starting_condition_id = nothing
+    while starting_condition_id === nothing
         try
-            starting_condition_insert_result = execute_insert_starting_condition(db_info, starting_condition.name, starting_condition_json_str)
-            #starting_condition_status = starting_condition_insert_result.status_message
-            starting_condition_row_id = starting_condition_insert_result.insert_row_id
+            starting_condition_id= execute_insert_starting_condition(db_info, starting_condition.name, starting_condition_json_str)
         catch
             sleep(rand(0.1:0.1:4.0))
         end
     end
 
-    return starting_condition_row_id
+    return starting_condition_id
 end
 
-function db_insert_stopping_condition(db_info::SQLiteDB, stopping_condition::StoppingCondition)
+function db_insert_stopping_condition(db_info::SQLiteInfo, stopping_condition::StoppingCondition)
     stopping_condition_json_str = JSON3.write(typeof(stopping_condition)(stopping_condition)) #generates a "raw" stopping condition object for the database
 
-    stopping_condition_row_id = nothing
-    while stopping_condition_row_id === nothing
+    stopping_condition_id = nothing
+    while stopping_condition_id === nothing
         try
-            stopping_condition_insert_result = execute_insert_stopping_condition(db_info, stopping_condition.name, stopping_condition_json_str)
-            #stopping_condition_status = stopping_condition_insert_result.status_message
-            stopping_condition_row_id = stopping_condition_insert_result.insert_row_id
+            stopping_condition_id = execute_insert_stopping_condition(db_info, stopping_condition.name, stopping_condition_json_str)
         catch
             sleep(rand(0.1:0.1:4.0))
         end
     end
 
-    return stopping_condition_row_id
+    return stopping_condition_id
 end
 
-function db_insert_simulation(db_info::SQLiteDB, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+function db_insert_simulation(db_info::SQLiteInfo, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
     rng_state = copy(Random.default_rng())
@@ -215,7 +204,7 @@ function db_insert_simulation(db_info::SQLiteDB, sim_group_id::Union{Integer, No
         # temp_dirpath = tempdirpath(db_filepath)
         temp_dirpath = distributed_uuid * "/"
         # db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
-        db_info = SQLiteDB("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
+        db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
     end
 
 
@@ -231,6 +220,8 @@ function db_insert_simulation(db_info::SQLiteDB, sim_group_id::Union{Integer, No
     end
     return simulation_insert_result
 end
+
+# function db_checkpoint(db_info::SQLiteInfo, model::SimModel)
 
 
 # #NOTE: FIX

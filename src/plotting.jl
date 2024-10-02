@@ -1,3 +1,6 @@
+using Plots, GraphPlot, StatsPlots, Cairo, Fontconfig, Statistics, Bootstrap
+
+
 #Plotting for box plot (all network classes)
 function transitionTimesBoxPlot(db_filepath::String;
                                 game_id::Integer,

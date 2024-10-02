@@ -7,6 +7,8 @@ processes = 1
 [databases]
 # use = true
 selected = "sqlite.default"
+checkpoint = ""
+# data_script = "" #supply to initialize database with specific data
 
 [databases.sqlite.default]
 path = "GamesOnNetworks.sqlite"

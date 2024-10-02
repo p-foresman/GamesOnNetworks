@@ -50,15 +50,15 @@ function find_threshold(db_filepath::String; sim_group_id::Integer, plot_title::
 
     # end
 
-    time_series_plot = plot(period_counts,
-                            [fraction_H fraction_M fraction_L],
-                            ylims=(0.0, 1.0),
-                            layout=(3, 1),
-                            legend=false,
-                            title=[plot_title "" ""], 
-                            xlabel=["" "" "Periods Elapsed"],
-                            xticks=[:none :none :auto],
-                            ylabel=["Proportion H" "Proportion M" "Proportion L"],
-                            size=(700, 700))
-    return time_series_plot, threshold, fraction_M
+    # time_series_plot = plot(period_counts,
+    #                         [fraction_H fraction_M fraction_L],
+    #                         ylims=(0.0, 1.0),
+    #                         layout=(3, 1),
+    #                         legend=false,
+    #                         title=[plot_title "" ""], 
+    #                         xlabel=["" "" "Periods Elapsed"],
+    #                         xticks=[:none :none :auto],
+    #                         ylabel=["Proportion H" "Proportion M" "Proportion L"],
+    #                         size=(700, 700))
+    # return time_series_plot, threshold, fraction_M
 end

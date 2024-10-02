@@ -1,18 +1,23 @@
 using LibPQ
 
-DBConnection(db_info::PostgresDB) = LibPQ.Connection("dbname=$(db_info.name)
+const PostgresDB = LibPQ.Connection
+
+DB(db_info::PostgresInfo) = LibPQ.Connection("dbname=$(db_info.name)
                                                 user=$(db_info.user)
                                                 host=$(db_info.host)
                                                 port=$(db_info.port)
                                                 password=$(db_info.password)")
+db_close(db::PostgresDB) = db_close(db)
+db_execute(db::PostgresDB, sql::String) = LibPQ.execute(db, sql)
+db_query(db::PostgresDB, sql::String) = DataFrame(db_execute(db, sql))
                                                 
 
-function execute_init_full(db_info::PostgresDB)
+function execute_init_full(db_info::PostgresInfo)
     #create or connect to database
-    db = DBConnection(db_info)
+    db = DB(db_info)
 
     #create 'games' table (currently only the "bargaining game" exists)
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS games
                             (
                                 game_id integer primary key generated always as identity,
@@ -24,7 +29,7 @@ function execute_init_full(db_info::PostgresDB)
                     ")
 
     #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS graphs
                             (
                                 graph_id integer primary key generated always as identity,
@@ -42,7 +47,7 @@ function execute_init_full(db_info::PostgresDB)
                     ")
 
     #create 'sim_params' table which contains information specific to each simulation
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS sim_params
                             (
                                 sim_params_id integer primary key generated always as identity,
@@ -55,7 +60,7 @@ function execute_init_full(db_info::PostgresDB)
                             );
                     ")
 
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS starting_conditions
                             (
                                 starting_condition_id integer primary key generated always as identity,
@@ -65,7 +70,7 @@ function execute_init_full(db_info::PostgresDB)
                             );
                     ")
 
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS stopping_conditions
                             (
                                 stopping_condition_id integer primary key generated always as identity,
@@ -76,7 +81,7 @@ function execute_init_full(db_info::PostgresDB)
                     ")
 
     #create 'sim_groups' table to group simulations and give the groups an easy-access description (version control is handled with the prev_simulation_id column in the individual simulation saves)
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS sim_groups
                             (
                                 sim_group_id integer primary key generated always as identity,
@@ -85,27 +90,15 @@ function execute_init_full(db_info::PostgresDB)
                             );
                     ")
 
-    #create 'simulations' table which contains information specific to each simulation
-    LibPQ.execute(db, "
-                            CREATE TABLE IF NOT EXISTS simulations
+    db_execute(db, "
+                            CREATE TABLE IF NOT EXISTS models
                             (
-                                simulation_id integer primary key generated always as identity,
-                                simulation_uuid TEXT NOT NULL,
-                                sim_group_id INTEGER DEFAULT NULL,
-                                prev_simulation_uuid TEXT DEFAULT NULL,
+                                model_id integer primary key generated always as identity,
                                 game_id INTEGER NOT NULL,
                                 graph_id INTEGER NOT NULL,
                                 sim_params_id INTEGER NOT NULL,
                                 starting_condition_id INTEGER NOT NULL,
                                 stopping_condition_id INTEGER NOT NULL,
-                                graph_adj_matrix TEXT DEFAULT NULL,
-                                rng_state TEXT NOT NULL,
-                                periods_elapsed INTEGER NOT NULL,
-                                FOREIGN KEY (sim_group_id)
-                                    REFERENCES sim_groups (sim_group_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (prev_simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid),
                                 FOREIGN KEY (game_id)
                                     REFERENCES games (game_id)
                                     ON DELETE CASCADE,
@@ -121,12 +114,35 @@ function execute_init_full(db_info::PostgresDB)
                                 FOREIGN KEY (stopping_condition_id)
                                     REFERENCES stopping_conditions (stopping_condition_id)
                                     ON DELETE CASCADE,
+                                UNIQUE(game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id)
+                            )
+                ")
+
+#create 'simulations' table which contains information specific to each simulation
+    db_execute(db, "
+                            CREATE TABLE IF NOT EXISTS simulations
+                            (
+                                simulation_id integer primary key generated always as identity,
+                                simulation_uuid TEXT NOT NULL,
+                                sim_group_id INTEGER DEFAULT NULL,
+                                prev_simulation_uuid TEXT DEFAULT NULL,
+                                model_id INTEGER NOT NULL,
+                                graph_adj_matrix TEXT DEFAULT NULL,
+                                rng_state TEXT NOT NULL,
+                                periods_elapsed INTEGER NOT NULL,
+                                FOREIGN KEY (sim_group_id)
+                                    REFERENCES sim_groups (sim_group_id)
+                                    ON DELETE CASCADE,
+                                FOREIGN KEY (prev_simulation_uuid)
+                                    REFERENCES simulations (simulation_uuid),
+                                FOREIGN KEY (model_id)
+                                    REFERENCES models (model_id),
                                 UNIQUE(simulation_uuid)
                             );
                     ")
 
     #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
-    LibPQ.execute(db, "
+    db_execute(db, "
                             CREATE TABLE IF NOT EXISTS agents
                             (
                                 agent_id integer primary key generated always as identity,
@@ -137,12 +153,12 @@ function execute_init_full(db_info::PostgresDB)
                                     ON DELETE CASCADE
                             );
                     ")
-    LibPQ.close(db)
+    db_close(db)
 end
 
-function execute_insert_game(db_info::PostgresDB, game_name::String, game::String, payoff_matrix_size::String)
-    db = DBConnection(db_info)
-    result = LibPQ.execute(db, "
+function execute_insert_game(db_info::PostgresInfo, game_name::String, game::String, payoff_matrix_size::String)
+    db = DB(db_info)
+    id::Int = db_query(db, "
                                     INSERT INTO games
                                     (
                                         game_name,
@@ -158,16 +174,13 @@ function execute_insert_game(db_info::PostgresDB, game_name::String, game::Strin
                                     ON CONFLICT (game_name, game) DO UPDATE
                                         SET game_name = games.game_name
                                     RETURNING game_id;
-                            ")
-    df = DataFrame(result)
-    println(df)
-    insert_row = df[1, :game_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): games]... INSERT STATUS: [OK] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :game_id]
+    db_close(db)
+    return id
 end
 
-function execute_insert_graph(db_info::PostgresDB, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = DBConnection(db_info)
+function execute_insert_graph(db_info::PostgresInfo, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
+    db = DB(db_info)
     insert_string_columns = "graph, graph_type, graph_params, "
     insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
     for (param, value) in db_graph_params_dict
@@ -179,7 +192,7 @@ function execute_insert_graph(db_info::PostgresDB, graph::String, graph_type::St
     insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
     insert_string_values = rstrip(insert_string_values, [' ', ','])
 
-    result = LibPQ.execute(db, "
+    id::Int = db_query(db, "
                                     INSERT INTO graphs
                                     (
                                         $insert_string_columns
@@ -191,16 +204,14 @@ function execute_insert_graph(db_info::PostgresDB, graph::String, graph_type::St
                                     ON CONFLICT (graph, graph_params) DO UPDATE
                                         SET graph_type = graphs.graph_type
                                     RETURNING graph_id;
-                            ")
-    df = DataFrame(result)
-    insert_row = df[1, :graph_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): graphs]... INSERT STATUS: [OK] GRAPH_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :graph_id]
+    db_close(db)
+    return id
 end
 
-function execute_insert_sim_params(db_info::PostgresDB, sim_params::SimParams, sim_params_str::String, use_seed::String)
-    db = DBConnection(db_info)
-    result = LibPQ.execute(db, "
+function execute_insert_sim_params(db_info::PostgresInfo, sim_params::SimParams, sim_params_str::String, use_seed::String)
+    db = DB(db_info)
+    id::Int = db_query(db, "
                                     INSERT INTO sim_params
                                     (
                                         number_agents,
@@ -220,16 +231,14 @@ function execute_insert_sim_params(db_info::PostgresDB, sim_params::SimParams, s
                                     ON CONFLICT (sim_params, use_seed) DO UPDATE
                                         SET use_seed = sim_params.use_seed
                                     RETURNING sim_params_id;
-                            ")
-    df = DataFrame(result)
-    insert_row = df[1, :sim_params_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): sim_params]... INSERT STATUS: [OK] SIM_PARAMS_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :sim_params_id]
+    db_close(db)
+    return id
 end
 
-function execute_insert_starting_condition(db_info::PostgresDB, starting_condition_name::String, starting_condition_str::String)
-    db = DBConnection(db_info)
-    result = LibPQ.execute(db, "
+function execute_insert_starting_condition(db_info::PostgresInfo, starting_condition_name::String, starting_condition_str::String)
+    db = DB(db_info)
+    id::Int = db_query(db, "
                                     INSERT INTO starting_conditions
                                     (
                                         name,
@@ -243,16 +252,14 @@ function execute_insert_starting_condition(db_info::PostgresDB, starting_conditi
                                     ON CONFLICT (name, starting_condition) DO UPDATE
                                         SET name = starting_conditions.name
                                     RETURNING starting_condition_id;
-                            ")
-    df = DataFrame(result)
-    insert_row = df[1, :starting_condition_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): starting_conditions]... INSERT STATUS: [OK] STARTING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :starting_condition_id]
+    db_close(db)
+    return id
 end
 
-function execute_insert_stopping_condition(db_info::PostgresDB, stopping_condition_name::String, stopping_condition_str::String)
-    db = DBConnection(db_info)
-    result = LibPQ.execute(db, "
+function execute_insert_stopping_condition(db_info::PostgresInfo, stopping_condition_name::String, stopping_condition_str::String)
+    db = DB(db_info)
+    id::Int = db_query(db, "
                                     INSERT INTO stopping_conditions
                                     (
                                         name,
@@ -266,16 +273,14 @@ function execute_insert_stopping_condition(db_info::PostgresDB, stopping_conditi
                                     ON CONFLICT (name, stopping_condition) DO UPDATE
                                         SET name = stopping_conditions.name
                                     RETURNING stopping_condition_id;
-                            ")
-    df = DataFrame(result)
-    insert_row = df[1, :stopping_condition_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): stopping_conditions]... INSERT STATUS: [OK] STOPPING_CONDITION_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :stopping_condition_id]
+    db_close(db)
+    return id
 end
 
-function execute_insert_sim_group(db_info::PostgresDB, description::String)
-    db = DBConnection(db_info)
-    result = LibPQ.execute(db, "
+function execute_insert_sim_group(db_info::PostgresInfo, description::String)
+    db = DB(db_info)
+    id::Int = db_query(db, "
                                     INSERT INTO sim_groups
                                     (
                                         description
@@ -287,15 +292,13 @@ function execute_insert_sim_group(db_info::PostgresDB, description::String)
                                     ON CONFLICT (description) DO UPDATE
                                         SET description = sim_groups.description
                                     RETURNING sim_group_id;
-                            ")
-    df = DataFrame(result)
-    insert_row = df[1, :sim_group_id]
-    LibPQ.close(db)
-    return (status_message = "PostgreSQL [$(db_info.name): sim_groups]... INSERT STATUS: [OK] SIM_GROUP_ID: [$insert_row]]", insert_row_id = insert_row)
+    ")[1, :sim_group_id]
+    db_close(db)
+    return id
 end
 
 
-function execute_insert_simulation(db_info::PostgresDB, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function execute_insert_simulation(db_info::PostgresInfo, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
     simulation_uuid = "$(uuid4())"
     
     #prepare simulation SQL
@@ -310,7 +313,7 @@ function execute_insert_simulation(db_info::PostgresDB, sim_group_id::Union{Inte
     agent_values_string = rstrip(agent_values_string, [' ', ','])
 
     #open DB connection
-    db = DBConnection(db_info)
+    db = DB(db_info)
 
     #first insert simulation with simulation_uuid
     result = LibPQ.execute(db, "
@@ -352,7 +355,7 @@ function execute_insert_simulation(db_info::PostgresDB, sim_group_id::Union{Inte
                                         $agent_values_string;
                             ")
 
-    LibPQ.close(db)
+    db_close(db)
 
     return (status_message = "PostgreSQL [SimulationSaves: simulations & agents]... SIMULATION INSERT STATUS: [OK] AGENTS INSERT STATUS: [OK] SIMULATION_UUID: [$simulation_uuid]", simulation_uuid = simulation_uuid)
 end
@@ -366,92 +369,92 @@ end
 
 
 
-function execute_query_games(db_info::PostgresDB, game_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_games(db_info::PostgresInfo, game_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM games
                                         WHERE game_id = $game_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_graphs(db_info::PostgresDB, graph_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_graphs(db_info::PostgresInfo, graph_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM graphs
                                         WHERE graph_id = $graph_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_sim_params(db_info::PostgresDB, sim_params_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_sim_params(db_info::PostgresInfo, sim_params_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM sim_params
                                         WHERE sim_params_id = $sim_params_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_starting_conditions(db_info::PostgresDB, starting_condition_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_starting_conditions(db_info::PostgresInfo, starting_condition_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM starting_conditions
                                         WHERE starting_condition_id = $starting_condition_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_stopping_conditions(db_info::PostgresDB, stopping_condition_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_stopping_conditions(db_info::PostgresInfo, stopping_condition_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM stopping_conditions
                                         WHERE stopping_condition_id = $stopping_condition_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_sim_groups(db_info::PostgresDB, sim_group_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_sim_groups(db_info::PostgresInfo, sim_group_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM sim_groups
                                         WHERE sim_group_id = $sim_group_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_simulations(db_info::PostgresDB, simulation_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_simulations(db_info::PostgresInfo, simulation_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM simulations
                                         WHERE simulation_id = $simulation_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_agents(db_info::PostgresDB, simulation_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_agents(db_info::PostgresInfo, simulation_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT *
                                         FROM agents
@@ -459,12 +462,12 @@ function execute_query_agents(db_info::PostgresDB, simulation_id::Integer)
                                         ORDER BY agent_id ASC;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_simulations_for_restore(db_info::PostgresDB, simulation_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_simulations_for_restore(db_info::PostgresInfo, simulation_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
@@ -488,12 +491,12 @@ function execute_query_simulations_for_restore(db_info::PostgresDB, simulation_i
                                         WHERE simulations.simulation_id = $simulation_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_query_agents_for_restore(db_info::PostgresDB, simulation_id::Integer)
-    db = DBConnection(db_info)
+function execute_query_agents_for_restore(db_info::PostgresInfo, simulation_id::Integer)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT agent
                                         FROM agents
@@ -501,14 +504,14 @@ function execute_query_agents_for_restore(db_info::PostgresDB, simulation_id::In
                                         ORDER BY agent_id ASC;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
 
 #NOTE: FIX
-# function querySimulationsByGroup(db_info::PostgresDB, sim_group_id::Int)
-#     db = DBConnection(db_info)
+# function querySimulationsByGroup(db_info::PostgresInfo, sim_group_id::Int)
+#     db = DB(db_info)
 #   
 #     query = LibPQ.execute(db, "
 #                                         SELECT
@@ -529,13 +532,13 @@ end
 #                                         WHERE simulations.sim_group_id = $sim_group_id
 #                                 ")
 #     df = DataFrame(query) #must create a DataFrame to acces query data
-#     LibPQ.close(db)
+#     db_close(db)
 #     return df
 # end
 
 #this function allows for RAM space savings during large iterative simulations
-function querySimulationIDsByGroup(db_info::PostgresDB, sim_group_id::Int)
-    db = DBConnection(db_info)
+function querySimulationIDsByGroup(db_info::PostgresInfo, sim_group_id::Int)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT
                                             simulation_id
@@ -544,26 +547,26 @@ function querySimulationIDsByGroup(db_info::PostgresDB, sim_group_id::Int)
                                         ORDER BY simulation_id ASC
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
-    LibPQ.close(db)
+    db_close(db)
     return df
 end
 
-function execute_delete_simulation(db_info::PostgresDB, simulation_id::Int)
-    db = DBConnection(db_info)
+function execute_delete_simulation(db_info::PostgresInfo, simulation_id::Int)
+    db = DB(db_info)
     LibPQ.execute(db, "PRAGMA foreign_keys = ON;") #turn on foreign key support to allow cascading deletes
     status = LibPQ.execute(db, "DELETE FROM simulations WHERE simulation_id = $simulation_id;")
-    LibPQ.close(db)
+    db_close(db)
     return status
 end
 
 
-function querySimulationsForBoxPlot(db_info::PostgresDB; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Int)
+function querySimulationsForBoxPlot(db_info::PostgresInfo; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Int)
     graph_ids_sql = ""
     if graph_ids !== nothing
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
     
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -594,7 +597,7 @@ function querySimulationsForBoxPlot(db_info::PostgresDB; game_id::Integer, numbe
                                         WHERE RowNum <= $sample_size;
                                 ") #dont need ROW_NUMBER() above, keeping for future use reference
     df = DataFrame(query)
-    LibPQ.close(db)
+    db_close(db)
 
     #error handling
     error_set = Set([])
@@ -614,7 +617,7 @@ function querySimulationsForBoxPlot(db_info::PostgresDB; game_id::Integer, numbe
 end
 
 
-function querySimulationsForMemoryLengthLinePlot(db_info::PostgresDB; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
+function querySimulationsForMemoryLengthLinePlot(db_info::PostgresInfo; game_id::Integer, number_agents::Integer, memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
     memory_lengths_sql = ""
     if memory_length_list !== nothing
         length(memory_length_list) == 1 ? memory_lengths_sql *= "AND sim_params.memory_length = $(memory_length_list[1])" : memory_lengths_sql *= "AND sim_params.memory_length IN $(Tuple(memory_length_list))"
@@ -629,7 +632,7 @@ function querySimulationsForMemoryLengthLinePlot(db_info::PostgresDB; game_id::I
     end
 
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -672,7 +675,7 @@ function querySimulationsForMemoryLengthLinePlot(db_info::PostgresDB; game_id::I
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for memory_length in memory_length_list
         for error in errors
@@ -698,7 +701,7 @@ end
 
 
 
-function querySimulationsForNumberAgentsLinePlot(db_info::PostgresDB; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
+function querySimulationsForNumberAgentsLinePlot(db_info::PostgresInfo; game_id::Integer, number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing, memory_length::Integer, errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Integer)
     number_agents_sql = ""
     if number_agents_list !== nothing
         length(number_agents_list) == 1 ? number_agents_sql *= "AND sim_params.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND sim_params.number_agents IN $(Tuple(number_agents_list))"
@@ -713,7 +716,7 @@ function querySimulationsForNumberAgentsLinePlot(db_info::PostgresDB; game_id::I
     end
 
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -756,7 +759,7 @@ function querySimulationsForNumberAgentsLinePlot(db_info::PostgresDB; game_id::I
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors
@@ -780,7 +783,7 @@ function querySimulationsForNumberAgentsLinePlot(db_info::PostgresDB; game_id::I
 end
 
 
-function query_simulations_for_transition_time_vs_memory_sweep(db_info::PostgresDB;
+function query_simulations_for_transition_time_vs_memory_sweep(db_info::PostgresInfo;
                                                                 game_id::Integer,
                                                                 memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing,
                                                                 number_agents::Integer,
@@ -804,7 +807,7 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_info::Postgres
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -851,7 +854,7 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_info::Postgres
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors
@@ -876,7 +879,7 @@ end
 
 
 
-function query_simulations_for_transition_time_vs_population_sweep(db_info::PostgresDB;
+function query_simulations_for_transition_time_vs_population_sweep(db_info::PostgresInfo;
                                                                     game_id::Integer,
                                                                     number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
                                                                     memory_length::Integer,
@@ -899,7 +902,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::Post
         length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
     end
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -947,7 +950,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::Post
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors
@@ -971,7 +974,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::Post
 end
 
 
-function query_simulations_for_transition_time_vs_population_stopping_condition(db_info::PostgresDB;
+function query_simulations_for_transition_time_vs_population_stopping_condition(db_info::PostgresInfo;
                                                                                 game_id::Integer,
                                                                                 number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
                                                                                 memory_length::Integer,
@@ -1003,7 +1006,7 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
 
     println(stopping_condition_ids_sql)
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -1050,7 +1053,7 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors
@@ -1075,7 +1078,7 @@ end
 
 
 
-function query_simulations_for_transition_time_vs_memory_length_stopping_condition(db_info::PostgresDB;
+function query_simulations_for_transition_time_vs_memory_length_stopping_condition(db_info::PostgresInfo;
                                                                                 game_id::Integer,
                                                                                 memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing,
                                                                                 number_agents::Integer,
@@ -1107,7 +1110,7 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
 
     println(stopping_condition_ids_sql)
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -1154,7 +1157,7 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors
@@ -1179,8 +1182,8 @@ end
 
 
 
-function querySimulationsForTimeSeries(db_info::PostgresDB;sim_group_id::Integer)
-    db = DBConnection(db_info)
+function querySimulationsForTimeSeries(db_info::PostgresInfo;sim_group_id::Integer)
+    db = DB(db_info)
 
     #query the simulation info (only need one row since each entry in the timeseries group will have the same info)
     #separate this from agent query to save memory, as this query could be very memory intensive
@@ -1217,7 +1220,7 @@ function querySimulationsForTimeSeries(db_info::PostgresDB;sim_group_id::Integer
                                                     ORDER BY simulations.periods_elapsed ASC
                                                 ")
     agent_df = DataFrame(query_agent_info)
-    LibPQ.close(db)
+    db_close(db)
 
     return (sim_info_df = sim_info_df, agent_df = agent_df)
 end
@@ -1225,7 +1228,7 @@ end
 
 
 
-function query_simulations_for_noise_structure_heatmap(db_info::PostgresDB;
+function query_simulations_for_noise_structure_heatmap(db_info::PostgresInfo;
                                                         game_id::Integer,
                                                         graph_params::Vector{<:Dict{Symbol, Any}},
                                                         errors::Vector{<:AbstractFloat},
@@ -1270,7 +1273,7 @@ function query_simulations_for_noise_structure_heatmap(db_info::PostgresDB;
         graph_params_sql *= ")"
     end
     
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -1320,7 +1323,7 @@ function query_simulations_for_noise_structure_heatmap(db_info::PostgresDB;
     # mean_degrees === nothing ? mean_degrees = Set([λ for λ in numberAgentsDF()[:, :λ]]) : nothing
 
 
-    # LibPQ.close(db)
+    # db_close(db)
 
     # for mean_degree in mean_degrees
     #     for error in errors
@@ -1344,7 +1347,7 @@ function query_simulations_for_noise_structure_heatmap(db_info::PostgresDB;
 end
 
 
-function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::PostgresDB;
+function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::PostgresInfo;
                                                                 game_id::Integer,
                                                                 memory_length::Integer,
                                                                 number_agents::Integer,
@@ -1373,7 +1376,7 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::Po
     graph_params_sql *= ")"
 
 
-    db = DBConnection(db_info)
+    db = DB(db_info)
     query = LibPQ.execute(db, "
                                         SELECT * FROM (
                                             SELECT
@@ -1424,7 +1427,7 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::Po
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
     graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
 
-    LibPQ.close(db)
+    db_close(db)
 
     for number_agents in number_agents_list
         for error in errors

@@ -56,7 +56,16 @@ displayname(game::Game) = getfield(game, :name)
 
 Get the payoff matrix for a game.
 """
-payoff_matrix(game::Game) = getfield(game, :payoff_matrix)
+payoff_matrix(game::Game) = getfield(game, :payoff_matrix) #NOTE: type instability due to generic payoff matrix size
+
+
+import Base.size #must import to extend
+"""
+    size(game::Game{S1, S2})
+
+Returns a tuple containing the size of the game's payoff matrix, e.g., (3, 3)
+"""
+size(::Game{S1, S2}) where {S1, S2} = (S1, S2)
 
 """
     strategies(game::Game)

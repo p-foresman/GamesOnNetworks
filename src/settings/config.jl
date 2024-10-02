@@ -10,7 +10,7 @@ const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
 
 # abstract type Database end
 
-# struct PostgresDB <: Database
+# struct PostgresInfo <: Database
 #     name::String
 #     user::String
 #     host::String
@@ -18,24 +18,21 @@ const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
 #     password::String
 # end
 
-# struct SQLiteDB <: Database
+# struct SQLiteInfo <: Database
 #     name::String
 #     filepath::String
 # end
 
-# db_type(database::SQLiteDB) = "sqlite"
-# db_type(database::PostgresDB) = "postgres"
+# db_type(database::SQLiteInfo) = "sqlite"
+# db_type(database::PostgresInfo) = "postgres"
 
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
     use_seed::Bool
     # use_distributed::Bool
     procs::Int
-    database::Union{Database, Nothing} #if nothing, not using database
-    # db_type::String
-    # db_name::String
-    # db_info::Dict{String, String} #Base.ImmutableDict{String, String}
-    # db_insert::Function
+    database::Union{DBInfo, Nothing} #if nothing, not using database
+    # data_script::Union{Nothing, String}
 end
 
 function Settings(settings::Dict{String, Any})
@@ -59,8 +56,19 @@ function Settings(settings::Dict{String, Any})
     @assert haskey(databases, "selected") "config file must have a 'selected' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string if not using a database"
     selected_db = databases["selected"]
     @assert selected_db isa String "the denoted default database must be a String (can be an empty string if not using a database)"
+    
+    # @assert haskey(databases, "data_script") "config file must have a 'data_script' variable in the [databases] table specifying the path to a data loading script to be loaded on database initialization OR an empty string if no data loading is required"
+    # data_script = databases["data_script"]
+    # @assert data_script isa String "the 'data_script' variable must be a String (can be an empty string if data loading isn't required)"
+    # if !isempty(data_script)
+    #     data_script = normpath(joinpath(project_dirpath, data_script))
+    #     @assert isfile(data_script)
+    # else
+    #     data_script = nothing
+    # end
 
     #if selected_db exists, must validate selected database. Otherwise, not using database
+    db_init_file = nothing
     if !isempty(selected_db)
         parsed_db_key_path = split(selected_db, ".")
         @assert length(parsed_db_key_path) == 2 "'selected' database path must be of the form \"db_type.db_name\""
@@ -76,13 +84,13 @@ function Settings(settings::Dict{String, Any})
         if db_type == "sqlite"
             @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
             @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-            database = SQLiteDB(db_name, normpath(joinpath(project_dirpath, db_info["path"])))
+            database = SQLiteInfo(db_name, normpath(joinpath(project_dirpath, db_info["path"])))
         elseif db_type == "postgres"
             @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
             @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
             @assert haskey(db_info, "port") "database config table [database.postgres.$db_name] must contain 'port' variable"
             @assert haskey(db_info, "password") "database config table [database.postgres.$db_name] must contain 'password' variable"
-            database = PostgresDB(db_name, db_info["user"], db_info["host"], db_info["port"], db_info["password"])
+            database = PostgresInfo(db_name, db_info["user"], db_info["host"], db_info["port"], db_info["password"])
         end
     end
 
@@ -136,8 +144,10 @@ function configure()
             print("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
             # out = stdout
             # redirect_stdout(devnull)
-            @suppress db_init() #suppress the stdout stream
-            if SETTINGS.database isa SQLiteDB
+            @suppress db_init() #;data_script=SETTINGS.data_script) #suppress the stdout stream
+            #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
+            # include()
+            if SETTINGS.database isa SQLiteInfo
                 println("SQLite database file initialized at $(SETTINGS.database.filepath)")
             else
                 println("PostgreSQL database initialized")

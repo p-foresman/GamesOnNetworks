@@ -28,6 +28,7 @@ export
     # accessors
     game,
     payoff_matrix,
+    size,
     strategies,
     random_strategy,
 
@@ -149,13 +150,6 @@ using
     # LibPQ,
     UUIDs,
     Distributed,
-    Plots,
-    GraphPlot,
-    StatsPlots,
-    Cairo,
-    Fontconfig,
-    Statistics,
-    Bootstrap,
     DataStructures,
     # Memoize,
     TimerOutputs,

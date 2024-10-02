@@ -1,6 +1,6 @@
-abstract type Database end
+abstract type DBInfo end
 
-struct PostgresDB <: Database
+struct PostgresInfo <: DBInfo
     name::String
     user::String
     host::String
@@ -8,13 +8,13 @@ struct PostgresDB <: Database
     password::String
 end
 
-struct SQLiteDB <: Database
+struct SQLiteInfo <: DBInfo
     name::String
     filepath::String
 end
 
-db_type(database::SQLiteDB) = "sqlite"
-db_type(database::PostgresDB) = "postgres"
+db_type(database::SQLiteInfo) = "sqlite"
+db_type(database::PostgresInfo) = "postgres"
 
 DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}
 
@@ -59,24 +59,53 @@ db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothi
 function db_construct_id_tuple(model::SimModel)
     db_info = SETTINGS.database
     db_id_tuple::DatabaseIdTuple = (
-                    game_id = db_insert_game(db_info, model.game),
-                    graph_id = db_insert_graph(db_info, model.graph_params),
-                    sim_params_id = db_insert_sim_params(db_info, model.sim_params, SETTINGS.use_seed),
-                    starting_condition_id = db_insert_starting_condition(db_info, model.starting_condition),
-                    stopping_condition_id = db_insert_stopping_condition(db_info, model.stopping_condition)
+                    game_id = db_insert_game(db_info, game(model)),
+                    graph_id = db_insert_graph(db_info, graph_params(model)),
+                    sim_params_id = db_insert_sim_params(db_info, sim_params(model), SETTINGS.use_seed),
+                    starting_condition_id = db_insert_starting_condition(db_info, starting_condition(model)),
+                    stopping_condition_id = db_insert_stopping_condition(db_info, stopping_condition(model))
                     )
     return db_id_tuple
 end
 
-function db_construct_id_tuple(db_info::Database, model::SimModel, use_seed::Bool)
+function db_construct_id_tuple(db_info::DBInfo, model::SimModel, use_seed::Bool)
     db_id_tuple::DatabaseIdTuple = (
-                    game_id = db_insert_game(db_info, model.game),
-                    graph_id = db_insert_graph(db_info, model.graph_params),
-                    sim_params_id = db_insert_sim_params(db_info, model.sim_params, use_seed),
-                    starting_condition_id = db_insert_starting_condition(db_info, model.starting_condition),
-                    stopping_condition_id = db_insert_stopping_condition(db_info, model.stopping_condition)
+                    game_id = db_insert_game(db_info, game(model)),
+                    graph_id = db_insert_graph(db_info, graph_params(model)),
+                    sim_params_id = db_insert_sim_params(db_info, sim_params(model), use_seed),
+                    starting_condition_id = db_insert_starting_condition(db_info, starting_condition(model)),
+                    stopping_condition_id = db_insert_stopping_condition(db_info, stopping_condition(model))
                     )
     return db_id_tuple
+end
+
+
+#NOTE: below currently just for database initialization scripts (very likely a better way to do this!!)
+function db_insert_model(model::SimModel)
+    db_insert_game(SETTINGS.database, game(model))
+    db_insert_graph(SETTINGS.database, graph_params(model))
+    db_insert_sim_params(SETTINGS.database, sim_params(model), SETTINGS.use_seed)
+    db_insert_starting_condition(SETTINGS.database, starting_condition(model))
+    db_insert_stopping_condition(SETTINGS.database, stopping_condition(model))
+end
+
+function db_insert_model_data(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_params_list::Vector{<:GraphParams}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition})
+    #add validation here??  
+    for game in game_list
+        for sim_params in sim_params_list
+            for graph_params in graph_params_list
+                for starting_condition in starting_condition_list
+                    for stopping_condition in stopping_condition_list
+                    db_insert_game(SETTINGS.database, game)
+                    db_insert_graph(SETTINGS.database, graph_params)
+                    db_insert_sim_params(SETTINGS.database, sim_params, SETTINGS.use_seed)
+                    db_insert_starting_condition(SETTINGS.database, starting_condition)
+                    db_insert_stopping_condition(SETTINGS.database, stopping_condition)
+                    end
+                end
+            end
+        end
+    end
 end
 
 

@@ -1,17 +1,17 @@
 include("sql.jl")
 
-db_init(db_info::PostgresDB) = execute_init_full(db_info)
+db_init(db_info::PostgresInfo) = execute_init_full(db_info)
 
-db_insert_sim_group(db_info::PostgresDB, description::String) = execute_insert_sim_group(db_info, description).insert_row_id
+db_insert_sim_group(db_info::PostgresInfo, description::String) = execute_insert_sim_group(db_info, description)
 
-function db_insert_game(db_info::PostgresDB, game::Game)
+function db_insert_game(db_info::PostgresInfo, game::Game)
     game_name = game.name
     game_json_str = JSON3.write(game)
-    payoff_matrix_size = JSON3.write(size(game.payoff_matrix))
-    return execute_insert_game(db_info, game_name, game_json_str, payoff_matrix_size).insert_row_id
+    payoff_matrix_size = JSON3.write(size(game))
+    return execute_insert_game(db_info, game_name, game_json_str, payoff_matrix_size)
 end
 
-function db_insert_graph(db_info::PostgresDB, graph_params::GraphParams)
+function db_insert_graph(db_info::PostgresInfo, graph_params::GraphParams)
     graph = displayname(graph_params)
     type = String(graph_type(graph_params))
     graph_params_string = JSON3.write(graph_params)
@@ -23,25 +23,25 @@ function db_insert_graph(db_info::PostgresDB, graph_params::GraphParams)
         end
     end
 
-    return execute_insert_graph(db_info, graph, type, graph_params_string, db_params_dict).insert_row_id
+    return execute_insert_graph(db_info, graph, type, graph_params_string, db_params_dict)
 end
 
-function db_insert_sim_params(db_info::PostgresDB, sim_params::SimParams, use_seed::Bool)
+function db_insert_sim_params(db_info::PostgresInfo, sim_params::SimParams, use_seed::Bool)
     sim_params_json_str = JSON3.write(sim_params)
-    return execute_insert_sim_params(db_info, sim_params, sim_params_json_str, string(use_seed)).insert_row_id
+    return execute_insert_sim_params(db_info, sim_params, sim_params_json_str, string(use_seed))
 end
 
-function db_insert_starting_condition(db_info::PostgresDB, starting_condition::StartingCondition)
+function db_insert_starting_condition(db_info::PostgresInfo, starting_condition::StartingCondition)
     starting_condition_json_str = JSON3.write(typeof(starting_condition)(starting_condition)) #generates a "raw" starting condition object for the database
-    return execute_insert_starting_condition(db_info, starting_condition.name, starting_condition_json_str).insert_row_id
+    return execute_insert_starting_condition(db_info, starting_condition.name, starting_condition_json_str)
 end
 
-function db_insert_stopping_condition(db_info::PostgresDB, stopping_condition::StoppingCondition)
+function db_insert_stopping_condition(db_info::PostgresInfo, stopping_condition::StoppingCondition)
     stopping_condition_json_str = JSON3.write(typeof(stopping_condition)(stopping_condition)) #generates a "raw" stopping condition object for the database
-    return execute_insert_stopping_condition(db_info, stopping_condition.name, stopping_condition_json_str).insert_row_id
+    return execute_insert_stopping_condition(db_info, stopping_condition.name, stopping_condition_json_str)
 end
 
-function db_insert_simulation(db_info::PostgresDB, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+function db_insert_simulation(db_info::PostgresInfo, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agent_graph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(agent_graph.graph)))
     rng_state = copy(Random.default_rng())
