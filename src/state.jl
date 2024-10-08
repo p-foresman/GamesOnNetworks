@@ -11,7 +11,7 @@ mutable struct State{V, E}
         E = ne(graph(agentgraph))
         initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph) #NOTE: doesnt seem good to initialize model stopping condition in a different struct initializer!
         preallocatedarrays = PreAllocatedArrays(payoff_matrix(model))
-        return new{V, E}(agentgraph, preallocatedarrays, Int128(0))
+        return new{V, E}(agentgraph, preallocatedarrays)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
