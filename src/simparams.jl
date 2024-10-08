@@ -1,3 +1,5 @@
+#NOTE: should starting and stopping conditions be added into SimParams??
+
 """
     SimParams
 
@@ -48,12 +50,12 @@ Get the error rate simulation parameter ϵ.
 """
 error_rate(simparams::SimParams) = getfield(simparams, :error)
 
-"""
-    matches_per_period(simparams::SimParams)
+# """
+#     matches_per_period(simparams::SimParams)
 
-Get the number of matches per period for the simulation.
-"""
-matches_per_period(simparams::SimParams) = getfield(simparams, :matches_per_period)
+# Get the number of matches per period for the simulation.
+# """
+# matches_per_period(simparams::SimParams) = getfield(simparams, :matches_per_period)
 
 """
     random_seed(simparams::SimParams)

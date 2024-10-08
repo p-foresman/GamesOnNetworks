@@ -181,6 +181,8 @@ include("cross_type_functions.jl")
 #SimModel type and methods
 include("simmodel.jl")
 
+include("state.jl")
+
 #api to sqlite and postgresql functionality
 include("database/database_api.jl")
 

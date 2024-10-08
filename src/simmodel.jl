@@ -9,27 +9,21 @@ S2 = column dimension of Game instance
 V = number of agents/vertices
 E = number of relationships/edges
 """
-struct SimModel{S1, S2, V, E}
-    id::Union{Nothing, Int}
+struct SimModel{S1, S2}
+    # id::Union{Nothing, Int}
     game::Game{S1, S2}
     simparams::SimParams
     graphmodel::GraphModel
     startingcondition::StartingCondition
     stoppingcondition::StoppingCondition
-    agentgraph::AgentGraph{V, E}
-    preallocatedarrays::PreAllocatedArrays
 
-    function SimModel(game::Game{S1, S2}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, id::Union{Nothing, Int} = nothing) where {S1, S2}
-        agentgraph = initialize_graph!(graphmodel, game, simparams, startingcondition)
-        V = nv(graph(agentgraph))
-        E = ne(graph(agentgraph))
-        initialize_stopping_condition!(stoppingcondition, simparams, agentgraph)
-        preallocatedarrays = PreAllocatedArrays(payoff_matrix(game))
-        return new{S1, S2, V, E}(id, game, simparams, graphmodel, startingcondition, stoppingcondition, agentgraph, preallocatedarrays)
+    function SimModel(game::Game{S1, S2}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition) where {S1, S2}
+        # initialize_stopping_condition!(stoppingcondition, simparams, agentgraph)
+        return new{S1, S2}(game, simparams, graphmodel, startingcondition, stoppingcondition)
     end
-    function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
-        return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
-    end
+    # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
+    #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
+    # end
 end
 
 
@@ -37,12 +31,12 @@ end
 # PreAllocatedArrays Accessors
 ##########################################
 
-"""
-    id(model::SimModel)
+# """
+#     id(model::SimModel)
 
-Get the id of a SimModel instance (primarily for distributed computing purposes).
-"""
-id(model::SimModel) = getfield(model, :id)
+# Get the id of a SimModel instance (primarily for distributed computing purposes).
+# """
+# id(model::SimModel) = getfield(model, :id)
 
 #Game
 """
@@ -94,7 +88,8 @@ simparams(model::SimModel) = getfield(model, :simparams)
 
 Get the population size simulation parameter of the model.
 """
-number_agents(model::SimModel{S1, S2, V, E}) where {S1, S2, V, E} = V #number_agents(simparams(model)) #NOTE: do this change for all?
+number_agents(model::SimModel) = number_agents(simparams(model)) #NOTE: do this change for all?
+# number_agents(model::SimModel{S1, S2, V, E}) where {S1, S2, V, E} = V #number_agents(simparams(model)) #NOTE: do this change for all?
 
 """
     memory_length(simparams::SimModel)
@@ -160,327 +155,18 @@ Get the StoppingCondition instance in the model.
 stoppingcondition(model::SimModel) = getfield(model, :stoppingcondition)
 
 
-# AgentGraph
-"""
-    agentgraph(model::SimModel)
 
-Get the AgentGraph instance in the model.
-"""
-agentgraph(model::SimModel) = getfield(model, :agentgraph)
 
-num_vertices(model::SimModel) = num_vertices(agentgraph(model))
 
-num_edges(model::SimModel) = num_edges(agentgraph(model))
 
-num_components(model::SimModel) = num_components(agentgraph(model))
 
-"""
-    graph(model::SimModel)
 
-Get the graph (Graphs.SimpleGraph{Int}) in the model.
-"""
-graph(model::SimModel) = graph(agentgraph(model))
 
-"""
-    agents(model::SimModel)
 
-Get all of the agents in the model.
-"""
-agents(model::SimModel) = agents(agentgraph(model))
 
-"""
-    agents(model::SimModel, agent_number::Integer)
 
-Get the agent indexed by the agent_number in the model.
-"""
-agents(model::SimModel, agent_number::Integer) = agents(agentgraph(model), agent_number)
 
-"""
-    components(model::SimModel)
 
-Get all of the connected componentd that reside in a the model's AgentGraph instance.
-Returns a vector of ConnectedComponent objects.
-"""
-components(model::SimModel) = components(agentgraph(model))
-
-"""
-    components(model::SimModel, component_number::Integer)
-
-Get the ConnectedComponent object indexed by component_number in an AgentGraph instance's 'components' field.
-"""
-components(model::SimModel, component_number::Integer) = components(agentgraph(model), component_number)
-
-# """
-#     edges(model::SimModel)
-
-# Get all of the edges/relationships in the model.
-# """
-# edges(model::SimModel) = edges(agentgraph(model))
-
-# """
-#     edges(model::SimModel, edge_number::Integer)
-
-# Get the edge indexed by the edge_number in the model.
-# """
-# edges(model::SimModel, edge_number::Integer) = edges(agentgraph(model), edge_number)
-
-# """
-#     random_edge(model::SimModel)
-
-# Get a random edge/relationship in the model.
-# """
-# random_edge(model::SimModel) = random_edge(agentgraph(model))
-
-# """
-#     component_vertex_sets(model::SimModel)
-
-# Get all of the connected component vertex sets that reside in the model's AgentGraph instance.
-# Returns a vector of vectors, each containing the vertices in each separated component.
-# """
-# component_vertex_sets(model::SimModel) = component_vertex_sets(agentgraph(model))
-
-# """
-#     component_vertex_sets(model::SimModel, component_number::Integer)
-
-# Get the connected component vertex set indexed by component_number in the model's AgentGraph instance.
-# Returns a vector of Int.
-# """
-# component_vertex_sets(model::SimModel, component_number::Integer) = component_vertex_sets(agentgraph(model), component_number)
-
-# """
-#     component_edge_sets(model::SimModel)
-
-# Get all of the connected component edge sets that reside in the model's AgentGraph instance.
-# Returns a vector of vectors, each containing the edges in each separated component.
-# """
-# component_edge_sets(model::SimModel) = component_edge_sets(agentgraph(model))
-
-# """
-#     component_edge_sets(model::SimModel, component_number::Integer)
-
-# Get the connected component edge set indexed by component_number in the model's AgentGraph instance.
-# Returns a vector of Graphs.SimpleEdge instances.
-# """
-# component_edge_sets(model::SimModel, component_number::Integer) = component_edge_sets(agentgraph(model), component_number)
-
-# """
-#     component_edge_sets(model::SimModel, component_number::Integer, edge_number::Integer)
-
-# Get the edge indexed by edge_number in the connected component edge set indexed by component_number in the model's AgentGraph instance.
-# Returns a Graphs.SimpleEdge instance.
-# """
-# component_edge_sets(model::SimModel, component_number::Integer, edge_number::Integer) = component_edge_sets(agentgraph(model), component_number, edge_number)
-
-# """
-#     random__component_edge(model::SimModel, component_number::Integer)
-
-# Get a random edge/relationship in the component specified by component_number in the model's AgentGraph instance.
-# """
-# random_component_edge(model::SimModel, component_number::Integer) = rand(component_edge_sets(agentgraph(model), component_number))
-
-"""
-    number_hermits(model::SimModel)
-
-Get the number of hermits (vertecies with degree=0) in the model.
-"""
-number_hermits(model::SimModel) = number_hermits(agentgraph(model))
-
-"""
-    reset_agent_graph!(model::SimModel)
-
-Reset the AgentGraph of the model.
-"""
-reset_agent_graph!(model::SimModel) = agentdata!(agentgraph(model), game(model), simparams(model), startingcondition(model))
-
-
-#PreAllocatedArrays
-"""
-    preallocatedarrays(model::SimModel)
-
-Get the PreAllocatedArrays instance in the model.
-"""
-preallocatedarrays(model::SimModel) = getfield(model, :preallocatedarrays)
-
-"""
-    players(model::SimModel)
-
-Get the currently cached players in the model.
-"""
-players(model::SimModel) = players(preallocatedarrays(model))
-
-"""
-    players(model::SimModel, player_number::Integer)
-
-Get the player indexed by player_number currently cached in the model.
-"""
-players(model::SimModel, player_number::Integer) = players(preallocatedarrays(model), player_number)
-
-"""
-    player!(model::SimModel, player_number::Integer, agent::Agent)
-
-Set the player indexed by player_number to the Agent instance agent.
-"""
-player!(model::SimModel, player_number::Integer, agent::Agent) = player!(preallocatedarrays(model), player_number, agent)
-
-"""
-    player!(model::SimModel, player_number::Integer, agent_number::Integer)
-
-Set the player indexed by player_number to the Agent instance indexed by agent_number in the AgentGraph instance.
-"""
-player!(model::SimModel, player_number::Integer, agent_number::Integer) = player!(preallocatedarrays(model), player_number, agents(model, agent_number))
-
-"""
-    set_players!(model::SimModel, component::ConnectedComponent)
-
-Choose a random relationship/edge in the specified component and set players to be the agents that the edge connects.
-"""
-function set_players!(model::SimModel, component::ConnectedComponent)
-    v = rand(vertices(component))
-    player!(model, 1, v)
-    player!(model, 2, rand(neighbors(graph(model), v)))
-    # edge::Graphs.SimpleEdge{Int} = random_edge(component)
-    # vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
-    # for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
-    #     player!(model, player_number, vertex_list[player_number])
-    # end
-    return nothing
-end
-
-#temp for complete_graph
-# function set_players!(model::SimModel) #NOTE: this could be better
-#     v = rand(Graphs.vertices(graph(model)))
-#     player!(model, 1, v)
-#     player!(model, 2, rand(neighbors(graph(model), v)))
-#     return nothing
-# end
-
-"""
-    opponent_strategy_recollection(model::SimModel)
-
-Get the currently cached recollections of each player (i.e., the quantity of each strategy that resides in players' memories).
-"""
-opponent_strategy_recollection(model::SimModel) = opponent_strategy_recollection(preallocatedarrays(model))
-
-"""
-    opponent_strategy_recollection(model::SimModel, player_number::Integer)
-
-Get the currently cached recollection of the player indexed by player_number.
-"""
-opponent_strategy_recollection(model::SimModel, player_number::Integer) = opponent_strategy_recollection(preallocatedarrays(model), player_number)
-
-"""
-    opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer)
-
-Get the currently cached recollection of a strategy indexed by index of the player indexed by player_number.
-"""
-opponent_strategy_recollection(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_recollection(preallocatedarrays(model), player_number, index)
-
-"""
-    opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int)
-
-Set the recollection of a strategy indexed by index of the player indexed by player_number.
-"""
-opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int) = opponent_strategy_recollection!(preallocatedarrays(model), player_number, index, value)
-
-"""
-    increment_opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int=1)
-
-Increment the recollection of a strategy indexed by index of the player indexed by player_number by value (defaults to an increment of 1).
-"""
-increment_opponent_strategy_recollection!(model::SimModel, player_number::Integer, index::Integer, value::Int=1) = increment_opponent_strategy_recollection!(preallocatedarrays(model), player_number, index, value)
-
-"""
-    opponent_strategy_probabilities(model::SimModel)
-
-Get the currently cached probabilities that each player's opponent will play each strategy (from recollection).
-"""
-opponent_strategy_probabilities(model::SimModel) = opponent_strategy_probabilities(preallocatedarrays(model))
-
-"""
-    opponent_strategy_probabilities(model::SimModel, player_number::Integer)
-
-Get the currently cached probabilities that the player indexed by player_number's opponent will play each strategy (from recollection).
-"""
-opponent_strategy_probabilities(model::SimModel, player_number::Integer) = opponent_strategy_probabilities(preallocatedarrays(model), player_number)
-
-"""
-    opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer)
-
-Get the currently cached probability that the player indexed by player_number's opponent will play the strategy indexed by index.
-"""
-opponent_strategy_probabilities(model::SimModel, player_number::Integer, index::Integer) = opponent_strategy_probabilities(preallocatedarrays(model), player_number, index)
-
-"""
-    expected_utilities(model::SimModel)
-
-Get the cached expected utilities for playing each strategy for both players.
-"""
-expected_utilities(model::SimModel) = expected_utilities(preallocatedarrays(model))
-
-"""
-    expected_utilities(model::SimModel, player_number::Integer)
-
-Get the cached expected utilities for playing each strategy for the player indexed by player_number.
-"""
-expected_utilities(model::SimModel, player_number::Integer) = expected_utilities(preallocatedarrays(model), player_number)
-
-"""
-    expected_utilities(model::SimModel, player_number::Integer, index::Integer)
-
-Get the cached expected utility for playing the strategy indexed by index for the player indexed by player_number.
-"""
-expected_utilities(model::SimModel, player_number::Integer, index::Integer) = expected_utilities(preallocatedarrays(model), player_number, index)
-
-"""
-    expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat)
-
-Set the expected utility for playing the strategy indexed by index for the player indexed by player_number.
-"""
-expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = expected_utilities!(preallocatedarrays(model), player_number, index, value)
-
-"""
-    increment_expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat)
-
-Increment the expected utility for playing the strategy indexed by index for the player indexed by player_number by value.
-"""
-increment_expected_utilities!(model::SimModel, player_number::Integer, index::Integer, value::AbstractFloat) = increment_expected_utilities!(preallocatedarrays(model), player_number, index, value)
-
-"""
-    reset_arrays!(model::SimModel)
-
-Reset the cached arrays in the model's PreAllocatedArrays instance to zeros.
-"""
-reset_arrays!(model::SimModel) = reset_arrays!(preallocatedarrays(model))
-
-"""
-    initialize_graph!(model::SimModel)
-
-Initialize the AgentGraph instance for the model based on parameters of other model components.
-"""
-initialize_graph!(model::SimModel) = initialize_graph!(graphmodel(model), game(model), simparams(model), startingcondition(model)) #parameter spreading necessary for multiple dispatch
-
-"""
-    initialize_stopping_condition!(model::SimModel)
-
-Initialize the stopping condition values for the model based on parameters of the model's SimParams instance and properties of the AgentGraph instance.
-"""
-initialize_stopping_condition!(model::SimModel) = initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph(model)) #parameter spreading necessary for multiple dispatch
-
-"""
-    reset_model!(model::SimModel)
-
-Reset the model to its initial state.
-"""
-function reset_model!(model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
-    reset_agent_graph!(model)
-    initialize_stopping_condition!(model)
-    reset_arrays!(model)
-    return nothing
-end
-
-function regenerate_model(model::SimModel)
-    return SimModel(model)
-end
 
 
 function Base.show(model::SimModel)

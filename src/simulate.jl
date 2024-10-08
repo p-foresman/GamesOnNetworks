@@ -20,7 +20,7 @@ Run a simulation using the model provided.
 """
 function simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
     # timer = Timer(timeout(model, SETTINGS.database))
-    _simulate_model_buffer(model, SETTINGS.database)
+    _simulate_model_barrier(model, SETTINGS.database)
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
 end
 
@@ -35,7 +35,7 @@ function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing,
     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
 
     # timer = Timer(timeout(model, SETTINGS.database))
-    _simulate_model_buffer(model_id, SETTINGS.database)
+    _simulate_model_barrier(model_id, SETTINGS.database)
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
 
     # if nworkers() > 1
@@ -77,13 +77,15 @@ function _simulate_distributed_barrier(model::SimModel; preserve_graph::Bool=fal
     show(model)
     flush(stdout) #flush buffer
 
+    state = State(model)
+
     @sync @distributed for process in 1:nworkers()
         print("Process $process of $(nworkers())")
         flush(stdout)
         if !preserve_graph
-            model = regenerate_model(model)
+            state = State(model) #regenerate state so each process has a different graph
         end
-        _simulate(model)
+        _simulate(model, state)
     end
 end
 
@@ -109,13 +111,15 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     show(model)
     flush(stdout) #flush buffer
 
+    state = State(model)
+
     @sync @distributed for process in 1:nworkers() #NOTE: run_count could be number workers
         print("Process $process of $(nworkers())")
         flush(stdout)
         if !preserve_graph
-            model = regenerate_model(model)
+            state = State(model) #regenerate state so each process has a different graph
         end
-        _simulate(model, db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid) #db_id_tuple=db_id_tuple
+        _simulate(model, state, db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid) #db_id_tuple=db_id_tuple
     end
 
     if nworkers() > 1
@@ -129,26 +133,28 @@ function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; m
     show(model)
     flush(stdout) #flush buffer
 
+    state = State(model)
+
     @sync @distributed for process in 1:nworkers() #NOTE: run_count could be number workers
         print("Process $process of $(nworkers())")
         flush(stdout)
         if !preserve_graph
-            model = regenerate_model(model)
+            state = State(model) #regenerate state so each process has a different graph
         end
-        _simulate(model, db_info, model_id=model_id, db_group_id=db_group_id)
+        _simulate(model, state, db_info, model_id=model_id, db_group_id=db_group_id)
     end
 end
 
 
 
 
-function _simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), kwargs...)
+function _simulate(model::SimModel, state::State; periods_elapsed::Int128 = Int128(0), kwargs...)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
         Random.seed!(random_seed(model))
     end
 
-    while !is_stopping_condition(model, stoppingcondition(model), periods_elapsed)
-        run_period!(model)
+    while !is_stopping_condition(state, stoppingcondition(model), periods_elapsed)
+        run_period!(model, state)
         periods_elapsed += 1
     end
 
@@ -156,7 +162,7 @@ function _simulate(model::SimModel; periods_elapsed::Int128 = Int128(0), kwargs.
     return periods_elapsed
 end
 
-function _simulate(model::SimModel, db_info::DBInfo; model_id::Int, periods_elapsed::Int128 = Int128(0), db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int, periods_elapsed::Int128 = Int128(0), db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
@@ -168,10 +174,10 @@ function _simulate(model::SimModel, db_info::DBInfo; model_id::Int, periods_elap
 
 
     # @timeit to "simulate" begin
-    while !is_stopping_condition(model, stoppingcondition(model), periods_elapsed)
+    while !is_stopping_condition(state, stoppingcondition(model), periods_elapsed)
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
-        run_period!(model)
+        run_period!(model, state)
         periods_elapsed += 1
     end
     # end

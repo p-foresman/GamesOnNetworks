@@ -3,7 +3,7 @@
 
 Initialize and return an AgentGraph instance.
 """
-function initialize_graph!(graphmodel::CompleteModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+function initialize_graph!(::CompleteModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
     graph = complete_graph(number_agents(simparams))
     agentgraph = AgentGraph(graph)
     agentdata!(agentgraph, game, simparams, startingcondition)

@@ -6,14 +6,14 @@
 ######################## game algorithm ####################
 
 
-function play_game!(model::SimModel)
+function play_game!(model::SimModel, state::State)
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
-    find_opponent_strategy_probabilities!(model)
-    calculate_expected_utilities!(model)
-    make_choices!(model)
-    push_memories!(model)
+    find_opponent_strategy_probabilities!(state)
+    calculate_expected_utilities!(model, state)
+    make_choices!(model, state)
+    push_memories!(model, state)
     return nothing
 end
 
@@ -25,14 +25,14 @@ end
 #     return nothing
 # end
 
-function run_period!(model::SimModel)
-    for component in components(model) #each connected component plays its own period's worth of matches
+function run_period!(model::SimModel, state::State)
+    for component in components(state) #each connected component plays its own period's worth of matches
         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
         # for _ in 1:Int(ceil(mpp))
         for _ in 1:matches_per_period(component)
-            reset_arrays!(model)
-            set_players!(model, component)
-            play_game!(model)
+            reset_arrays!(state)
+            set_players!(state, component)
+            play_game!(model, state)
         end
     end
     return nothing
@@ -49,37 +49,37 @@ end
 # end
 
 
-function make_choices!(model::SimModel)
+function make_choices!(model::SimModel, state::State)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        rational_choice!(players(model, player_number), maximum_strategy(expected_utilities(model, player_number)))
-        choice!(players(model, player_number), rand() <= error_rate(model) ? random_strategy(model, player_number) : rational_choice(players(model, player_number)))
+        rational_choice!(players(state, player_number), maximum_strategy(expected_utilities(state, player_number)))
+        choice!(players(state, player_number), rand() <= error_rate(model) ? random_strategy(model, player_number) : rational_choice(players(state, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
-function calculate_opponent_strategy_probabilities!(model::SimModel, player_number::Integer)
-    @inbounds for memory in memory(players(model, player_number))
-        increment_opponent_strategy_recollection!(model, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
+function calculate_opponent_strategy_probabilities!(state::State, player_number::Integer)
+    @inbounds for memory in memory(players(state, player_number))
+        increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    opponent_strategy_probabilities(model, player_number) .= opponent_strategy_recollection(model, player_number) ./ sum(opponent_strategy_recollection(model, player_number))
+    opponent_strategy_probabilities(state, player_number) .= opponent_strategy_recollection(state, player_number) ./ sum(opponent_strategy_recollection(state, player_number))
     return nothing
 end
 
-function find_opponent_strategy_probabilities!(model::SimModel)
-    for player_number in 1:2
-        calculate_opponent_strategy_probabilities!(model, player_number)
+function find_opponent_strategy_probabilities!(state::State)
+    for player_number in 1:2 #NOTE: only functional for 2 players!
+        calculate_opponent_strategy_probabilities!(state, player_number)
     end
     return nothing
 end
 
 
 
-function calculate_expected_utilities!(model::SimModel)
-    @inbounds for column in axes(payoff_matrix(model), 2) #column strategies
+function calculate_expected_utilities!(model::SimModel, state::State)
+    @inbounds for column in axes(payoff_matrix(model), 2) #column strategies #NOTE: could just do 1:size(model, dim=2) or something. might be a bit faster
         for row in axes(payoff_matrix(model), 1) #row strategies
-            increment_expected_utilities!(model, 1, row, payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(model, 1, column))
-            increment_expected_utilities!(model, 2, column, payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(model, 2, row))
+            increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(state, 1, column))
+            increment_expected_utilities!(state, 2, column, payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(state, 2, row))
         end
     end
     return nothing
@@ -122,9 +122,9 @@ function push_memory!(agent::Agent, percept::Percept, memory_length::Int)
     return nothing
 end
 
-function push_memories!(model::SimModel)
-    push_memory!(players(model, 1), choice(players(model, 2)), memory_length(model))
-    push_memory!(players(model, 2), choice(players(model, 1)), memory_length(model))
+function push_memories!(model::SimModel, state::State)
+    push_memory!(players(state, 1), choice(players(state, 2)), memory_length(model))
+    push_memory!(players(state, 2), choice(players(state, 1)), memory_length(model))
     return nothing
 end
 
@@ -183,9 +183,9 @@ end
 
 #######################################################
 
-function is_stopping_condition(model::SimModel, stoppingcondition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(state::State, stoppingcondition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in agents(model)
+    for agent in agents(state)
         if !ishermit(agent)
             if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
                 number_transitioned += 1
@@ -195,9 +195,9 @@ function is_stopping_condition(model::SimModel, stoppingcondition::EquityPsychol
     return number_transitioned >= sufficient_transitioned(stoppingcondition)
 end
 
-function is_stopping_condition(model::SimModel, stoppingcondition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(state::State, stoppingcondition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
-    for agent in agents(model)
+    for agent in agents(state)
         if !ishermit(agent)
             if rational_choice(agent) == strategy(stoppingcondition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
@@ -216,7 +216,7 @@ end
 
 
 
-function is_stopping_condition(::SimModel, stoppingcondition::PeriodCutoff, current_periods::Int128)
+function is_stopping_condition(::State, stoppingcondition::PeriodCutoff, current_periods::Int128)
     return current_periods >= period_cutoff(stoppingcondition)
 end
 
