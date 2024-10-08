@@ -148,18 +148,18 @@ end
 
 
 
-function _simulate(model::SimModel, state::State; periods_elapsed::Int128 = Int128(0), kwargs...)
+function _simulate(model::SimModel, state::State; kwargs...)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
         Random.seed!(random_seed(model))
     end
 
-    while !is_stopping_condition(state, stoppingcondition(model), periods_elapsed)
+    while !is_stopping_condition(state, stoppingcondition(model), state.periods_elapsed)
         run_period!(model, state)
-        periods_elapsed += 1
+        state.periods_elapsed += 1
     end
 
-    println(" --> periods elapsed: $periods_elapsed")
-    return periods_elapsed
+    println(" --> periods elapsed: $(state.periods_elapsed)")
+    return state
 end
 
 function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int, periods_elapsed::Int128 = Int128(0), db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)

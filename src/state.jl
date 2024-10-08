@@ -3,7 +3,7 @@
 mutable struct State{V, E}
     const agentgraph::AgentGraph{V, E}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
-    # periods_elapsed::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
+    periods_elapsed::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
 
     function State(model::SimModel)
         agentgraph = initialize_graph!(graphmodel(model), game(model), simparams(model), startingcondition(model))
