@@ -26,8 +26,8 @@ mutable struct EquityPsychological <: StoppingCondition
     function EquityPsychological(strategy::Integer)
         return new("equity_psychological", strategy, 0., 0.)
     end
-    function EquityPsychological(stopping_condition::EquityPsychological) #used to get a "raw" version of the stopping condition to send to the database
-        return EquityPsychological(strategy(stopping_condition))
+    function EquityPsychological(stoppingcondition::EquityPsychological) #used to get a "raw" version of the stopping condition to send to the database
+        return EquityPsychological(strategy(stoppingcondition))
     end
 end
 
@@ -55,8 +55,8 @@ mutable struct EquityBehavioral <: StoppingCondition
     function EquityBehavioral(strategy::Integer)
         return new("equity_behavioral", strategy, 0., 0, 0)
     end
-    function EquityBehavioral(stopping_condition::EquityBehavioral) #used to get a "raw" version of the stopping condition to send to the database
-        return EquityBehavioral(strategy(stopping_condition))
+    function EquityBehavioral(stoppingcondition::EquityBehavioral) #used to get a "raw" version of the stopping condition to send to the database
+        return EquityBehavioral(strategy(stoppingcondition))
     end
 end
 
@@ -74,8 +74,8 @@ struct PeriodCutoff <: StoppingCondition
     function PeriodCutoff(period_cutoff::Integer)
         return new("period_cutoff", period_cutoff)
     end
-    function PeriodCutoff(stopping_condition::PeriodCutoff) #used to get a "raw" version of the stopping condition to send to the database
-        return PeriodCutoff(period_cutoff(stopping_condition))
+    function PeriodCutoff(stoppingcondition::PeriodCutoff) #used to get a "raw" version of the stopping condition to send to the database
+        return PeriodCutoff(period_cutoff(stoppingcondition))
     end
 end
 
@@ -85,115 +85,115 @@ end
 ##########################################
 
 """
-    type(stopping_condition::StoppingCondition)
+    type(stoppingcondition::StoppingCondition)
 
 Get the stopping condition type.
 """
-type(stopping_condition::StoppingCondition) = getfield(stopping_condition, :name)
+type(stoppingcondition::StoppingCondition) = getfield(stoppingcondition, :name)
 
 """
-    strategy(stopping_condition::EquityPsychological)
+    strategy(stoppingcondition::EquityPsychological)
 
 Get the strategy that the stopping condition is targeted at.
 """
-strategy(stopping_condition::EquityPsychological) = getfield(stopping_condition, :strategy)
+strategy(stoppingcondition::EquityPsychological) = getfield(stoppingcondition, :strategy)
 
 """
-    sufficient_equity(stopping_condition::EquityPsychological)
+    sufficient_equity(stoppingcondition::EquityPsychological)
 
 Get the value for the sufficient number of "strategy" instances in a given agent's memory.
 """
-sufficient_equity(stopping_condition::EquityPsychological) = getfield(stopping_condition, :sufficient_equity)
+sufficient_equity(stoppingcondition::EquityPsychological) = getfield(stoppingcondition, :sufficient_equity)
 
 """
-    sufficient_equity!(stopping_condition::EquityPsychological)
+    sufficient_equity!(stoppingcondition::EquityPsychological)
 
 Set the value for the sufficient number of "strategy" instances in a given agent's memory.
 """
-sufficient_equity!(stopping_condition::EquityPsychological, value::Float64) = setfield!(stopping_condition, :sufficient_equity, value)
+sufficient_equity!(stoppingcondition::EquityPsychological, value::Float64) = setfield!(stoppingcondition, :sufficient_equity, value)
 
 """
-    sufficient_transitioned(stopping_condition::EquityPsychological)
+    sufficient_transitioned(stoppingcondition::EquityPsychological)
 
 Get the value for the sufficient number of agents that must be transitioned for the simulation to stop.
 """
-sufficient_transitioned(stopping_condition::EquityPsychological) = getfield(stopping_condition, :sufficient_transitioned)
+sufficient_transitioned(stoppingcondition::EquityPsychological) = getfield(stoppingcondition, :sufficient_transitioned)
 
 """
-    sufficient_transitioned!(stopping_condition::EquityPsychological)
+    sufficient_transitioned!(stoppingcondition::EquityPsychological)
 
 Set the value for the sufficient number of agents that must be transitioned for the simulation to stop.
 """
-sufficient_transitioned!(stopping_condition::EquityPsychological, value::Float64) = setfield!(stopping_condition, :sufficient_transitioned, value)
+sufficient_transitioned!(stoppingcondition::EquityPsychological, value::Float64) = setfield!(stoppingcondition, :sufficient_transitioned, value)
 
 """
-    strategy(stopping_condition::EquityBehavioral)
+    strategy(stoppingcondition::EquityBehavioral)
 
 Get the strategy that the stopping condition is targeted at.
 """
-strategy(stopping_condition::EquityBehavioral) = getfield(stopping_condition, :strategy)
+strategy(stoppingcondition::EquityBehavioral) = getfield(stoppingcondition, :strategy)
 
 """
-    sufficient_transitioned(stopping_condition::EquityBehavioral)
+    sufficient_transitioned(stoppingcondition::EquityBehavioral)
 
 Get the value for the sufficient number of agents that must be transitioned for the period count to be incremented.
 """
-sufficient_transitioned(stopping_condition::EquityBehavioral) = getfield(stopping_condition, :sufficient_transitioned)
+sufficient_transitioned(stoppingcondition::EquityBehavioral) = getfield(stoppingcondition, :sufficient_transitioned)
 
 """
-    sufficient_transitioned!(stopping_condition::EquityBehavioral)
+    sufficient_transitioned!(stoppingcondition::EquityBehavioral)
 
 Set the value for the sufficient number of agents that must be transitioned for the period count to be incremented.
 """
-sufficient_transitioned!(stopping_condition::EquityBehavioral, value::Float64) = setfield!(stopping_condition, :sufficient_transitioned, value)
+sufficient_transitioned!(stoppingcondition::EquityBehavioral, value::Float64) = setfield!(stoppingcondition, :sufficient_transitioned, value)
 
 """
-    period_cutoff(stopping_condition::EquityBehavioral)
+    period_cutoff(stoppingcondition::EquityBehavioral)
 
 Get the number of periods required for the behavioral equity state to persist for the simulation to stop.
 """
-period_cutoff(stopping_condition::EquityBehavioral) = getfield(stopping_condition, :period_cutoff)
+period_cutoff(stoppingcondition::EquityBehavioral) = getfield(stoppingcondition, :period_cutoff)
 
 """
-    period_cutoff!(stopping_condition::EquityBehavioral)
+    period_cutoff!(stoppingcondition::EquityBehavioral)
 
 Set the number of periods required for the behavioral equity state to persist for the simulation to stop.
 """
-period_cutoff!(stopping_condition::EquityBehavioral, value::Int) = setfield!(stopping_condition, :period_cutoff, value)
+period_cutoff!(stoppingcondition::EquityBehavioral, value::Int) = setfield!(stoppingcondition, :period_cutoff, value)
 
 """
-    period_count(stopping_condition::EquityBehavioral)
+    period_count(stoppingcondition::EquityBehavioral)
 
 Get the current number of periods that the behavioral equity state has persisted.
 """
-period_count(stopping_condition::EquityBehavioral) = getfield(stopping_condition, :period_count)
+period_count(stoppingcondition::EquityBehavioral) = getfield(stoppingcondition, :period_count)
 
 """
-    period_count!(stopping_condition::EquityBehavioral)
+    period_count!(stoppingcondition::EquityBehavioral)
 
 Set the number of periods that the behavioral equity state has persisted.
 """
-period_count!(stopping_condition::EquityBehavioral, value::Int) = setfield!(stopping_condition, :period_count, value)
+period_count!(stoppingcondition::EquityBehavioral, value::Int) = setfield!(stoppingcondition, :period_count, value)
 
 """
-    increment_period_count(stopping_condition::EquityBehavioral)
+    increment_period_count(stoppingcondition::EquityBehavioral)
 
 Increment the number of periods that the behavioral equity state has persisted.
 """
-increment_period_count!(stopping_condition::EquityBehavioral, value::Int=1) = period_count!(stopping_condition, period_count(stopping_condition) + value)
+increment_period_count!(stoppingcondition::EquityBehavioral, value::Int=1) = period_count!(stoppingcondition, period_count(stoppingcondition) + value)
 
 """
-    period_cutoff(stopping_condition::PeriodCutoff)
+    period_cutoff(stoppingcondition::PeriodCutoff)
 
 Get the number of periods required to pass for the simulation to stop.
 """
-period_cutoff(stopping_condition::PeriodCutoff) = getfield(stopping_condition, :period_cutoff)
+period_cutoff(stoppingcondition::PeriodCutoff) = getfield(stoppingcondition, :period_cutoff)
 
 """
-    displayname(stopping_condition::StoppingCondition)
+    displayname(stoppingcondition::StoppingCondition)
 
 Get the string used for displaying a StoppingCondition instance.
 """
-displayname(stopping_condition::StoppingCondition) = type(stopping_condition)
+displayname(stoppingcondition::StoppingCondition) = type(stoppingcondition)
 
-Base.show(stopping_condition::StoppingCondition) = println(displayname(stopping_condition)) #make this more specific than name?
+Base.show(stoppingcondition::StoppingCondition) = println(displayname(stoppingcondition)) #make this more specific than name?

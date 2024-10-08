@@ -31,7 +31,7 @@ const payoff_matrix = [(0, 0) (0, 0) (70, 30);
 
 const model = SimModel(Game{3, 3}("Bargaining Game", payoff_matrix), 
                         SimParams(10, 10, 0.1),
-                        CompleteParams(),
+                        CompleteModel(),
                         FractiousState(),
                         EquityBehavioral(2))
 

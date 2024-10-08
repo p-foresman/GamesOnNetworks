@@ -144,7 +144,7 @@ function configure()
             print("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
             # out = stdout
             # redirect_stdout(devnull)
-            @suppress db_init() #;data_script=SETTINGS.data_script) #suppress the stdout stream
+            db_init() #;data_script=SETTINGS.data_script) #suppress the stdout stream
             #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
             # include()
             if SETTINGS.database isa SQLiteInfo

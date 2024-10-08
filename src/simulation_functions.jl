@@ -183,41 +183,41 @@ end
 
 #######################################################
 
-function is_stopping_condition(model::SimModel, stopping_condition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(model::SimModel, stoppingcondition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agents(model)
         if !ishermit(agent)
-            if count_strategy(memory(agent), strategy(stopping_condition)) >= sufficient_equity(stopping_condition) #this is hard coded to strategy 2 (M) for now. Should change later!
+            if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
                 number_transitioned += 1
             end
         end
     end 
-    return number_transitioned >= sufficient_transitioned(stopping_condition)
+    return number_transitioned >= sufficient_transitioned(stoppingcondition)
 end
 
-function is_stopping_condition(model::SimModel, stopping_condition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(model::SimModel, stoppingcondition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agents(model)
         if !ishermit(agent)
-            if rational_choice(agent) == strategy(stopping_condition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+            if rational_choice(agent) == strategy(stoppingcondition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
                 number_transitioned += 1
             end
         end
     end 
 
-    if number_transitioned >= sufficient_transitioned(stopping_condition)
-        increment_period_count!(stopping_condition)
-        return period_count(stopping_condition) >= period_cutoff(stopping_condition)
+    if number_transitioned >= sufficient_transitioned(stoppingcondition)
+        increment_period_count!(stoppingcondition)
+        return period_count(stoppingcondition) >= period_cutoff(stoppingcondition)
     else
-        period_count!(stopping_condition, 0) #reset period count
+        period_count!(stoppingcondition, 0) #reset period count
         return false
     end
 end
 
 
 
-function is_stopping_condition(::SimModel, stopping_condition::PeriodCutoff, current_periods::Int128)
-    return current_periods >= period_cutoff(stopping_condition)
+function is_stopping_condition(::SimModel, stoppingcondition::PeriodCutoff, current_periods::Int128)
+    return current_periods >= period_cutoff(stoppingcondition)
 end
 
 

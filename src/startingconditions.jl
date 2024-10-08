@@ -59,17 +59,17 @@ end
 ##########################################
 
 """
-    type(starting_condition::StartingCondition)
+    type(startingcondition::StartingCondition)
 
 Get the starting condition type.
 """
-type(starting_condition::StartingCondition) = getfield(starting_condition, :name)
+type(startingcondition::StartingCondition) = getfield(startingcondition, :name)
 
 """
-    displayname(starting_condition::StartingCondition)
+    displayname(startingcondition::StartingCondition)
 
 Get the string used for displaying a StartingCondition instance.
 """
-displayname(starting_condition::StartingCondition) = type(starting_condition)
+displayname(startingcondition::StartingCondition) = type(startingcondition)
 
-Base.show(starting_condition::StartingCondition) = println(displayname(starting_condition))
+Base.show(startingcondition::StartingCondition) = println(displayname(startingcondition))

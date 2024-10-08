@@ -443,13 +443,13 @@ end
 
 function noise_vs_structure_heatmap(db_filepath::String;
                                     game_id::Integer,
-                                    graph_params_extra::Vector{<:Dict{Symbol, Any}},
+                                    graphmodel_extra::Vector{<:Dict{Symbol, Any}},
                                     errors::Vector{<:AbstractFloat},
                                     mean_degrees::Vector{<:AbstractFloat},
                                     number_agents::Integer,
                                     memory_length::Integer,
-                                    starting_condition_id::Integer,
-                                    stopping_condition_id::Integer,
+                                    startingcondition_id::Integer,
+                                    stoppingcondition_id::Integer,
                                     sample_size::Integer,
                                     legend_labels::Vector = [],
                                     colors::Vector = [],
@@ -467,32 +467,32 @@ function noise_vs_structure_heatmap(db_filepath::String;
     # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
     # y_axis = fill(string.(errors), (length(graph_ids), 1))
 
-    # graph_params_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
-    # for graph in graph_params
-    #     for param in graph_params_list
+    # graphmodel_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
+    # for graph in graphmodel
+    #     for param in graphmodel_list
     #         if !(param in collect(keys(graph)))
     #             graph[param] = nothing
     #         end
     #     end
     # end
-    graph_params = Vector{Dict{Symbol, Any}}()
+    graphmodel = Vector{Dict{Symbol, Any}}()
     for λ in mean_degrees
-        for graph in graph_params_extra
+        for graph in graphmodel_extra
             g = deepcopy(graph)
             g[:λ] = λ
             delete!(g, :title)
-            push!(graph_params, g)
+            push!(graphmodel, g)
         end
     end
-    println(graph_params)
+    println(graphmodel)
 
-    # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graph_params_extra)))
-    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
-    z_data = zeros(length(errors), length(mean_degrees), length(graph_params_extra))
+    # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graphmodel_extra)))
+    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graphmodel_extra)]
+    z_data = zeros(length(errors), length(mean_degrees), length(graphmodel_extra))
 
     println(z_data)
-    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graph_params=graph_params, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, starting_condition_id=starting_condition_id, stopping_condition_id=stopping_condition_id, sample_size=sample_size)
-    for (graph_index, graph) in enumerate(graph_params_extra)
+    df = query_simulations_for_noise_structure_heatmap(db_filepath, game_id=game_id, graphmodel=graphmodel, errors=errors, mean_degrees=mean_degrees, number_agents=number_agents, memory_length=memory_length, startingcondition_id=startingcondition_id, stoppingcondition_id=stoppingcondition_id, sample_size=sample_size)
+    for (graph_index, graph) in enumerate(graphmodel_extra)
         
         function graph_filter(type, β, α, p_in, p_out)
             type_match = type == graph[:graph_type]
@@ -519,14 +519,14 @@ function noise_vs_structure_heatmap(db_filepath::String;
         end
     end
 
-    for i in eachindex(graph_params_extra)
+    for i in eachindex(graphmodel_extra)
         println(z_data[:, :, i])
     end
 
     #this stuff needs to be removed!
-    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graph_params_extra)]
-    # z_data = zeros(length(mean_degrees), length(errors), length(graph_params_extra))
-    # for i in eachindex(graph_params_extra)
+    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graphmodel_extra)]
+    # z_data = zeros(length(mean_degrees), length(errors), length(graphmodel_extra))
+    # for i in eachindex(graphmodel_extra)
     #     for x in eachindex(mean_degrees)
     #         for y in eachindex(errors)
     #             z_data[i, x, y] = i + x + y
@@ -546,13 +546,13 @@ function noise_vs_structure_heatmap(db_filepath::String;
     #     println(z)
     #     push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
     # end
-    for graph_index in eachindex(graph_params_extra)
+    for graph_index in eachindex(graphmodel_extra)
         println(z_data[:, :, graph_index])
-        title = "\n" * graph_params_extra[graph_index][:title]
-        # x_ticks = graph_index == length(graph_params_extra)
+        title = "\n" * graphmodel_extra[graph_index][:title]
+        # x_ticks = graph_index == length(graphmodel_extra)
         # x_label = x_ticks ? "Mean Degree" : ""
         x_ticks = true
-        x_label = graph_index == length(graph_params_extra) ? "Mean Degree" : ""
+        x_label = graph_index == length(graphmodel_extra) ? "Mean Degree" : ""
         push!(plots, heatmap(x, y, z_data[:, :, graph_index], clims=clims, c=:viridis, colorbar=false, title=title, xlabel=x_label, ylabel="Error", xticks=x_ticks))
     end
 
@@ -560,7 +560,7 @@ function noise_vs_structure_heatmap(db_filepath::String;
                  xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_scale=:log10, colorbar_title="Periods Elapsed", grid=false))
 
     # l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
-    l = @layout [Plots.grid(length(graph_params_extra), 1) a{0.01w}]
+    l = @layout [Plots.grid(length(graphmodel_extra), 1) a{0.01w}]
     full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000), left_margin=10Plots.mm, right_margin=10Plots.mm)
     # savefig(p_all, "shared_colorbar_julia.png")
     return full_plot
@@ -574,8 +574,8 @@ function transition_times_vs_memory_sweep(db_filepath::String;
                                             number_agents::Integer,
                                             errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
                                             graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                            starting_condition_id::Integer,
-                                            stopping_condition_id::Integer,
+                                            startingcondition_id::Integer,
+                                            stoppingcondition_id::Integer,
                                             sample_size::Integer,
                                             conf_intervals::Bool = false,
                                             conf_level::AbstractFloat = 0.95,
@@ -634,13 +634,13 @@ function transition_times_vs_memory_sweep(db_filepath::String;
                                                                     number_agents=number_agents,
                                                                     errors=errors,
                                                                     graph_ids=graph_ids,
-                                                                    starting_condition_id=starting_condition_id,
-                                                                    stopping_condition_id=stopping_condition_id,
+                                                                    startingcondition_id=startingcondition_id,
+                                                                    stoppingcondition_id=stoppingcondition_id,
                                                                     sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
     for graph_id in graph_ids
         for error in errors
-            filtered_df = filter([:error, :graph_id, :starting_condition_id, :stopping_condition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == starting_condition_id && stop == stopping_condition_id, df)
+            filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
             # println(filtered_df)
             average_transition_time = Vector{Float64}([])
 
@@ -680,8 +680,8 @@ function transition_times_vs_population_sweep(db_filepath::String;
                                                 memory_length::Integer,
                                                 errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
                                                 graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                starting_condition_id::Integer,
-                                                stopping_condition_id::Integer,
+                                                startingcondition_id::Integer,
+                                                stoppingcondition_id::Integer,
                                                 sample_size::Integer,
                                                 conf_intervals::Bool = false,
                                                 conf_level::AbstractFloat = 0.95,
@@ -739,13 +739,13 @@ function transition_times_vs_population_sweep(db_filepath::String;
                                                                     memory_length=memory_length,
                                                                     errors=errors,
                                                                     graph_ids=graph_ids,
-                                                                    starting_condition_id=starting_condition_id,
-                                                                    stopping_condition_id=stopping_condition_id,
+                                                                    startingcondition_id=startingcondition_id,
+                                                                    stoppingcondition_id=stoppingcondition_id,
                                                                     sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
     for graph_id in graph_ids
         for error in errors
-            filtered_df = filter([:error, :graph_id, :starting_condition_id, :stopping_condition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == starting_condition_id && stop == stopping_condition_id, df)
+            filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
             # println(filtered_df)
             average_transition_time = Vector{Float64}([])
 
@@ -789,8 +789,8 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
                                                             memory_length::Integer,
                                                             errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
                                                             graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                            starting_condition_ids::Vector{<:Integer},
-                                                            stopping_condition_ids::Vector{<:Integer},
+                                                            startingcondition_ids::Vector{<:Integer},
+                                                            stoppingcondition_ids::Vector{<:Integer},
                                                             sample_size::Integer,
                                                             conf_intervals::Bool = false,
                                                             conf_level::AbstractFloat = 0.95,
@@ -803,8 +803,8 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
     number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
-    sort!(starting_condition_ids)
-    sort!(stopping_condition_ids)
+    sort!(startingcondition_ids)
+    sort!(stoppingcondition_ids)
     
 
     #initialize plot
@@ -813,13 +813,13 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
     x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list) + 10
 
     legend_labels_map = Dict()
-    for (index, stopping_condition_id) in enumerate(stopping_condition_ids)
-        legend_labels_map[stopping_condition_id] = legend_labels[index]
+    for (index, stoppingcondition_id) in enumerate(stoppingcondition_ids)
+        legend_labels_map[stoppingcondition_id] = legend_labels[index]
     end
 
     colors_map = Dict()
-    for (index, stopping_condition_id) in enumerate(stopping_condition_ids)
-        colors_map[stopping_condition_id] = colors[index]
+    for (index, stoppingcondition_id) in enumerate(stoppingcondition_ids)
+        colors_map[stoppingcondition_id] = colors[index]
     end
 
     # error_styles_map = Dict()
@@ -848,15 +848,15 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
                                                                                 memory_length=memory_length,
                                                                                 errors=errors,
                                                                                 graph_ids=graph_ids,
-                                                                                starting_condition_ids=starting_condition_ids,
-                                                                                stopping_condition_ids=stopping_condition_ids,
+                                                                                startingcondition_ids=startingcondition_ids,
+                                                                                stoppingcondition_ids=stoppingcondition_ids,
                                                                                 sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
     for graph_id in graph_ids
         for error in errors
-            for starting_condition_id in starting_condition_ids
-                for stopping_condition_id in stopping_condition_ids
-                    filtered_df = filter([:error, :graph_id, :starting_condition_id, :stopping_condition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == starting_condition_id && stop == stopping_condition_id, df)
+            for startingcondition_id in startingcondition_ids
+                for stoppingcondition_id in stoppingcondition_ids
+                    filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
                     # println(filtered_df)
                     average_transition_time = Vector{Float64}([])
 
@@ -874,12 +874,12 @@ function transition_times_vs_population_stopping_conditions(db_filepath::String;
                         end
                     end
 
-                    legend_label = "$(legend_labels_map[stopping_condition_id]), error=$error"
+                    legend_label = "$(legend_labels_map[stoppingcondition_id]), error=$error"
 
-                    plot!(number_agents_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[stopping_condition_id], linecolor=colors_map[stopping_condition_id])#, linestyle=error_styles_map[error][1])
+                    plot!(number_agents_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[stoppingcondition_id], linecolor=colors_map[stoppingcondition_id])#, linestyle=error_styles_map[error][1])
 
                     if conf_intervals
-                        plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[stopping_condition_id])#, fillstyle=error_styles_map[error][2])
+                        plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[stoppingcondition_id])#, fillstyle=error_styles_map[error][2])
                     end
 
                     plot_line_number += 1
@@ -896,8 +896,8 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
                                                             number_agents::Integer,
                                                             errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
                                                             graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                            starting_condition_ids::Vector{<:Integer},
-                                                            stopping_condition_ids::Vector{<:Integer},
+                                                            startingcondition_ids::Vector{<:Integer},
+                                                            stoppingcondition_ids::Vector{<:Integer},
                                                             sample_size::Integer,
                                                             conf_intervals::Bool = false,
                                                             conf_level::AbstractFloat = 0.95,
@@ -910,8 +910,8 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
     memory_length_list !== nothing ? memory_length_list = sort(memory_length_list) : nothing
     errors !== nothing ? errors = sort(errors) : nothing
     graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
-    sort!(starting_condition_ids)
-    sort!(stopping_condition_ids)
+    sort!(startingcondition_ids)
+    sort!(stoppingcondition_ids)
     
 
     #initialize plot
@@ -920,13 +920,13 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
     x_ticks = minimum(memory_length_list) - 1:1:maximum(memory_length_list) + 1
 
     legend_labels_map = Dict()
-    for (index, stopping_condition_id) in enumerate(stopping_condition_ids)
-        legend_labels_map[stopping_condition_id] = legend_labels[index]
+    for (index, stoppingcondition_id) in enumerate(stoppingcondition_ids)
+        legend_labels_map[stoppingcondition_id] = legend_labels[index]
     end
 
     colors_map = Dict()
-    for (index, stopping_condition_id) in enumerate(stopping_condition_ids)
-        colors_map[stopping_condition_id] = colors[index]
+    for (index, stoppingcondition_id) in enumerate(stoppingcondition_ids)
+        colors_map[stoppingcondition_id] = colors[index]
     end
 
     # error_styles_map = Dict()
@@ -955,15 +955,15 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
                                                                                 number_agents=number_agents,
                                                                                 errors=errors,
                                                                                 graph_ids=graph_ids,
-                                                                                starting_condition_ids=starting_condition_ids,
-                                                                                stopping_condition_ids=stopping_condition_ids,
+                                                                                startingcondition_ids=startingcondition_ids,
+                                                                                stoppingcondition_ids=stoppingcondition_ids,
                                                                                 sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
     for graph_id in graph_ids
         for error in errors
-            for starting_condition_id in starting_condition_ids
-                for stopping_condition_id in stopping_condition_ids
-                    filtered_df = filter([:error, :graph_id, :starting_condition_id, :stopping_condition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == starting_condition_id && stop == stopping_condition_id, df)
+            for startingcondition_id in startingcondition_ids
+                for stoppingcondition_id in stoppingcondition_ids
+                    filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
                     # println(filtered_df)
                     average_transition_time = Vector{Float64}([])
 
@@ -981,12 +981,12 @@ function transition_times_vs_memory_length_stopping_conditions(db_filepath::Stri
                         end
                     end
 
-                    legend_label = "$(legend_labels_map[stopping_condition_id]), error=$error"
+                    legend_label = "$(legend_labels_map[stoppingcondition_id]), error=$error"
 
-                    plot!(memory_length_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[stopping_condition_id], linecolor=colors_map[stopping_condition_id])#, linestyle=error_styles_map[error][1])
+                    plot!(memory_length_list, average_transition_time, markershape = :circle, linewidth=2, label=legend_label, markercolor=colors_map[stoppingcondition_id], linecolor=colors_map[stoppingcondition_id])#, linestyle=error_styles_map[error][1])
 
                     if conf_intervals
-                        plot!(memory_length_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[stopping_condition_id])#, fillstyle=error_styles_map[error][2])
+                        plot!(memory_length_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[stoppingcondition_id])#, fillstyle=error_styles_map[error][2])
                     end
 
                     plot_line_number += 1
@@ -1001,15 +1001,15 @@ end
 
 
 
-function transition_times_vs_graph_params_sweep(db_filepath::String;
+function transition_times_vs_graphmodel_sweep(db_filepath::String;
                                             game_id::Integer,
                                             memory_length::Integer,
                                             number_agents::Integer,
                                             errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
-                                            graph_params_extra::Vector{<:Dict{Symbol, Any}},
+                                            graphmodel_extra::Vector{<:Dict{Symbol, Any}},
                                             sweep_param::Symbol,
-                                            starting_condition_id::Integer,
-                                            stopping_condition_id::Integer,
+                                            startingcondition_id::Integer,
+                                            stoppingcondition_id::Integer,
                                             sample_size::Integer,
                                             conf_intervals::Bool = false,
                                             conf_level::AbstractFloat = 0.95,
@@ -1022,15 +1022,15 @@ function transition_times_vs_graph_params_sweep(db_filepath::String;
 
     errors !== nothing ? errors = sort(errors) : nothing
     
-    graph_params = Vector{Dict{Symbol, Any}}()
+    graphmodel = Vector{Dict{Symbol, Any}}()
     sweep_param_values = []
-    for graph in graph_params_extra
+    for graph in graphmodel_extra
         g = deepcopy(graph)
         # delete!(g, :title)
-        push!(graph_params, g)
+        push!(graphmodel, g)
         push!(sweep_param_values, g[sweep_param]) #for finding xlims
     end
-    println(graph_params)
+    println(graphmodel)
 
     #initialize plot
     x_label = string(sweep_param)
@@ -1071,17 +1071,17 @@ function transition_times_vs_graph_params_sweep(db_filepath::String;
 
 
     #wrangle data
-    df = query_simulations_for_transition_time_vs_graph_params_sweep(db_filepath,
+    df = query_simulations_for_transition_time_vs_graphmodel_sweep(db_filepath,
                                                                     game_id=game_id,
                                                                     memory_length=memory_length,
                                                                     number_agents=number_agents,
                                                                     errors=errors,
-                                                                    graph_params=graph_params_extra,
-                                                                    starting_condition_id=starting_condition_id,
-                                                                    stopping_condition_id=stopping_condition_id,
+                                                                    graphmodel=graphmodel_extra,
+                                                                    startingcondition_id=startingcondition_id,
+                                                                    stoppingcondition_id=stoppingcondition_id,
                                                                     sample_size=sample_size)
     plot_line_number = 1 #this will make the lines unordered***
-    # for (graph_index, graph) in enumerate(graph_params_extra)
+    # for (graph_index, graph) in enumerate(graphmodel_extra)
 
         # function graph_filter(type, β, α, p_in, p_out)
         #     type_match = type == graph[:graph_type]

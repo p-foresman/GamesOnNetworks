@@ -12,7 +12,7 @@ db_execute(db::PostgresDB, sql::String) = LibPQ.execute(db, sql)
 db_query(db::PostgresDB, sql::String) = DataFrame(db_execute(db, sql))
                                                 
 
-function execute_init_full(db_info::PostgresInfo)
+function execute_init_db(db_info::PostgresInfo)
     #create or connect to database
     db = DB(db_info)
 

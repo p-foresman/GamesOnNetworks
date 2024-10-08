@@ -1,80 +1,80 @@
 """
-    GamesOnNetworks.initialize_graph(graph_params::GraphParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
+    GamesOnNetworks.initialize_graph(graphmodel::GraphModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
 
 Initialize and return an AgentGraph instance.
 """
-function initialize_graph!(graph_params::CompleteParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph = complete_graph(number_agents(sim_params))
-    agent_graph = AgentGraph(graph)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
+function initialize_graph!(graphmodel::CompleteModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+    graph = complete_graph(number_agents(simparams))
+    agentgraph = AgentGraph(graph)
+    agentdata!(agentgraph, game, simparams, startingcondition)
+    return agentgraph
 end
 
-function initialize_graph!(graph_params::ErdosRenyiParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
+function initialize_graph!(graphmodel::ErdosRenyiModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
     while true
         if ne(graph) >= 1 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
             break
         end
-        graph = erdos_renyi_rg(number_agents(sim_params), λ(graph_params))
+        graph = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
     end
-    agent_graph = AgentGraph(graph)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
+    agentgraph = AgentGraph(graph)
+    agentdata!(agentgraph, game, simparams, startingcondition)
+    return agentgraph
 end
-function initialize_graph!(graph_params::SmallWorldParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
+function initialize_graph!(graphmodel::SmallWorldModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
     while true
         if ne(graph) >= 1
             break
         end
-        graph = small_world_rg(number_agents(sim_params), λ(graph_params), β(graph_params))
+        graph = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
     end
-    agent_graph = AgentGraph(graph)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
+    agentgraph = AgentGraph(graph)
+    agentdata!(agentgraph, game, simparams, startingcondition)
+    return agentgraph
 end
-function initialize_graph!(graph_params::ScaleFreeParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
+function initialize_graph!(graphmodel::ScaleFreeModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
     while true
         if ne(graph) >= 1
             break
         end
-        graph = scale_free_rg(number_agents(sim_params), λ(graph_params), α(graph_params))
+        graph = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
     end
-    agent_graph = AgentGraph(graph)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
+    agentgraph = AgentGraph(graph)
+    agentdata!(agentgraph, game, simparams, startingcondition)
+    return agentgraph
 end
-function initialize_graph!(graph_params::StochasticBlockModelParams, game::Game, sim_params::SimParams, starting_condition::StartingCondition)
-    @assert number_agents(sim_params) % blocks(graph_params) == 0 "Number of blocks must divide number of agents evenly"
-    block_size = Int(number_agents(sim_params) / blocks(graph_params))
+function initialize_graph!(graphmodel::StochasticBlockModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+    @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide number of agents evenly"
+    block_size = Int(number_agents(simparams) / blocks(graphmodel))
     p_in_vector = Vector{Float64}([])
     block_sizes_vector = Vector{Int}([])
-    for _ in 1:blocks(graph_params)
-        push!(p_in_vector, p_in(graph_params))
+    for _ in 1:blocks(graphmodel)
+        push!(p_in_vector, p_in(graphmodel))
         push!(block_sizes_vector, block_size)
     end
-    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
     while true
         if ne(graph) >= 1
             break
         end
-        graph = stochastic_block_model_rg(block_sizes_vector, λ(graph_params), p_in_vector, p_out(graph_params))
+        graph = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
     end
-    agent_graph = AgentGraph(graph)
-    agentdata!(agent_graph, game, sim_params, starting_condition)
-    return agent_graph
+    agentgraph = AgentGraph(graph)
+    agentdata!(agentgraph, game, simparams, startingcondition)
+    return agentgraph
 end
 
 
 """
-    agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::StoppingCondition)
+    agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::StoppingCondition)
 
 Initialize the agent data for an AgentGraph instance based on the StoppingCondition concrete type.
 """
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::FractiousState)
-    for (vertex, agent) in enumerate(agents(agent_graph))
+function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::FractiousState)
+    for (vertex, agent) in enumerate(agents(agentgraph))
         #set memory initialization
         if vertex % 2 == 0
             recollection = strategies(game, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
@@ -84,34 +84,34 @@ function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, 
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
         choice!(agent, Choice(0))
-        for _ in 1:memory_length(sim_params)
+        for _ in 1:memory_length(simparams)
             push!(memory(agent), recollection)
         end
     end
     return nothing
 end
 
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::EquityState)
-    for agent in agents(agent_graph)
+function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::EquityState)
+    for agent in agents(agentgraph)
         #set memory initialization
         recollection = strategies(game, 1)[2]
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
         choice!(agent, Choice(0))
-        for _ in 1:memory_length(sim_params)
+        for _ in 1:memory_length(simparams)
             push!(memory(agent), recollection)
         end
     end
     return nothing
 end
 
-function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, ::RandomState)
-    for agent in agents(agent_graph)
+function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::RandomState)
+    for agent in agents(agentgraph)
         #set memory initialization
         empty!(memory(agent))
         rational_choice!(agent, Choice(0))
         choice!(agent, Choice(0))
-        for _ in 1:memory_length(sim_params)
+        for _ in 1:memory_length(simparams)
             push!(memory(agent), random_strategy(game, 1))
         end
     end
@@ -122,13 +122,13 @@ end
 
 ############################ tagged versions (not currently using) ##############################
 
-# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::FractiousState)
-#     for (vertex, agent) in enumerate(agent_graph.agents)
-#         if sim_params.tags
-#             if rand() <= sim_params.tag1_proportion
-#                 agent.tag = sim_params.tag1
+# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::FractiousState)
+#     for (vertex, agent) in enumerate(agentgraph.agents)
+#         if simparams.tags
+#             if rand() <= simparams.tag1_proportion
+#                 agent.tag = simparams.tag1
 #             else
-#                 agent.tag = sim_params.tag2
+#                 agent.tag = simparams.tag2
 #             end
 #         end
 
@@ -140,43 +140,43 @@ end
 #             recollection = strategies(game)[1][3]
 #         end
 #         to_push = (agent.tag, recollection)
-#         for _ in 1:memory_length(sim_params)
+#         for _ in 1:memory_length(simparams)
 #             push!(agent.memory, to_push)
 #         end
 #     end
 #     return nothing
 # end
 
-# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::EquityState)
-#     for (vertex, agent) in enumerate(agent_graph.agents)
-#         if rand() <= sim_params.tag1_proportion
-#             agent.tag = sim_params.tag1
+# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::EquityState)
+#     for (vertex, agent) in enumerate(agentgraph.agents)
+#         if rand() <= simparams.tag1_proportion
+#             agent.tag = simparams.tag1
 #         else
-#             agent.tag = sim_params.tag2
+#             agent.tag = simparams.tag2
 #         end
 
 #         #set memory initialization
 #         #NOTE: tag system needs to change when tags are implemented!!
 #         recollection = strategies(game)[1][2]
 #         to_push = (agent.tag, recollection)
-#         for _ in 1:memory_length(sim_params)
+#         for _ in 1:memory_length(simparams)
 #             push!(agent.memory, to_push)
 #         end
 #     end
 #     return nothing
 # end
 
-# function agentdata!(agent_graph::AgentGraph, game::Game, sim_params::SimParams, starting_condition::RandomState)
-#     for (vertex, agent) in enumerate(agent_graph.agents)
-#         if rand() <= sim_params.tag1_proportion
-#             agent.tag = sim_params.tag1
+# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::RandomState)
+#     for (vertex, agent) in enumerate(agentgraph.agents)
+#         if rand() <= simparams.tag1_proportion
+#             agent.tag = simparams.tag1
 #         else
-#             agent.tag = sim_params.tag2
+#             agent.tag = simparams.tag2
 #         end
 
 #         #set memory initialization
 #         #NOTE: tag system needs to change when tags are implemented!!
-#         for _ in 1:memory_length(sim_params)
+#         for _ in 1:memory_length(simparams)
 #             to_push = (agent.tag, rand(strategies(game)[1]))
 #             push!(agent.memory, to_push)
 #         end
@@ -185,20 +185,20 @@ end
 # end
 
 """
-    initialize_stopping_condition!(stopping_condition::StoppingCondition, sim_params::SimParams, agent_graph::AgentGraph)
+    initialize_stopping_condition!(stoppingcondition::StoppingCondition, simparams::SimParams, agentgraph::AgentGraph)
 
 Initialize the stopping condition for a model.
 """
-function initialize_stopping_condition!(stopping_condition::EquityPsychological, sim_params::SimParams, agent_graph::AgentGraph)
-    sufficient_equity!(stopping_condition, (1 - error_rate(sim_params)) * memory_length(sim_params))
-    sufficient_transitioned!(stopping_condition, Float64(number_agents(sim_params) - number_hermits(agent_graph)))
+function initialize_stopping_condition!(stoppingcondition::EquityPsychological, simparams::SimParams, agentgraph::AgentGraph)
+    sufficient_equity!(stoppingcondition, (1 - error_rate(simparams)) * memory_length(simparams))
+    sufficient_transitioned!(stoppingcondition, Float64(number_agents(simparams) - number_hermits(agentgraph)))
     return nothing
 end
 
-function initialize_stopping_condition!(stopping_condition::EquityBehavioral, sim_params::SimParams, agent_graph::AgentGraph)
-    sufficient_transitioned!(stopping_condition, (1 - error_rate(sim_params)) * (number_agents(sim_params) - number_hermits(agent_graph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
-    period_cutoff!(stopping_condition, memory_length(sim_params))
-    period_count!(stopping_condition, 0)
+function initialize_stopping_condition!(stoppingcondition::EquityBehavioral, simparams::SimParams, agentgraph::AgentGraph)
+    sufficient_transitioned!(stoppingcondition, (1 - error_rate(simparams)) * (number_agents(simparams) - number_hermits(agentgraph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+    period_cutoff!(stoppingcondition, memory_length(simparams))
+    period_count!(stoppingcondition, 0)
     return nothing
 end
 

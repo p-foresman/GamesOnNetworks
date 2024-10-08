@@ -1,638 +1,479 @@
 using SQLite
 
 const SQLiteDB = SQLite.DB
+const SQL = String
 
 function DB(db_info::SQLiteInfo; busy_timeout::Int=3000)
     db = SQLiteDB(db_info.filepath)
     SQLite.busy_timeout(db, busy_timeout)
     return db
 end
+db_begin_transaction(db::SQLiteDB) = SQLite.transaction(db) #does have a default mode that may be useful to change
+db_execute(db::SQLiteDB, sql::SQL) = DBInterface.execute(db, sql)
+db_query(db::SQLiteDB, sql::SQL) = DataFrame(db_execute(db, sql))
+db_commit_transaction(db::SQLiteDB) = SQLite.commit(db)
 db_close(db::SQLiteDB) = SQLite.close(db)
-db_execute(db::SQLiteDB, sql::String) = DBInterface.execute(db, sql)
-db_query(db::SQLiteDB, sql::String) = DataFrame(db_execute(db, sql))
 
-function execute_init_full(db_info::SQLiteInfo)
-    #create or connect to database
-    db = DB(db_info; busy_timeout=3000)
-    #create 'games' table (currently only the "bargaining game" exists)
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS games
-                            (
-                                game_id INTEGER PRIMARY KEY,
-                                game_name TEXT NOT NULL,
-                                game TEXT NOT NULL,
-                                payoff_matrix_size TEXT NOT NULL,
-                                UNIQUE(game_name, game)
-                            );
-                    ")
+function sql_create_games_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS games
+    (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        game TEXT NOT NULL,
+        payoff_matrix_size TEXT NOT NULL,
+        UNIQUE(name, game)
+    );
+    """
+end
 
-    #create 'graphs' table which stores the graph types with their specific parameters (parameters might go in different table?)
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS graphs
-                            (
-                                graph_id INTEGER PRIMARY KEY,
-                                graph TEXT NOT NULL,
-                                graph_type TEXT NOT NULL,
-                                graph_params TEXT NOT NULL,
-                                λ REAL DEFAULT NULL,
-                                β REAL DEFAULT NULL,
-                                α REAL DEFAULT NULL,
-                                blocks INTEGER DEFAULT NULL,
-                                p_in REAL DEFAULT NULL,
-                                p_out REAL DEFAULT NULL,
-                                UNIQUE(graph, graph_params)
-                            );
-                    ")
+function sql_create_graphmodels_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS graphmodels
+    (
+        id INTEGER PRIMARY KEY,
+        display TEXT NOT NULL,
+        type TEXT NOT NULL,
+        graphmodel TEXT NOT NULL,
+        λ REAL DEFAULT NULL,
+        β REAL DEFAULT NULL,
+        α REAL DEFAULT NULL,
+        blocks INTEGER DEFAULT NULL,
+        p_in REAL DEFAULT NULL,
+        p_out REAL DEFAULT NULL,
+        UNIQUE(graphmodel)
+    );
+    """
+end
 
-    #create 'sim_params' table which contains information specific to each simulation
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS sim_params
-                            (
-                                sim_params_id INTEGER PRIMARY KEY,
-                                number_agents INTEGER NOT NULL,
-                                memory_length INTEGER NOT NULL,
-                                error REAL NOT NULL,
-                                sim_params TEXT NOT NULL,
-                                use_seed BOOLEAN NOT NULL,
-                                UNIQUE(sim_params, use_seed),
-                                CHECK (use_seed in (0, 1))
-                            );
-                    ")
+function sql_create_simparams_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS simparams
+    (
+        id INTEGER PRIMARY KEY,
+        number_agents INTEGER NOT NULL,
+        memory_length INTEGER NOT NULL,
+        error REAL NOT NULL,
+        simparams TEXT NOT NULL,
+        use_seed BOOLEAN NOT NULL,
+        UNIQUE(simparams, use_seed),
+        CHECK (use_seed in (0, 1))
+    );
+    """
+end
 
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS starting_conditions
-                            (
-                                starting_condition_id INTEGER PRIMARY KEY,
-                                name TEXT NOT NULL,
-                                starting_condition TEXT NOT NULL,
-                                UNIQUE(name, starting_condition)
-                            );
-                    ")
+function sql_create_startingconditions_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS startingconditions
+    (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        startingcondition TEXT NOT NULL,
+        UNIQUE(name, startingcondition)
+    );
+    """
+end
 
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS stopping_conditions
-                            (
-                                stopping_condition_id INTEGER PRIMARY KEY,
-                                name TEXT NOT NULL,
-                                stopping_condition TEXT NOT NULL,
-                                UNIQUE(name, stopping_condition)
-                            );
-                    ")
+function sql_create_stoppingconditions_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS stoppingconditions
+    (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        stoppingcondition TEXT NOT NULL,
+        UNIQUE(name, stoppingcondition)
+    );
+    """
+end
 
-    #create 'sim_groups' table to group simulations and give the groups an easy-access description (version control is handled with the prev_simulation_id column in the individual simulation saves)
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS sim_groups
-                            (
-                                sim_group_id INTEGER PRIMARY KEY,
-                                description TEXT DEFAULT NULL,
-                                UNIQUE(description)
-                            );
-                    ")
+function sql_create_models_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS models
+    (
+        id INTEGER PRIMARY KEY,
+        game_id INTEGER NOT NULL,
+        graphmodel_id INTEGER NOT NULL,
+        simparams_id INTEGER NOT NULL,
+        startingcondition_id INTEGER NOT NULL,
+        stoppingcondition_id INTEGER NOT NULL,
+        FOREIGN KEY (game_id)
+            REFERENCES games (game_id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (graphmodel_id)
+            REFERENCES graphmodels (id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (simparams_id)
+            REFERENCES simparams (id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (startingcondition_id)
+            REFERENCES startingconditions (id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (stoppingcondition_id)
+            REFERENCES stoppingconditions (id)
+            ON DELETE CASCADE,
+        UNIQUE(game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id)
+    );
+    """
+end
+
+function sql_create_groups_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS groups
+    (
+        id INTEGER PRIMARY KEY,
+        description TEXT DEFAULT NULL,
+        UNIQUE(description)
+    );
+    """
+end
+
+function sql_create_simulations_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS simulations
+    (
+        uuid TEXT PRIMARY KEY,
+        group_id INTEGER DEFAULT NULL,
+        prev_simulation_uuid TEXT DEFAULT NULL,
+        model_id INTEGER NOT NULL,
+        graph_adj_matrix TEXT DEFAULT NULL,
+        rng_state TEXT NOT NULL,
+        periods_elapsed INTEGER NOT NULL,
+        FOREIGN KEY (group_id)
+            REFERENCES groups (id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (prev_simulation_uuid)
+            REFERENCES simulations (simulation_uuid),
+        FOREIGN KEY (model_id)
+            REFERENCES models (id),
+        UNIQUE(uuid)
+    );
+    """
+end
 
 
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS models
-                            (
-                                model_id INTEGER PRIMARY KEY,
-                                game_id INTEGER NOT NULL,
-                                graph_id INTEGER NOT NULL,
-                                sim_params_id INTEGER NOT NULL,
-                                starting_condition_id INTEGER NOT NULL,
-                                stopping_condition_id INTEGER NOT NULL,
-                                FOREIGN KEY (game_id)
-                                    REFERENCES games (game_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (graph_id)
-                                    REFERENCES graphs (graph_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (sim_params_id)
-                                    REFERENCES sim_params (sim_params_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (starting_condition_id)
-                                    REFERENCES starting_conditions (starting_condition_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (stopping_condition_id)
-                                    REFERENCES stopping_conditions (stopping_condition_id)
-                                    ON DELETE CASCADE,
-                                UNIQUE(game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id)
-                            )
-    ")
+function sql_create_agents_table(::SQLiteInfo)
+    """
+    CREATE TABLE IF NOT EXISTS agents
+    (
+        id INTEGER PRIMARY KEY,
+        simulation_uuid TEXT NOT NULL,
+        agent TEXT NOT NULL,
+        FOREIGN KEY (simulation_uuid)
+            REFERENCES simulations (simulation_uuid)
+            ON DELETE CASCADE
+    );
+    """
+end
 
-    #create 'simulations' table which contains information specific to each simulation
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS simulations
-                            (
-                                simulation_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                sim_group_id INTEGER DEFAULT NULL,
-                                prev_simulation_uuid TEXT DEFAULT NULL,
-                                model_id INTEGER NOT NULL,
-                                graph_adj_matrix TEXT DEFAULT NULL,
-                                rng_state TEXT NOT NULL,
-                                periods_elapsed INTEGER NOT NULL,
-                                FOREIGN KEY (sim_group_id)
-                                    REFERENCES sim_groups (sim_group_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (prev_simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid),
-                                FOREIGN KEY (model_id)
-                                    REFERENCES models (model_id),
-                                UNIQUE(simulation_uuid)
-                            );
-                    ")
 
-    #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS agents
-                            (
-                                agent_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                agent TEXT NOT NULL,
-                                FOREIGN KEY (simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid)
-                                    ON DELETE CASCADE
-                            );
-                    ")
+function execute_init_db(db_info::SQLiteInfo)
+    db = DB(db_info)
+    db_begin_transaction(db)
+    db_execute(db, sql_create_games_table(db_info))
+    db_execute(db, sql_create_graphmodels_table(db_info))
+    db_execute(db, sql_create_simparams_table(db_info))
+    db_execute(db, sql_create_startingconditions_table(db_info))
+    db_execute(db, sql_create_stoppingconditions_table(db_info))
+    db_execute(db, sql_create_models_table(db_info))
+    db_execute(db, sql_create_groups_table(db_info))
+    db_execute(db, sql_create_simulations_table(db_info))
+    db_execute(db, sql_create_agents_table(db_info))
+    db_commit_transaction(db)
     db_close(db)
 end
 
 #this DB only needs tables for simulations and agents. These will be collected into the master DB later
-function execute_init_temp(db_info::SQLiteInfo)
-    #create or connect to database
+function execute_init_db_temp(db_info::SQLiteInfo)
     db = DB(db_info)
-
-    #create 'simulations' table which contains information specific to each simulation
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS simulations
-                            (
-                                simulation_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                sim_group_id INTEGER DEFAULT NULL,
-                                prev_simulation_uuid TEXT DEFAULT NULL,
-                                model_id INTEGER NOT NULL,
-                                graph_adj_matrix TEXT DEFAULT NULL,
-                                rng_state TEXT NOT NULL,
-                                periods_elapsed INTEGER NOT NULL,
-                                FOREIGN KEY (sim_group_id)
-                                    REFERENCES sim_groups (sim_group_id)
-                                    ON DELETE CASCADE,
-                                FOREIGN KEY (prev_simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid),
-                                FOREIGN KEY (model_id)
-                                    REFERENCES models (model_id)
-                                    ON DELETE CASCADE,
-                                UNIQUE(simulation_uuid)
-                            );
-                    ")
-
-    #create 'agents' table which contains json strings of agent types (with memory states). FK points to specific simulation
-    db_execute(db, "
-                            CREATE TABLE IF NOT EXISTS agents
-                            (
-                                agent_id INTEGER PRIMARY KEY,
-                                simulation_uuid TEXT NOT NULL,
-                                agent TEXT NOT NULL,
-                                FOREIGN KEY (simulation_uuid)
-                                    REFERENCES simulations (simulation_uuid)
-                                    ON DELETE CASCADE
-                            );
-                    ")
+    db_begin_transaction(db)
+    db_execute(db, sql_create_simulations_table(db_info))
+    db_execute(db, sql_create_agents_table(db_info))
+    db_commit_transaction(db)
     db_close(db)
 end
 
 
+function sql_insert_game(name::String, game_str::String, payoff_matrix_size::String)
+    """
+    INSERT OR IGNORE INTO games
+    (
+        name,
+        game,
+        payoff_matrix_size
+    )
+    VALUES
+    (
+        '$name',
+        '$game_str',
+        '$payoff_matrix_size'
+    )
+    ON CONFLICT (name, game) DO UPDATE
+        SET name = games.name
+    RETURNING id;
+    """
+end
 
-function execute_insert_game(db_info::SQLiteInfo, game_name::String, game::String, payoff_matrix_size::String)
+function sql_insert_graphmodel(display::String, type::String, graphmodel_str::String, params_str::String, values_str::String)
+    # insert_string_columns = "display, type, graphmodel, "
+    # insert_string_values = "'$display', '$type', '$graphmodel_str', "
+    # for (param, value) in db_graph_params_dict
+    #     if value !== nothing
+    #         insert_string_columns *= "'$param', "
+    #         insert_string_values *= "$value, "
+    #     end
+    # end
+    # insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
+    # insert_string_values = rstrip(insert_string_values, [' ', ','])
+    """
+    INSERT OR IGNORE INTO graphmodels
+    (
+        display,
+        type,
+        graphmodel
+        $params_str
+    )
+    VALUES
+    (   
+        '$display',
+        '$type',
+        '$graphmodel_str'
+        $values_str
+    )
+    ON CONFLICT (graphmodel) DO UPDATE
+        SET type = graphmodels.type
+    RETURNING id;
+    """
+end
+
+function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_seed::Integer)
+    """
+    INSERT OR IGNORE INTO simparams
+    (
+        number_agents,
+        memory_length,
+        error,
+        simparams,
+        use_seed
+    )
+    VALUES
+    (
+        $(number_agents(simparams)),
+        $(memory_length(simparams)),
+        $(error_rate(simparams)),
+        '$simparams_str',
+        $use_seed
+    )
+    ON CONFLICT (simparams, use_seed) DO UPDATE
+        SET use_seed = simparams.use_seed
+    RETURNING id;
+    """
+end
+
+function sql_insert_startingcondition(name::String, startingcondition_str::String)
+    """
+    INSERT OR IGNORE INTO startingconditions
+    (
+        name,
+        startingcondition
+    )
+    VALUES
+    (
+        '$name',
+        '$(startingcondition_str)'
+    )
+    ON CONFLICT (name, startingcondition) DO UPDATE
+        SET name = startingconditions.name
+    RETURNING id;
+    """
+end
+
+function sql_insert_stoppingcondition(name::String, stoppingcondition_str::String)
+    """
+    INSERT OR IGNORE INTO stoppingconditions
+    (
+        name,
+        stoppingcondition
+    )
+    VALUES
+    (
+        '$name',
+        '$(stoppingcondition_str)'
+    )
+    ON CONFLICT (name, stoppingcondition) DO UPDATE
+        SET name = stoppingconditions.name
+    RETURNING id;
+    """
+end
+
+function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, startingcondition_id::Integer, stoppingcondition_id::Integer)
+   """
+    INSERT OR IGNORE INTO models
+    (
+        game_id,
+        graphmodel_id,
+        simparams_id,
+        startingcondition_id,
+        stoppingcondition_id
+    )
+    VALUES
+    (
+        $game_id,
+        $graphmodel_id,
+        $simparams_id,
+        $startingcondition_id,
+        $stoppingcondition_id
+    )
+    ON CONFLICT (game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id) DO UPDATE
+        SET game_id = models.game_id
+    RETURNING id;
+    """ 
+end
+
+function execute_insert_game(db::SQLiteDB, name::String, game_str::String, payoff_matrix_size::String)
+    id::Int = db_query(db, sql_insert_game(name, game_str, payoff_matrix_size))[1, :id]
+    return id
+end
+
+function execute_insert_graphmodel(db::SQLiteDB, display::String, type::String, graphmodel_str::String, params_str::String, values_str::String)
+    id::Int = db_query(db, sql_insert_graphmodel(display, type, graphmodel_str, params_str, values_str))[1, :id]
+    return id
+end
+
+function execute_insert_simparams(db::SQLiteDB, simparams::SimParams, simparams_str::String, use_seed::Integer)
+    id::Int = db_query(db, sql_insert_simparams(simparams, simparams_str, use_seed))[1, :id]
+    return id
+end
+
+function execute_insert_startingcondition(db::SQLiteDB, name::String, startingcondition_str::String)
+    id::Int = db_query(db, sql_insert_startingcondition(name, startingcondition_str))[1, :id]
+    return id
+end
+
+function execute_insert_stoppingcondition(db::SQLiteDB, name::String, stoppingcondition_str::String)
+    id::Int = db_query(db, sql_insert_stoppingcondition(name, stoppingcondition_str))[1, :id]
+    return id
+end
+
+#dont want to be able to insert a model without all the other components (although could be useful to create new models in the database to choose from?)
+# function execute_insert_model(db::SQLiteDB, game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, startingcondition_id::Integer, stoppingcondition_id::Integer)
+#     id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id))[1, :id]
+#     return id
+# end
+
+function execute_insert_model(db_info::SQLiteInfo,
+                            game_name::String, game_str::String, payoff_matrix_size::String,
+                            graphmodel_display::String, graphmodel_type::String, graphmodel_str::String, graphmodel_params_str::String, graphmodel_values_str::String, #NOTE: should try to make all parameters String typed so they can be plugged right into sql
+                            simparams::SimParams, simparams_str::String, use_seed::Integer,
+                            startingcondition_name::String, startingcondition_str::String,
+                            stoppingcondition_name::String, stoppingcondition_str::String)
+
+
     db = DB(db_info)
-    id::Int = db_query(db, "
-                                INSERT OR IGNORE INTO games
-                                (
-                                    game_name,
-                                    game,
-                                    payoff_matrix_size
-                                )
-                                VALUES
-                                (
-                                    '$game_name',
-                                    '$game',
-                                    '$payoff_matrix_size'
-                                )
-                                ON CONFLICT (game_name, game) DO UPDATE
-                                    SET game_name = games.game_name
-                                RETURNING game_id;
-    ")[1, :game_id]
+    db_begin_transaction(db)
+    game_id = execute_insert_game(db, game_name, game_str, payoff_matrix_size)
+    graphmodel_id = execute_insert_graphmodel(db, graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str)
+    simparams_id = execute_insert_simparams(db, simparams, simparams_str, use_seed)
+    startingcondition_id = execute_insert_startingcondition(db, startingcondition_name, startingcondition_str)
+    stoppingcondition_id = execute_insert_stoppingcondition(db, stoppingcondition_name, stoppingcondition_str)
+    # id = execute_insert_model(db, game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id)
+    id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id))[1, :id]
+    db_commit_transaction(db)
     db_close(db)
     return id
 end
 
-function execute_insert_graph(db_info::SQLiteInfo, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-    db = DB(db_info)
-    insert_string_columns = "graph, graph_type, graph_params, "
-    insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
-    for (param, value) in db_graph_params_dict
-        if value !== nothing
-            insert_string_columns *= "'$param', "
-            insert_string_values *= "$value, "
-        end
-    end
-    insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
-    insert_string_values = rstrip(insert_string_values, [' ', ','])
-
-    id::Int = db_query(db, "
-                                INSERT OR IGNORE INTO graphs
-                                (
-                                    $insert_string_columns
-                                )
-                                VALUES
-                                (
-                                    $insert_string_values
-                                )
-                                ON CONFLICT (graph, graph_params) DO UPDATE
-                                    SET graph_type = graphs.graph_type
-                                RETURNING graph_id;
-    ")[1, :graph_id]
-    db_close(db)
-    return id
-end
-
-function execute_insert_sim_params(db_info::SQLiteInfo, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-    db = DB(db_info)
-    id::Int = db_query(db, "
-                                INSERT OR IGNORE INTO sim_params
-                                (
-                                    number_agents,
-                                    memory_length,
-                                    error,
-                                    sim_params,
-                                    use_seed
-                                )
-                                VALUES
-                                (
-                                    $(sim_params.number_agents),
-                                    $(sim_params.memory_length),
-                                    $(sim_params.error),
-                                    '$sim_params_str',
-                                    $use_seed
-                                )
-                                ON CONFLICT (sim_params, use_seed) DO UPDATE
-                                    SET use_seed = sim_params.use_seed
-                                RETURNING sim_params_id;
-    ")[1, :sim_params_id]
-    db_close(db)
-    return id
-end
-
-function execute_insert_starting_condition(db_info::SQLiteInfo, starting_condition_name::String, starting_condition_str::String)
-    db = DB(db_info)
-    id::Int = db_query(db, "
-                                    INSERT OR IGNORE INTO starting_conditions
-                                    (
-                                        name,
-                                        starting_condition
-                                    )
-                                    VALUES
-                                    (
-                                        '$starting_condition_name',
-                                        '$(starting_condition_str)'
-                                    )
-                                    ON CONFLICT (name, starting_condition) DO UPDATE
-                                        SET name = starting_conditions.name
-                                    RETURNING starting_condition_id;
-    ")[1, :starting_condition_id]
-    db_close(db)
-    return id
-end
-
-function execute_insert_stopping_condition(db_info::SQLiteInfo, stopping_condition_name::String, stopping_condition_str::String)
-    db = DB(db_info)
-    id::Int = db_query(db, "
-                                    INSERT OR IGNORE INTO stopping_conditions
-                                    (
-                                        name,
-                                        stopping_condition
-                                    )
-                                    VALUES
-                                    (
-                                        '$stopping_condition_name',
-                                        '$(stopping_condition_str)'
-                                    )
-                                    ON CONFLICT (name, stopping_condition) DO UPDATE
-                                        SET name = stopping_conditions.name
-                                    RETURNING stopping_condition_id;
-    ")[1, :stopping_condition_id]
-    db_close(db)
-    return id
-end
-
-
-
-
-
-
-####################################################
-
-function execute_insert_model(db_info::SQLiteInfo, game_id::Int, graph_id::Int, sim_params_id::Int, starting_condition_id::Int, stopping_condition_id::Int)
-    db = DB(db_info; busy_timeout=3000)
-    status = DBInterface.execute(db, "
-                                    INSERT OR IGNORE INTO models
-                                    (
-                                        game_id,
-                                        graph_id,
-                                        sim_params_id,
-                                        starting_condition_id,
-                                        stopping_condition_id
-                                    )
-                                    VALUES
-                                    (
-                                        $game_id,
-                                        $graph_id,
-                                        $sim_params_id,
-                                        $starting_condition_id,
-                                        $stopping_condition_id
-                                    )
-    ")
-
-    query = DBInterface.execute(db, "
-                                        SELECT model_id
-                                        FROM models
-                                        WHERE game_name = '$game_name'
-                                        AND game = '$game';
-                                ")
-end
-
-# function execute_insert_model()
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO games
-#                                     (
-#                                         game_name,
-#                                         game,
-#                                         payoff_matrix_size
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         '$game_name',
-#                                         '$game',
-#                                         '$payoff_matrix_size'
-#                                     );
-#     ")
-
-
-# end
-
-# function execute_insert_game(db_info::SQLiteInfo, game_name::String, game::String, payoff_matrix_size::String)
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO games
-#                                     (
-#                                         game_name,
-#                                         game,
-#                                         payoff_matrix_size
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         '$game_name',
-#                                         '$game',
-#                                         '$payoff_matrix_size'
-#                                     );
-#                             ")
-#     query = DBInterface.execute(db, "
-#                                         SELECT game_id
-#                                         FROM games
-#                                         WHERE game_name = '$game_name'
-#                                         AND game = '$game';
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     insert_row = df[1, :game_id]
-#     db_close(db)
-#     tuple_to_return = (status_message = "SQLite [SimulationSaves: games]... INSERT STATUS: [$status] GAME_ID: [$insert_row]]", insert_row_id = insert_row)
-#     return tuple_to_return
-# end
-
-# function execute_insert_graph(db_info::SQLiteInfo, graph::String, graph_type::String, graph_params_str::String, db_graph_params_dict::Dict{Symbol, Any})
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     insert_string_columns = "graph, graph_type, graph_params, "
-#     insert_string_values = "'$graph', '$graph_type', '$graph_params_str', "
-#     for (param, value) in db_graph_params_dict
-#         if value !== nothing
-#             insert_string_columns *= "'$param', "
-#             insert_string_values *= "$value, "
-#         end
-#     end
-#     insert_string_columns = rstrip(insert_string_columns, [' ', ',']) #strip off the comma and space at the end of the string
-#     insert_string_values = rstrip(insert_string_values, [' ', ','])
-
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO graphs
-#                                     (
-#                                         $insert_string_columns
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         $insert_string_values
-#                                     );
-#                             ")
-#     query = DBInterface.execute(db, "
-#                                         SELECT graph_id
-#                                         FROM graphs
-#                                         WHERE graph = '$graph'
-#                                         AND graph_params = '$graph_params_str';
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     insert_row = df[1, :graph_id]
-#     db_close(db)
-#     tuple_to_return = (status_message = "SQLite [SimulationSaves: graphs]... INSERT STATUS: [$status] GRAPH_ID: [$insert_row]", insert_row_id = insert_row)
-#     return tuple_to_return
-# end
-
-# function execute_insert_sim_params(db_info::SQLiteInfo, sim_params::SimParams, sim_params_str::String, use_seed::Integer)
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO sim_params
-#                                     (
-#                                         number_agents,
-#                                         memory_length,
-#                                         error,
-#                                         sim_params,
-#                                         use_seed
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         $(sim_params.number_agents),
-#                                         $(sim_params.memory_length),
-#                                         $(sim_params.error),
-#                                         '$sim_params_str',
-#                                         $use_seed
-#                                 );
-#                             ")
-#     query = DBInterface.execute(db, "
-#                                         SELECT sim_params_id
-#                                         FROM sim_params
-#                                         WHERE sim_params = '$sim_params_str'
-#                                         AND use_seed = $use_seed;
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     insert_row = df[1, :sim_params_id]
-#     db_close(db)
-#     tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_params]... INSERT STATUS: [$status] SIM_PARAMS_ID: [$insert_row]", insert_row_id = insert_row)
-#     return tuple_to_return
-# end
-
-# function execute_insert_starting_condition(db_info::SQLiteInfo, starting_condition_name::String, starting_condition_str::String)
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO starting_conditions
-#                                     (
-#                                         name,
-#                                         starting_condition
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         '$starting_condition_name',
-#                                         '$(starting_condition_str)'
-#                                 );
-#                             ")
-#     query = DBInterface.execute(db, "
-#                                         SELECT starting_condition_id
-#                                         FROM starting_conditions
-#                                         WHERE starting_condition = '$starting_condition_str';
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     insert_row = df[1, :starting_condition_id]
-#     db_close(db)
-#     tuple_to_return = (status_message = "SQLite [SimulationSaves: starting_conditions]... INSERT STATUS: [$status] STARTING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
-#     return tuple_to_return
-# end
-
-# function execute_insert_stopping_condition(db_info::SQLiteInfo, stopping_condition_name::String, stopping_condition_str::String)
-#   
-#     db = DB(db_info; busy_timeout=3000)
-#     status = db_execute(db, "
-#                                     INSERT OR IGNORE INTO stopping_conditions
-#                                     (
-#                                         name,
-#                                         stopping_condition
-#                                     )
-#                                     VALUES
-#                                     (
-#                                         '$stopping_condition_name',
-#                                         '$(stopping_condition_str)'
-#                                 );
-#                             ")
-#     query = DBInterface.execute(db, "
-#                                         SELECT stopping_condition_id
-#                                         FROM stopping_conditions
-#                                         WHERE stopping_condition = '$stopping_condition_str';
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     insert_row = df[1, :stopping_condition_id]
-#     db_close(db)
-#     tuple_to_return = (status_message = "SQLite [SimulationSaves: stopping_conditions]... INSERT STATUS: [$status] STOPPING_CONDITION_ID: [$insert_row]", insert_row_id = insert_row)
-#     return tuple_to_return
-# end
 
 ####################################################
 
 
 
-
-
-
-
-function execute_insert_sim_group(db_info::SQLiteInfo, description::String)
-    db = DB(db_info; busy_timeout=3000)
-    status = db_execute(db, "
-                                    INSERT OR IGNORE INTO sim_groups
-                                    (
-                                        description
-                                    )
-                                    VALUES
-                                    (
-                                        '$description'
-                                );
-                            ")
-    
-    query = DBInterface.execute(db, "
-                                        SELECT sim_group_id
-                                        FROM sim_groups
-                                        WHERE description = '$description'
-                                ")
-    df = DataFrame(query)
-    insert_row = df[1, :sim_group_id]
-    db_close(db)
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: sim_groups]... INSERT STATUS: [$status] SIM_GROUP_ID: [$insert_row]", insert_row_id = insert_row)
-    return tuple_to_return
+function sql_insert_group(description::String)
+    """
+    INSERT OR IGNORE INTO groups
+    (
+        description
+    )
+    VALUES
+    (
+        '$description'
+    )
+    ON CONFLICT (description) DO UPDATE
+        SET description = groups.description
+    RETURNING id;
+    """
 end
 
 
-function execute_insert_simulation(db_info::SQLiteInfo, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
-    simulation_uuid = "$(uuid4())"
+
+function execute_insert_group(db_info::SQLiteInfo, description::String)
+    db = DB(db_info)
+    id::Int = db_query(db, sql_insert_group(description))[1, :id]
+    db_close(db)
+    return id
+end
+
+
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+    """
+    INSERT INTO simulations
+    (
+        uuid,
+        group_id,
+        prev_simulation_uuid,
+        model_id,
+        graph_adj_matrix,
+        rng_state,
+        periods_elapsed
+    )
+    VALUES
+    (
+        '$uuid',
+        $group_id,
+        '$prev_simulation_uuid',
+        $model_id,
+        '$graph_adj_matrix_str',
+        '$rng_state',
+        $periods_elapsed
+    );
+    ON CONFLICT () DO UPDATE
+        SET group_id = simulations.group_id
+    RETURNING uuid
+    """
+end
+
+function sql_insert_agents(agent_values_string::String) #kind of a cop-out parameter but fine for now
+    """
+    INSERT INTO agents
+    (
+        simulation_uuid,
+        agent
+    )
+    VALUES
+        $agent_values_string;
+    """
+end
+
+function execute_insert_simulation(db_info::SQLiteInfo, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, model_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+    uuid = "$(uuid4())"
     
     #prepare simulation SQL
-    sim_group_id === nothing ? sim_group_id = "NULL" : nothing
-    prev_simulation_uuid === nothing ?  prev_simulation_uuid = "NULL" : nothing
+    group_id = isnothing(group_id) ? "NULL" : string(group_id)
+    isnothing(prev_simulation_uuid) ?  prev_simulation_uuid = "NULL" : nothing
 
     #prepare agents SQL
     agent_values_string = "" #construct a values string to insert multiple agents into db table
     for agent in agent_list
-        agent_values_string *= "('$simulation_uuid', '$agent'), "
+        agent_values_string *= "('$uuid', '$agent'), "
     end
-    agent_values_string = rstrip(agent_values_string, [' ', ','])
+    agent_values_string = string(rstrip(agent_values_string, [' ', ',']))
 
-    #open DB connection
-    db = DB(db_info; busy_timeout=3000)
-
-    #first insert simulation with simulation_uuid
-    simulation_status = db_execute(db, "
-                                    INSERT INTO simulations
-                                    (
-                                        simulation_uuid,
-                                        sim_group_id,
-                                        prev_simulation_uuid,
-                                        game_id,
-                                        graph_id,
-                                        sim_params_id,
-                                        starting_condition_id,
-                                        stopping_condition_id,
-                                        graph_adj_matrix,
-                                        rng_state,
-                                        periods_elapsed
-                                    )
-                                    VALUES
-                                    (
-                                        '$simulation_uuid',
-                                        $sim_group_id,
-                                        '$prev_simulation_uuid',
-                                        $(db_id_tuple.game_id),
-                                        $(db_id_tuple.graph_id),
-                                        $(db_id_tuple.sim_params_id),
-                                        $(db_id_tuple.starting_condition_id),
-                                        $(db_id_tuple.stopping_condition_id),
-                                        '$graph_adj_matrix_str',
-                                        '$rng_state',
-                                        $periods_elapsed
-                                );
-                            ")
-
-    #then insert agents with FK of simulation_uuid 
-    agents_status = db_execute(db, "
-                                    INSERT INTO agents
-                                    (
-                                        simulation_uuid,
-                                        agent
-                                    )
-                                    VALUES
-                                        $agent_values_string;
-                            ")
+    db = DB(db_info)
+    db_begin_transaction(db)
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, graph_adj_matrix_str, rng_state, periods_elapsed))
+    db_execute(db, sql_insert_agents(agent_values_string))
+    db_commit_transaction(db)
     db_close(db)
-
-    tuple_to_return = (status_message = "SQLite [SimulationSaves: simulations & agents]... SIMULATION INSERT STATUS: [$simulation_status] AGENTS INSERT STATUS: [$agents_status] SIMULATION_UUID: [$simulation_uuid]", simulation_uuid = simulation_uuid)
-    return tuple_to_return
+    return uuid
 end
 
 
@@ -648,11 +489,11 @@ function execute_query_games(db_info::SQLiteInfo, game_id::Integer)
     return df
 end
 
-function execute_query_graphs(db_info::SQLiteInfo, graph_id::Integer)
+function execute_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
-                                        FROM graphs
+                                        FROM graphmodels
                                         WHERE graph_id = $graph_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
@@ -696,12 +537,12 @@ function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_conditi
     return df
 end
 
-function execute_query_sim_groups(db_info::SQLiteInfo, sim_group_id::Integer)
+function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
                                         FROM sim_groups
-                                        WHERE sim_group_id = $sim_group_id;
+                                        WHERE group_id = $group_id;
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
     db_close(db)
@@ -738,20 +579,20 @@ function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_i
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulations.simulation_id,
-                                            simulations.sim_group_id,
+                                            simulations.group_id,
                                             sim_params.sim_params,
                                             sim_params.use_seed,
                                             simulations.rng_state,
                                             simulations.periods_elapsed,
                                             simulations.graph_adj_matrix,
-                                            graphs.graph_params,
+                                            graphmodels.graph_params,
                                             games.game,
                                             games.payoff_matrix_size,
                                             starting_conditions.starting_condition,
                                             stopping_conditions.stopping_condition
                                         FROM simulations
                                         INNER JOIN games USING(game_id)
-                                        INNER JOIN graphs USING(graph_id)
+                                        INNER JOIN graphmodels USING(graph_id)
                                         INNER JOIN sim_params USING(sim_params_id)
                                         INNER JOIN starting_conditions USING(starting_condition_id)
                                         INNER JOIN stopping_conditions USING(stopping_condition_id)
@@ -777,13 +618,13 @@ end
 
 
 #NOTE: FIX
-# function querySimulationsByGroup(db_info::SQLiteInfo, sim_group_id::Int)
+# function querySimulationsByGroup(db_info::SQLiteInfo, group_id::Int)
 #   
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT
 #                                             simulations.simulation_id,
-#                                             simulations.sim_group_id,
+#                                             simulations.group_id,
 #                                             simulations.sim_params_id,
 #                                             simulations.graph_adj_matrix,
 #                                             simulations.use_seed,
@@ -791,12 +632,12 @@ end
 #                                             simulations.periods_elapsed,
 #                                             games.game,
 #                                             games.payoff_matrix_size,
-#                                             graphs.graph_params
+#                                             graphmodels.graph_params
 #                                         FROM simulations
 #                                         INNER JOIN games USING(game_id)
-#                                         INNER JOIN graphs USING(graph_id)
+#                                         INNER JOIN graphmodels USING(graph_id)
 #                                         INNER JOIN sim_params USING(sim_params_id)
-#                                         WHERE simulations.sim_group_id = $sim_group_id
+#                                         WHERE simulations.group_id = $group_id
 #                                 ")
 #     df = DataFrame(query) #must create a DataFrame to acces query data
 #     db_close(db)
@@ -804,13 +645,13 @@ end
 # end
 
 #this function allows for RAM space savings during large iterative simulations
-function querySimulationIDsByGroup(db_info::SQLiteInfo, sim_group_id::Int)
+function querySimulationIDsByGroup(db_info::SQLiteInfo, group_id::Int)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT
                                             simulation_id
                                         FROM simulations
-                                        WHERE sim_group_id = $sim_group_id
+                                        WHERE group_id = $group_id
                                         ORDER BY simulation_id ASC
                                 ")
     df = DataFrame(query) #must create a DataFrame to acces query data
@@ -833,12 +674,12 @@ function execute_merge_full(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db = DB(db_info; busy_timeout=5000)
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
     db_execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
-    db_execute(db, "INSERT OR IGNORE INTO graphs(graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out) SELECT graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out FROM merge_db.graphs;")
+    db_execute(db, "INSERT OR IGNORE INTO graphmodels(graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out) SELECT graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out FROM merge_db.graphmodels;")
     db_execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
     db_execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
-    db_execute(db, "INSERT INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    db_execute(db, "INSERT INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     db_execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)
@@ -850,7 +691,7 @@ function execute_merge_temp(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db = DB(db_info_master)
     db = DB(db_info; busy_timeout=rand(1:5000)) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?) NOTE: are all of these executes separate writes? can we put them all into one???
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
-    db_execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, sim_group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    db_execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
     db_execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)
@@ -880,14 +721,14 @@ function querySimulationsForBoxPlot(db_info::SQLiteInfo; game_id::Integer, numbe
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND sim_params.number_agents = $number_agents
                                             AND sim_params.memory_length = $memory_length
@@ -910,7 +751,7 @@ function querySimulationsForBoxPlot(db_info::SQLiteInfo; game_id::Integer, numbe
         end
     end
     if !isempty(error_set)
-        throw(ErrorException("Not enough samples for the following graphs: $error_set"))
+        throw(ErrorException("Not enough samples for the following graphmodels: $error_set"))
     else
         return df
     end
@@ -946,14 +787,14 @@ function querySimulationsForMemoryLengthLinePlot(db_info::SQLiteInfo; game_id::I
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND sim_params.number_agents = $number_agents
                                             $memory_lengths_sql
@@ -968,12 +809,12 @@ function querySimulationsForMemoryLengthLinePlot(db_info::SQLiteInfo; game_id::I
     #error handling
     function memoryLengthsDF() DataFrame(DBInterface.execute(db, "SELECT memory_length FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     memory_length_list === nothing ? memory_length_list = Set([memory_length for memory_length in memoryLengthsDF()[:, :memory_length]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1030,14 +871,14 @@ function querySimulationsForNumberAgentsLinePlot(db_info::SQLiteInfo; game_id::I
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND sim_params.memory_length = $memory_length
                                             $number_agents_sql
@@ -1052,12 +893,12 @@ function querySimulationsForNumberAgentsLinePlot(db_info::SQLiteInfo; game_id::I
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1121,16 +962,16 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_info::SQLiteIn
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND simulations.starting_condition_id = $starting_condition_id
                                             AND simulations.stopping_condition_id = $stopping_condition_id
@@ -1147,12 +988,12 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_info::SQLiteIn
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1216,17 +1057,17 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLi
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
-                                                graphs.λ,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
+                                                graphmodels.λ,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND simulations.starting_condition_id = $starting_condition_id
                                             AND simulations.stopping_condition_id = $stopping_condition_id
@@ -1243,12 +1084,12 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLi
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1320,16 +1161,16 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND sim_params.memory_length = $memory_length
                                             $number_agents_sql
@@ -1346,12 +1187,12 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1424,16 +1265,16 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND sim_params.number_agents = $number_agents
                                             $memory_lengths_sql
@@ -1450,12 +1291,12 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 
@@ -1482,7 +1323,7 @@ end
 
 
 
-function querySimulationsForTimeSeries(db_info::SQLiteInfo;sim_group_id::Integer)
+function querySimulationsForTimeSeries(db_info::SQLiteInfo;group_id::Integer)
     db = DB(db_info; busy_timeout=3000)
 
     #query the simulation info (only need one row since each entry in the timeseries group will have the same info)
@@ -1494,17 +1335,17 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;sim_group_id::Integer
                                                     sim_params.number_agents,
                                                     sim_params.memory_length,
                                                     sim_params.error,
-                                                    graphs.graph_id,
-                                                    graphs.graph,
-                                                    graphs.graph_params,
+                                                    graphmodels.graph_id,
+                                                    graphmodels.graph,
+                                                    graphmodels.graph_params,
                                                     games.game_name,
                                                     games.game,
                                                     games.payoff_matrix_size
                                                 FROM simulations
                                                 INNER JOIN sim_params USING(sim_params_id)
                                                 INNER JOIN games USING(game_id)
-                                                INNER JOIN graphs USING(graph_id)
-                                                WHERE simulations.sim_group_id = $sim_group_id
+                                                INNER JOIN graphmodels USING(graph_id)
+                                                WHERE simulations.group_id = $group_id
                                                 LIMIT 1
                                         ")
     sim_info_df = DataFrame(query_sim_info)
@@ -1516,7 +1357,7 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;sim_group_id::Integer
                                                         agents.agent
                                                     FROM simulations
                                                     INNER JOIN agents USING(simulation_uuid)
-                                                    WHERE simulations.sim_group_id = $sim_group_id
+                                                    WHERE simulations.group_id = $group_id
                                                     ORDER BY simulations.periods_elapsed ASC
                                                 ")
     agent_df = DataFrame(query_agent_info)
@@ -1544,14 +1385,14 @@ function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
     end
     mean_degrees_sql = ""
     if mean_degrees !== nothing
-        length(mean_degrees) == 1 ? mean_degrees_sql *= "AND graphs.λ = $(mean_degrees[1])" : mean_degrees_sql *= "AND graphs.λ IN $(Tuple(mean_degrees))"
+        length(mean_degrees) == 1 ? mean_degrees_sql *= "AND graphmodels.λ = $(mean_degrees[1])" : mean_degrees_sql *= "AND graphmodels.λ IN $(Tuple(mean_degrees))"
     end
     # graph_params_sql = "AND ("
     # if graph_params !== nothing
     #     for graph in graph_params
     #         graph_params_sql *= "("
     #         for (param, value) in graph
-    #             graph_params_sql *= "graphs.$(string(param)) = $(value === nothing ? "null" : value) AND "
+    #             graph_params_sql *= "graphmodels.$(string(param)) = $(value === nothing ? "null" : value) AND "
     #         end
     #         graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
     #         graph_params_sql *= ") OR"
@@ -1564,7 +1405,7 @@ function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
         for graph in graph_params
             graph_params_sql *= "("
             for (param, value) in graph
-                graph_params_sql *= "graphs.$(string(param)) = '$(value)' AND "
+                graph_params_sql *= "graphmodels.$(string(param)) = '$(value)' AND "
             end
             graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
             graph_params_sql *= ") OR"
@@ -1578,26 +1419,26 @@ function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
                                         SELECT * FROM (
                                             SELECT
                                                 ROW_NUMBER() OVER ( 
-                                                    PARTITION BY simulations.graph_id, sim_params.error, graphs.λ
-                                                    ORDER BY sim_params.error, graphs.λ
+                                                    PARTITION BY simulations.graph_id, sim_params.error, graphmodels.λ
+                                                    ORDER BY sim_params.error, graphmodels.λ
                                                 ) RowNum,
                                                 simulations.simulation_id,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_type,
-                                                graphs.graph_params,
-                                                graphs.λ,
-                                                graphs.β,
-                                                graphs.α,
-                                                graphs.p_in,
-                                                graphs.p_out,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_type,
+                                                graphmodels.graph_params,
+                                                graphmodels.λ,
+                                                graphmodels.β,
+                                                graphmodels.α,
+                                                graphmodels.p_in,
+                                                graphmodels.p_out,
                                                 games.game_name
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND simulations.starting_condition_id = $starting_condition_id
                                             AND simulations.stopping_condition_id = $stopping_condition_id
@@ -1614,12 +1455,12 @@ function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
 
     # #error handling
     # errorsDF() = DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params"))
-    # graphsDF() = DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs"))
-    # meanDegreesDF() = DataFrame(DBInterface.execute(db, "SELECT λ FROM graphs"))
+    # graphmodelsDF() = DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels"))
+    # meanDegreesDF() = DataFrame(DBInterface.execute(db, "SELECT λ FROM graphmodels"))
 
     # error_set = []
     # errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    # graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    # graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
     # mean_degrees === nothing ? mean_degrees = Set([λ for λ in numberAgentsDF()[:, :λ]]) : nothing
 
 
@@ -1667,7 +1508,7 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::SQ
     for graph in graph_params
         graph_params_sql *= "("
         for (param, value) in graph
-            graph_params_sql *= "graphs.$(string(param)) = '$(value)' AND "
+            graph_params_sql *= "graphmodels.$(string(param)) = '$(value)' AND "
         end
         graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
         graph_params_sql *= ") OR"
@@ -1690,21 +1531,21 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::SQ
                                                 sim_params.memory_length,
                                                 sim_params.error,
                                                 simulations.periods_elapsed,
-                                                graphs.graph_id,
-                                                graphs.graph,
-                                                graphs.graph_params,
-                                                graphs.λ,
-                                                graphs.β,
-                                                graphs.α,
-                                                graphs.p_in,
-                                                graphs.p_out,
+                                                graphmodels.graph_id,
+                                                graphmodels.graph,
+                                                graphmodels.graph_params,
+                                                graphmodels.λ,
+                                                graphmodels.β,
+                                                graphmodels.α,
+                                                graphmodels.p_in,
+                                                graphmodels.p_out,
                                                 games.game_name,
                                                 simulations.starting_condition_id,
                                                 simulations.stopping_condition_id
                                             FROM simulations
                                             INNER JOIN sim_params USING(sim_params_id)
                                             INNER JOIN games USING(game_id)
-                                            INNER JOIN graphs USING(graph_id)
+                                            INNER JOIN graphmodels USING(graph_id)
                                             WHERE simulations.game_id = $game_id
                                             AND simulations.starting_condition_id = $starting_condition_id
                                             AND simulations.stopping_condition_id = $stopping_condition_id
@@ -1720,12 +1561,12 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::SQ
     #error handling
     function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM sim_params")) end
     function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params")) end
-    function graphsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphs")) end
+    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
     
     error_set = []
     number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
     errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphsDF()[:, :graph_id]]) : nothing
+    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
 
     db_close(db)
 

@@ -11,13 +11,12 @@ export
     Game,
     SimParams,
     Agent,
-    GraphParams,
-    CompleteParams,
-    ErdosRenyiParams,
-    SmallWorldParams,
-    ScaleFreeParams,
-    StochasticBlockModelParams,
-    SimParams,
+    GraphModel,
+    CompleteModel,
+    ErdosRenyiModel,
+    SmallWorldModel,
+    ScaleFreeModel,
+    StochasticBlockModel,
     FractiousState,
     EquityState,
     RandomState,
@@ -32,15 +31,8 @@ export
     strategies,
     random_strategy,
 
-    sim_params,
-    number_agents,
-    memory_length,
-    error_rate,
-    matches_per_period,
-    random_seed,
-
-    graph_params,
-    graph_type, #rename to type?
+    graphmodel,
+    # graph_type, #rename to type?
     λ,
     β,
     α,
@@ -48,10 +40,17 @@ export
     p_in,
     p_out,
 
-    starting_condition,
+    simparams,
+    number_agents,
+    memory_length,
+    error_rate,
+    matches_per_period,
+    random_seed,
+
+    startingcondition,
     type, #rename?
 
-    stopping_condition,
+    stoppingcondition,
     strategy, #rename?
     sufficient_equity,
     sufficient_equity!,
@@ -68,7 +67,7 @@ export
     # edges,
     # num_edges,
 
-    agent_graph,
+    agentgraph,
     graph,
     agents,
     # edges, #rename?
@@ -87,7 +86,7 @@ export
     choice,
     choice!,
 
-    pre_allocated_arrays,
+    preallocatedarrays,
     players,
     player!,
     set_players!,
@@ -164,7 +163,7 @@ include("graphs.jl")
 #custom types and their methods
 include("games.jl")
 include("agents.jl")
-include("graphparams.jl")
+include("interactionmodels.jl")
 include("simparams.jl")
 include("startingconditions.jl")
 include("stoppingconditions.jl")

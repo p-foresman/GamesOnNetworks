@@ -1,6 +1,6 @@
 include("sql.jl")
 
-db_init(db_info::PostgresInfo) = execute_init_full(db_info)
+db_init(db_info::PostgresInfo) = execute_init_db(db_info)
 
 db_insert_sim_group(db_info::PostgresInfo, description::String) = execute_insert_sim_group(db_info, description)
 
@@ -11,19 +11,19 @@ function db_insert_game(db_info::PostgresInfo, game::Game)
     return execute_insert_game(db_info, game_name, game_json_str, payoff_matrix_size)
 end
 
-function db_insert_graph(db_info::PostgresInfo, graph_params::GraphParams)
-    graph = displayname(graph_params)
-    type = String(graph_type(graph_params))
-    graph_params_string = JSON3.write(graph_params)
+function db_insert_graph(db_info::PostgresInfo, graph_model::GraphModel)
+    graph = displayname(graph_model)
+    type = String(graph_type(graph_model))
+    graph_model_string = JSON3.write(graph_model)
     db_params_dict = Dict{Symbol, Any}(:λ => nothing, :β => nothing, :α => nothing, :blocks => nothing, :p_in => nothing, :p_out => nothing) #allows for parameter-based queries
     
     for param in keys(db_params_dict)
-        if param in fieldnames(typeof(graph_params))
-            db_params_dict[param] = getfield(graph_params, param)
+        if param in fieldnames(typeof(graph_model))
+            db_params_dict[param] = getfield(graph_model, param)
         end
     end
 
-    return execute_insert_graph(db_info, graph, type, graph_params_string, db_params_dict)
+    return execute_insert_graph(db_info, graph, type, graph_model_string, db_params_dict)
 end
 
 function db_insert_sim_params(db_info::PostgresInfo, sim_params::SimParams, use_seed::Bool)
@@ -73,7 +73,7 @@ end
 #     reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
 
 #     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
-#     reproduced_graph_params = JSON3.read(simulation_df[1, :graph_params], GraphParams)
+#     reproduced_graph_model = JSON3.read(simulation_df[1, :graph_model], GraphModel)
 #     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
 #     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
 #     reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
@@ -90,5 +90,5 @@ end
 #     else
 #         seed_bool = false
 #     end
-#     return (game=reproduced_game, sim_params=reproduced_sim_params, graph_params=reproduced_graph_params, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], sim_group_id=simulation_df[1, :sim_group_id])
+#     return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], sim_group_id=simulation_df[1, :sim_group_id])
 # end
