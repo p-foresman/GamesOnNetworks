@@ -307,15 +307,15 @@ end
 
 
 
-function db_insert_simulation(db_info::SQLiteInfo, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, model_id::Integer, agentgraph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, distributed_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(agentgraph))))
+    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(agentgraph(state)))))
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
-    for agent in agents(agentgraph)
+    for agent in agents(agentgraph(state))
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
@@ -332,7 +332,7 @@ function db_insert_simulation(db_info::SQLiteInfo, sim_group_id::Union{Integer, 
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, sim_group_id, prev_simulation_uuid, model_id, adj_matrix_json_str, rng_state_json, periods_elapsed, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, adj_matrix_json_str, rng_state_json, period(state), agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -383,5 +383,5 @@ end
 #     else
 #         seed_bool = false
 #     end
-#     return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], sim_group_id=simulation_df[1, :sim_group_id])
+#     return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], sim_group_id=simulation_df[1, :sim_group_id])
 # end

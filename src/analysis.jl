@@ -8,13 +8,13 @@ function find_threshold(db_filepath::String; group_id::Integer, plot_title::Stri
     # reproduced_game = JSON3.read(sim_info_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
     agent_dict = OrderedDict()
     for row in eachrow(agent_df)
-        if !haskey(agent_dict, row.periods_elapsed)
-            agent_dict[row.periods_elapsed] = []
+        if !haskey(agent_dict, row.period)
+            agent_dict[row.period] = []
         end
         agent = JSON3.read(row.agent, Agent)
         # agent_memory = agent.memory
         # agent_behavior = determineAgentBehavior(reproduced_game, agent_memory) #old
-        push!(agent_dict[row.periods_elapsed], rational_choice(agent))
+        push!(agent_dict[row.period], rational_choice(agent))
     end
     period_counts = Vector()
     fraction_L = Vector()
@@ -23,8 +23,8 @@ function find_threshold(db_filepath::String; group_id::Integer, plot_title::Stri
     # current_peak = Vector()
     # threshold = 0.0
     # last_fraction_m = 0.0
-    for (periods_elapsed, agent_behaviors) in agent_dict
-        push!(period_counts, periods_elapsed)
+    for (period, agent_behaviors) in agent_dict
+        push!(period_counts, period)
         # subfractions = Vector()
         fraction_m = count(action->(action==2), agent_behaviors) / sim_info_df[1, :number_agents]
         push!(fraction_L, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
@@ -38,7 +38,7 @@ function find_threshold(db_filepath::String; group_id::Integer, plot_title::Stri
         # end
         # last_fraction_m = fraction_m
 
-        # println("$periods_elapsed: $subfractions")
+        # println("$period: $subfractions")
         # push!(fractions, subfractions)
     end
 

@@ -137,7 +137,7 @@ function sql_create_simulations_table(::SQLiteInfo)
         model_id INTEGER NOT NULL,
         graph_adj_matrix TEXT DEFAULT NULL,
         rng_state TEXT NOT NULL,
-        periods_elapsed INTEGER NOT NULL,
+        period INTEGER NOT NULL,
         FOREIGN KEY (group_id)
             REFERENCES groups (id)
             ON DELETE CASCADE,
@@ -413,7 +413,7 @@ function execute_insert_group(db_info::SQLiteInfo, description::String)
 end
 
 
-function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer)
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, graph_adj_matrix_str::String, rng_state::String, period::Integer)
     """
     INSERT INTO simulations
     (
@@ -423,7 +423,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         model_id,
         graph_adj_matrix,
         rng_state,
-        periods_elapsed
+        period
     )
     VALUES
     (
@@ -433,7 +433,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         $model_id,
         '$graph_adj_matrix_str',
         '$rng_state',
-        $periods_elapsed
+        $period
     );
     ON CONFLICT () DO UPDATE
         SET group_id = simulations.group_id
@@ -453,7 +453,7 @@ function sql_insert_agents(agent_values_string::String) #kind of a cop-out param
     """
 end
 
-function execute_insert_simulation(db_info::SQLiteInfo, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, model_id::Integer, graph_adj_matrix_str::String, rng_state::String, periods_elapsed::Integer, agent_list::Vector{String})
+function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, graph_adj_matrix_str::String, rng_state::String, period::Integer, agent_list::Vector{String})
     uuid = "$(uuid4())"
     
     #prepare simulation SQL
@@ -469,7 +469,7 @@ function execute_insert_simulation(db_info::SQLiteInfo, group_id::Union{Integer,
 
     db = DB(db_info)
     db_begin_transaction(db)
-    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, graph_adj_matrix_str, rng_state, periods_elapsed))
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, graph_adj_matrix_str, rng_state, period))
     db_execute(db, sql_insert_agents(agent_values_string))
     db_commit_transaction(db)
     db_close(db)
@@ -583,7 +583,7 @@ function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_i
                                             sim_params.sim_params,
                                             sim_params.use_seed,
                                             simulations.rng_state,
-                                            simulations.periods_elapsed,
+                                            simulations.period,
                                             simulations.graph_adj_matrix,
                                             graphmodels.graph_params,
                                             games.game,
@@ -629,7 +629,7 @@ end
 #                                             simulations.graph_adj_matrix,
 #                                             simulations.use_seed,
 #                                             simulations.rng_state,
-#                                             simulations.periods_elapsed,
+#                                             simulations.period,
 #                                             games.game,
 #                                             games.payoff_matrix_size,
 #                                             graphmodels.graph_params
@@ -679,7 +679,7 @@ function execute_merge_full(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db_execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
-    db_execute(db, "INSERT INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    db_execute(db, "INSERT INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, period) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, period FROM merge_db.simulations;")
     db_execute(db, "INSERT INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)
@@ -691,7 +691,7 @@ function execute_merge_temp(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db = DB(db_info_master)
     db = DB(db_info; busy_timeout=rand(1:5000)) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?) NOTE: are all of these executes separate writes? can we put them all into one???
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
-    db_execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, periods_elapsed FROM merge_db.simulations;")
+    db_execute(db, "INSERT OR IGNORE INTO simulations(simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, period) SELECT simulation_uuid, group_id, prev_simulation_uuid, game_id, graph_id, sim_params_id, starting_condition_id, stopping_condition_id, graph_adj_matrix, rng_state, period FROM merge_db.simulations;")
     db_execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)
@@ -720,7 +720,7 @@ function querySimulationsForBoxPlot(db_info::SQLiteInfo; game_id::Integer, numbe
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -786,7 +786,7 @@ function querySimulationsForMemoryLengthLinePlot(db_info::SQLiteInfo; game_id::I
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -870,7 +870,7 @@ function querySimulationsForNumberAgentsLinePlot(db_info::SQLiteInfo; game_id::I
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -961,7 +961,7 @@ function query_simulations_for_transition_time_vs_memory_sweep(db_info::SQLiteIn
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -1056,7 +1056,7 @@ function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLi
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -1160,7 +1160,7 @@ function query_simulations_for_transition_time_vs_population_stopping_condition(
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -1264,7 +1264,7 @@ function query_simulations_for_transition_time_vs_memory_length_stopping_conditi
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,
@@ -1353,12 +1353,12 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;group_id::Integer)
     #query agents at each periods elapsed interval in the time series group
     query_agent_info = DBInterface.execute(db, "
                                                     SELECT
-                                                        simulations.periods_elapsed,
+                                                        simulations.period,
                                                         agents.agent
                                                     FROM simulations
                                                     INNER JOIN agents USING(simulation_uuid)
                                                     WHERE simulations.group_id = $group_id
-                                                    ORDER BY simulations.periods_elapsed ASC
+                                                    ORDER BY simulations.period ASC
                                                 ")
     agent_df = DataFrame(query_agent_info)
     db_close(db)
@@ -1424,7 +1424,7 @@ function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
                                                 ) RowNum,
                                                 simulations.simulation_id,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_type,
@@ -1530,7 +1530,7 @@ function query_simulations_for_transition_time_vs_graph_params_sweep(db_info::SQ
                                                 sim_params.number_agents,
                                                 sim_params.memory_length,
                                                 sim_params.error,
-                                                simulations.periods_elapsed,
+                                                simulations.period,
                                                 graphmodels.graph_id,
                                                 graphmodels.graph,
                                                 graphmodels.graph_params,

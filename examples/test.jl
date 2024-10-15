@@ -33,7 +33,7 @@ const model = SimModel(Game{3, 3}("Bargaining Game", payoff_matrix),
                         SimParams(10, 10, 0.1),
                         CompleteModel(),
                         FractiousState(),
-                        PeriodCutoff(10000))
+                        EquityBehavioral(2))
 
 
 """

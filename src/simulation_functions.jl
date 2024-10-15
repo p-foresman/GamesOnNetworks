@@ -25,6 +25,19 @@ end
 #     return nothing
 # end
 
+
+# function run_period!(model::SimModel, state::State)
+#         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
+#         # for _ in 1:Int(ceil(mpp))
+#     for _ in 1:agentgraph(state).matches_per_period
+#         reset_arrays!(state)
+#         set_players!(state)
+#         play_game!(model, state)
+#     end
+#     increment_period!(state)
+#     return nothing
+# end
+
 function run_period!(model::SimModel, state::State)
     for component in components(state) #each connected component plays its own period's worth of matches
         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
@@ -35,6 +48,7 @@ function run_period!(model::SimModel, state::State)
             play_game!(model, state)
         end
     end
+    increment_period!(state)
     return nothing
 end
 
@@ -183,7 +197,7 @@ end
 
 #######################################################
 
-function is_stopping_condition(state::State, stoppingcondition::EquityPsychological, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(state::State, stoppingcondition::EquityPsychological) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agents(state)
         if !ishermit(agent)
@@ -195,7 +209,7 @@ function is_stopping_condition(state::State, stoppingcondition::EquityPsychologi
     return number_transitioned >= sufficient_transitioned(stoppingcondition)
 end
 
-function is_stopping_condition(state::State, stoppingcondition::EquityBehavioral, ::Int128) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+function is_stopping_condition(state::State, stoppingcondition::EquityBehavioral) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     number_transitioned = 0
     for agent in agents(state)
         if !ishermit(agent)
@@ -216,8 +230,8 @@ end
 
 
 
-function is_stopping_condition(::State, stoppingcondition::PeriodCutoff, current_periods::Int128)
-    return current_periods >= period_cutoff(stoppingcondition)
+function is_stopping_condition(state::State, stoppingcondition::PeriodCutoff)
+    return period(state) >= period_cutoff(stoppingcondition)
 end
 
 

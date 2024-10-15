@@ -49,8 +49,8 @@ db_insert_starting_condition(::Nothing, ::StartingCondition) = nothing
 db_insert_stopping_condition(stoppingcondition::StoppingCondition) = db_insert_stopping_condition(SETTINGS.database, stoppingcondition)
 db_insert_stopping_condition(::Nothing, ::StoppingCondition) = nothing
 
-function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, periods_elapsed::Integer, distributed_uuid::Union{String, Nothing} = nothing)
-    db_insert_simulation(SETTINGS.database, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, periods_elapsed, distributed_uuid)
+function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, period::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+    db_insert_simulation(SETTINGS.database, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, period, distributed_uuid)
 end
 db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
 
@@ -137,5 +137,5 @@ end
 #     else
 #         seed_bool = false
 #     end
-#     return (game=reproduced_game, simparams=reproduced_sim_params, graphmodel=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, periods_elapsed=simulation_df[1, :periods_elapsed], group_id=simulation_df[1, :group_id])
+#     return (game=reproduced_game, simparams=reproduced_sim_params, graphmodel=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], group_id=simulation_df[1, :group_id])
 # end

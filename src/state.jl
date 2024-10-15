@@ -1,23 +1,52 @@
 
 
-mutable struct State{V, E}
-    const agentgraph::AgentGraph{V, E}
+mutable struct State{V, E, C}
+    const agentgraph::AgentGraph{V, E, C}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
-    periods_elapsed::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
+    period::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
+    # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
 
     function State(model::SimModel)
-        agentgraph = initialize_graph!(graphmodel(model), game(model), simparams(model), startingcondition(model))
-        V = nv(graph(agentgraph))
-        E = ne(graph(agentgraph))
+        agentgraph::AgentGraph = initialize_graph!(graphmodel(model), game(model), simparams(model), startingcondition(model))
+        # V = nv(graph(agentgraph))
+        # E = ne(graph(agentgraph))
+        # C = length(components())
+        V = num_vertices(agentgraph)
+        E = num_edges(agentgraph)
+        C = num_components(agentgraph)
         initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph) #NOTE: doesnt seem good to initialize model stopping condition in a different struct initializer!
         preallocatedarrays = PreAllocatedArrays(payoff_matrix(model))
-        return new{V, E}(agentgraph, preallocatedarrays, Int128(0))
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0))
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
     # end
 end
 
+
+
+
+
+"""
+    period(state::State)
+
+Get the current period of the simulation.
+"""
+period(state::State) = getfield(state, :period)
+
+"""
+    period!(state::State, value::Integer)
+
+Set the period of the simulation to value.
+"""
+period!(state::State, value::Integer) = setfield!(state, :period, Int128(value))
+
+"""
+    increment_period!(state::State)
+
+Increment the period of the simulation.
+"""
+increment_period!(state::State) = period!(state, period(state) + 1)
 
 
 # AgentGraph
@@ -146,6 +175,8 @@ Get the number of hermits (vertecies with degree=0) in the model.
 number_hermits(state::State) = number_hermits(agentgraph(state))
 
 
+
+
 #PreAllocatedArrays
 """
     preallocatedarrays(state::State)
@@ -189,6 +220,18 @@ Choose a random relationship/edge in the specified component and set players to 
 """
 function set_players!(state::State, component::ConnectedComponent)
     v = rand(vertices(component))
+    player!(state, 1, v)
+    player!(state, 2, rand(neighbors(graph(state), v)))
+    # edge::Graphs.SimpleEdge{Int} = random_edge(component)
+    # vertex_list::Vector{Int} = shuffle!([src(edge), dst(edge)]) #NOTE: is the shuffle necessary here?
+    # for player_number in 1:2 #NOTE: this will always be 2. Should I just optimize for two player games?
+    #     player!(state, player_number, vertex_list[player_number])
+    # end
+    return nothing
+end
+
+function set_players!(state::State)
+    v = rand(agentgraph(state).vertices)
     player!(state, 1, v)
     player!(state, 2, rand(neighbors(graph(state), v)))
     # edge::Graphs.SimpleEdge{Int} = random_edge(component)

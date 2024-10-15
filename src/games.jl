@@ -1,32 +1,36 @@
-const PayoffMatrix{S1, S2} = SMatrix{S1, S2, Tuple{Int, Int}}
+const PayoffMatrix{S1, S2, L} = SMatrix{S1, S2, Tuple{Int, Int}, L} #NOTE: try to reduce this to drop the L since L=S1*S2
 
 """
-    Game{S1, S2}
+    Game{S1, S2, L}
 
 Basic Game type with row dimension S1, column dimension S2, and length L=S1*S2.
 """
-struct Game{S1, S2}
+struct Game{S1, S2, L}
     name::String
-    payoff_matrix::PayoffMatrix{S1, S2}
+    payoff_matrix::PayoffMatrix{S1, S2, L}
 
     function Game(name::String, payoff_matrix::PayoffMatrix{S1, S2}) where {S1, S2}
-        return new{S1, S2}(name, payoff_matrix)
+        L = S1 * S2
+        return new{S1, S2, L}(name, payoff_matrix)
     end
     function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int, Int}}) where {S1, S2}
-        static_payoff_matrix = PayoffMatrix{S1, S2}(payoff_matrix)
-        return new{S1, S2}(name, static_payoff_matrix)
+        L = S1 * S2
+        static_payoff_matrix = PayoffMatrix{S1, S2, L}(payoff_matrix)
+        return new{S1, S2, L}(name, static_payoff_matrix)
     end
     function Game(name::String, payoff_matrix::Matrix{Tuple{Int, Int}})
         matrix_size = size(payoff_matrix)
         S1 = matrix_size[1]
         S2 = matrix_size[2]
-        static_payoff_matrix = PayoffMatrix{S1, S2}(payoff_matrix)
-        return new{S1, S2}(name, static_payoff_matrix)
+        L = S1 * S2
+        static_payoff_matrix = PayoffMatrix{S1, S2, L}(payoff_matrix)
+        return new{S1, S2, L}(name, static_payoff_matrix)
     end
     function Game(name::String, payoff_matrix::Matrix{Int}) #for a zero-sum payoff matrix ########################## MUST FIX THIS!!!!!!!! #####################
         matrix_size = size(payoff_matrix)
         S1 = matrix_size[1]
         S2 = matrix_size[2]
+        L = S1 * S2
         indices = CartesianIndices(payoff_matrix)
         tuple_vector = Vector{Tuple{Int, Int}}([])
         for index in indices
@@ -34,10 +38,9 @@ struct Game{S1, S2}
             push!(tuple_vector, new_tuple)
         end
         new_payoff_matrix = reshape(tuple_vector, matrix_size)
-        return new{S1, S2}(name, PayoffMatrix{S1, S2}(new_payoff_matrix))
+        return new{S1, S2, L}(name, PayoffMatrix{S1, S2, L}(new_payoff_matrix))
     end
 end
-
 
 
 ##########################################

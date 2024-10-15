@@ -62,47 +62,46 @@ export
     period_count!,
     increment_period_count!,
 
-    # vertices,
-    # num_vertices, #these are from the ConnectedComponent struct (should i export?)
-    # edges,
-    # num_edges,
 
-    agentgraph,
-    graph,
-    agents,
-    # edges, #rename?
-    random_edge,
-    components,
-    num_components,
-    # component_vertex_sets,
-    # component_edge_sets,
-    # random_component_edge,
-    number_hermits,
+    # agentgraph,
+    # graph,
+    # agents,
+    # # edges, #rename?
+    # random_edge,
+    # components,
+    # num_components,
+    # # component_vertex_sets,
+    # # component_edge_sets,
+    # # random_component_edge,
+    # number_hermits,
 
-    ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
-    memory,
-    rational_choice,
-    rational_choice!,
-    choice,
-    choice!,
+    # ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
+    # memory,
+    # rational_choice,
+    # rational_choice!,
+    # choice,
+    # choice!,
 
-    preallocatedarrays,
-    players,
-    player!,
-    set_players!,
-    opponent_strategy_recollection,
-    opponent_strategy_recollection!,
-    increment_opponent_strategy_recollection!,
-    opponent_strategy_probabilities,
-    expected_utilities,
-    expected_utilities!,
-    increment_expected_utilities!,
-    reset_arrays!,
+    # preallocatedarrays,
+    # players,
+    # player!,
+    # set_players!,
+    # opponent_strategy_recollection,
+    # opponent_strategy_recollection!,
+    # increment_opponent_strategy_recollection!,
+    # opponent_strategy_probabilities,
+    # expected_utilities,
+    # expected_utilities!,
+    # increment_expected_utilities!,
+    # reset_arrays!,
 
-    model_id,
+    # period,
+    # period!,
+    # increment_period,
+
     displayname,
-    reset_model!,
-    regenerate_model,
+    # reset_model!,
+    # regenerate_model,
 
     # constructors
     construct_sim_params_list,
@@ -181,6 +180,7 @@ include("cross_type_functions.jl")
 #SimModel type and methods
 include("simmodel.jl")
 
+#State type and methods
 include("state.jl")
 
 #api to sqlite and postgresql functionality

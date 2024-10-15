@@ -42,8 +42,12 @@ matches_per_period(component::ConnectedComponent) = getfield(component, :matches
 struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     graph::Graph
     agents::AgentSet{N}
-    components::ComponentSet{C}
+    components::ComponentSet{C} #NOTE: different ConnectedComponents will have different V and E static params, meaning that getting a specific component from this set wont be type stable. Doesn't account for a huge change in practice with one component, but could find a way to fix or optimize by not using a component set if there is only one component
     number_hermits::Int #is this necessary?
+
+    # vertices::VertexSet{N}
+    # matches_per_period::Int
+
     
     function AgentGraph(graph::Graph)
         N = nv(graph)
@@ -61,11 +65,13 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
         for component_number in 1:C
             push!(components, ConnectedComponent(vertex_sets[component_number], edge_sets[component_number]))
         end
-        return new{N, E, C}(graph, agents, ComponentSet{C}(components), number_hermits)
+
+        # d = E / possible_edge_count(N)
+        # matches_per_period = Int(ceil(d * N / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless)
+
+        return new{N, E, C}(graph, agents, ComponentSet{C}(components), number_hermits)#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
     end
 end
-
-
 
 ##########################################
 # AgentGraph Accessors

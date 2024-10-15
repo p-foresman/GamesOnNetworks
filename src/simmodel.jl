@@ -9,17 +9,17 @@ S2 = column dimension of Game instance
 V = number of agents/vertices
 E = number of relationships/edges
 """
-struct SimModel{S1, S2}
+struct SimModel{S1, S2, L}
     # id::Union{Nothing, Int}
-    game::Game{S1, S2}
+    game::Game{S1, S2, L}
     simparams::SimParams
     graphmodel::GraphModel
     startingcondition::StartingCondition
     stoppingcondition::StoppingCondition
 
-    function SimModel(game::Game{S1, S2}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition) where {S1, S2}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition) where {S1, S2, L}
         # initialize_stopping_condition!(stoppingcondition, simparams, agentgraph)
-        return new{S1, S2}(game, simparams, graphmodel, startingcondition, stoppingcondition)
+        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
@@ -105,12 +105,12 @@ Get the error rate simulation parameter ϵ of the model.
 """
 error_rate(model::SimModel) = error_rate(simparams(model))
 
-"""
-    matches_per_period(simparams::SimModel)
+# """
+#     matches_per_period(simparams::SimModel)
 
-Get the number of matches per period for the model.
-"""
-matches_per_period(model::SimModel) = matches_per_period(simparams(model))
+# Get the number of matches per period for the model.
+# """
+# matches_per_period(model::SimModel) = matches_per_period(simparams(model))
 
 """
     random_seed(simparams::SimModel)

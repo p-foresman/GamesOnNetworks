@@ -13,6 +13,8 @@
 #     end
 # end
 
+const to = TimerOutput()
+
 """
     simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
 
@@ -21,6 +23,7 @@ Run a simulation using the model provided.
 function simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
     # timer = Timer(timeout(model, SETTINGS.database))
     _simulate_model_barrier(model, SETTINGS.database)
+    return nothing #NOTE: returning nothing for now but might want to return state in the future
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
 end
 
@@ -36,6 +39,7 @@ function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing,
 
     # timer = Timer(timeout(model, SETTINGS.database))
     _simulate_model_barrier(model_id, SETTINGS.database)
+    return nothing
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
 
     # if nworkers() > 1
@@ -57,11 +61,13 @@ end
 
 function _simulate_model_barrier(model::SimModel, ::Nothing; preserve_graph::Bool=false, kwargs...)
     _simulate_distributed_barrier(model; preserve_graph=preserve_graph)
+    return nothing
 end
 
 function _simulate_model_barrier(model::SimModel, db_info::DBInfo; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
     model_id = db_insert_model(db_info, model, SETTINGS.use_seed)
     _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, preserve_graph=preserve_graph)
+    return nothing
 
 end
 
@@ -69,6 +75,7 @@ function _simulate_model_barrier(model_id::Int, db_info::DBInfo; db_group_id::Un
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
     model = db_get_model(model_id) #construct model associated with id
     _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, preserve_graph=preserve_graph)
+    return nothing
 end
 
 
@@ -78,15 +85,17 @@ function _simulate_distributed_barrier(model::SimModel; preserve_graph::Bool=fal
     flush(stdout) #flush buffer
 
     state = State(model)
-
-    @sync @distributed for process in 1:nworkers()
-        print("Process $process of $(nworkers())")
-        flush(stdout)
-        if !preserve_graph
-            state = State(model) #regenerate state so each process has a different graph
-        end
-        _simulate(model, state)
-    end
+    
+    # @sync @distributed for process in 1:nworkers()
+    #     print("Process $process of $(nworkers())")
+    #     flush(stdout)
+    #     if !preserve_graph
+    #         state = State(model) #regenerate state so each process has a different graph
+    #     end
+    #     _simulate(model, state)
+    # end
+    _simulate(model, state)
+    return nothing
 end
 
 
@@ -125,6 +134,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     if nworkers() > 1
         db_collect_temp(db_info, distributed_uuid, cleanup_directory=true)
     end
+    return nothing
 end
 
 
@@ -143,6 +153,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; m
         end
         _simulate(model, state, db_info, model_id=model_id, db_group_id=db_group_id)
     end
+    return nothing
 end
 
 
@@ -153,16 +164,18 @@ function _simulate(model::SimModel, state::State; kwargs...)
         Random.seed!(random_seed(model))
     end
 
-    while !is_stopping_condition(state, stoppingcondition(model), state.periods_elapsed)
-        run_period!(model, state)
-        state.periods_elapsed += 1
+    @timeit to "stopping condition" begin
+    while !is_stopping_condition(state, stoppingcondition(model))
+        @timeit to "period" run_period!(model, state)
+    end
     end
 
-    println(" --> periods elapsed: $(state.periods_elapsed)")
-    return state
+    println(" --> periods elapsed: $(period(state))")
+    # return state
+    return nothing
 end
 
-function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int, periods_elapsed::Int128 = Int128(0), db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int, db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
@@ -174,17 +187,17 @@ function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int
 
 
     # @timeit to "simulate" begin
-    while !is_stopping_condition(state, stoppingcondition(model), periods_elapsed)
+    while !is_stopping_condition(state, stoppingcondition(model))
         #play a period worth of games
         # @timeit to "period" runPeriod!(model, to)
         run_period!(model, state)
-        periods_elapsed += 1
     end
     # end
-    println(" --> periods elapsed: $periods_elapsed")
+    println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer
-    db_status = db_insert_simulation(db_info, db_group_id, prev_simulation_uuid, model_id, agentgraph(model), periods_elapsed, distributed_uuid)
-    return (periods_elapsed, db_status)
+    db_insert_simulation(db_info, state, model_id, db_group_id, prev_simulation_uuid, distributed_uuid)
+    # return state
+    return nothing
 end
 
 
