@@ -11,8 +11,8 @@ struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: 
     opponent_strategy_probs::SVector{2, Vector{Float64}}
     player_expected_utilities::SVector{2, Vector{Float32}}
 
-    function PreAllocatedArrays(payoff_matrix)
-        sizes = size(payoff_matrix)
+    function PreAllocatedArrays(game::Game)
+        sizes = size(game)
         N = length(sizes)
         players = Vector{Agent}([Agent() for _ in 1:N]) #should always be 2
         opponent_strategy_recollection = SVector{N, Vector{Int}}(zeros.(Int, sizes))

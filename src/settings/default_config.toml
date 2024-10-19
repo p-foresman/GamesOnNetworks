@@ -3,15 +3,24 @@
 use_seed = false
 processes = 1
 
+timeout = 3600
+#[checkpoint]
+#timeout = 3600
+#database = ""
+
 # sqlite database is provided by default
 [databases]
 # use = true
-selected = "sqlite.default"
-checkpoint = ""
+selected = "sqlite.default" #main database
+checkpoint = true #set true to push the simulation state to the database in the case of a timeout
+checkpoint_database = "" #if a main selected database exists and checkpoint is set to true, this database will be used as an alternate for checkpoints (leave empty to use the selected database)
 # data_script = "" #supply to initialize database with specific data
 
 [databases.sqlite.default]
 path = "GamesOnNetworks.sqlite"
+
+[databases.sqlite.checkpoint]
+path = "checkpoint.sqlite"
 
 # add more sqlite databases below. For example:
 # [databases.sqlite.my_sqlite_db]

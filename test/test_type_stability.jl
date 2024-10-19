@@ -10,7 +10,11 @@ const model = SimModel(Game{3, 3}("Bargaining Game", payoff_matrix),
                         FractiousState(),
                         PeriodCutoff(10000))
 
-
+models = SimModels(Game{3, 3}("Bargaining Game", payoff_matrix),
+SimParams(10, 10, 0.1),
+CompleteModel(),
+FractiousState(),
+PeriodCutoff(10500000), count=5)
 
 @code_warntype simulate(model)
 

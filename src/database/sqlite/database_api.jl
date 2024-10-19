@@ -29,12 +29,14 @@ function db_init_distributed(distributed_uuid::String) #creates a sparate sqlite
     # temp_dirpath = tempdirpath(db_filepath)
     temp_dirpath = distributed_uuid * "/"
     mkdir(temp_dirpath)
+    db_info_list = Vector{SQLiteInfo}()
     for worker in workers()
         # temp_filepath = temp_dirpath * "$worker.sqlite"
         db_info = SQLiteInfo("temp$(worker)", temp_dirpath * "$worker.sqlite")
         execute_init_db_temp(db_info)
+        append!(db_info_list, db_info)
     end
-    return nothing
+    return db_info_list
 end
 
 
@@ -280,6 +282,9 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
     stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
     stoppingcondition_name = displayname(model_stoppingcondition)
 
+    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(model))))
+
+
     println(graphmodel_params_str)
     println(graphmodel_values_str)
     # model_id = nothing
@@ -290,7 +295,8 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
                                             graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
                                             model_simparams, simparams_str, seed_bool,
                                             startingcondition_name, startingcondition_str,
-                                            stoppingcondition_name, stoppingcondition_str)
+                                            stoppingcondition_name, stoppingcondition_str,
+                                            adj_matrix_json_str)
     #     catch e
     #         if e isa SQLiteException
     #             println("An error has been caught in db_insert_model():")
@@ -307,9 +313,8 @@ end
 
 
 
-function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, distributed_uuid::Union{String, Nothing} = nothing)
+function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(agentgraph(state)))))
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
@@ -320,19 +325,19 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
         push!(agents_list, agent_json_str)
     end
 
-
-    if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
-        # temp_dirpath = tempdirpath(db_filepath)
-        temp_dirpath = distributed_uuid * "/"
-        # db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
-        db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
-    end
+    #this should no longer be needed (now created in db_init_distributed())
+    # if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
+    #     # temp_dirpath = tempdirpath(db_filepath)
+    #     temp_dirpath = distributed_uuid * "/"
+    #     # db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
+    #     db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
+    # end
 
 
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, adj_matrix_json_str, rng_state_json, period(state), agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -349,7 +354,10 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
 end
 
 
-# function db_checkpoint(db_info::SQLiteInfo, model::SimModel)
+function db_checkpoint(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+    db_insert_simulation(db_info, state, model_id, sim_group_id, prev_simulation_uuid, distributed_uuid)
+    return nothing
+end
 
 
 # #NOTE: FIX

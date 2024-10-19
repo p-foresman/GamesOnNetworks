@@ -8,6 +8,7 @@ module GamesOnNetworks
 export
     # types
     SimModel,
+    SimModels,
     Game,
     SimParams,
     Agent,

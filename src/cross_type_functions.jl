@@ -1,53 +1,34 @@
-"""
-    GamesOnNetworks.initialize_graph(graphmodel::GraphModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
-
-Initialize and return an AgentGraph instance.
-"""
-function initialize_graph!(::CompleteModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
-    graph = complete_graph(number_agents(simparams))
-    agentgraph = AgentGraph(graph)
-    agentdata!(agentgraph, game, simparams, startingcondition)
-    return agentgraph
+function generate_graph(::CompleteModel, simparams::SimParams)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = complete_graph(number_agents(simparams))
+    return graph
 end
 
-function initialize_graph!(graphmodel::ErdosRenyiModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+function generate_graph(graphmodel::ErdosRenyiModel, simparams::SimParams)
     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
-    while true
-        if ne(graph) >= 1 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
-            break
-        end
-        graph = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
     end
-    agentgraph = AgentGraph(graph)
-    agentdata!(agentgraph, game, simparams, startingcondition)
-    return agentgraph
+    return graph
 end
-function initialize_graph!(graphmodel::SmallWorldModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+
+function generate_graph(graphmodel::SmallWorldModel, simparams::SimParams)
     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
-    while true
-        if ne(graph) >= 1
-            break
-        end
-        graph = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
     end
-    agentgraph = AgentGraph(graph)
-    agentdata!(agentgraph, game, simparams, startingcondition)
-    return agentgraph
+    return graph
 end
-function initialize_graph!(graphmodel::ScaleFreeModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+
+function generate_graph(graphmodel::ScaleFreeModel, simparams::SimParams)
     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
-    while true
-        if ne(graph) >= 1
-            break
-        end
-        graph = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
     end
-    agentgraph = AgentGraph(graph)
-    agentdata!(agentgraph, game, simparams, startingcondition)
-    return agentgraph
+    return graph
 end
-function initialize_graph!(graphmodel::StochasticBlockModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
-    @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide number of agents evenly"
+
+function generate_graph(graphmodel::StochasticBlockModel, simparams::SimParams)
+    @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide population evenly"
     block_size = Int(number_agents(simparams) / blocks(graphmodel))
     p_in_vector = Vector{Float64}([])
     block_sizes_vector = Vector{Int}([])
@@ -56,24 +37,88 @@ function initialize_graph!(graphmodel::StochasticBlockModel, game::Game, simpara
         push!(block_sizes_vector, block_size)
     end
     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
-    while true
-        if ne(graph) >= 1
-            break
-        end
-        graph = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
     end
-    agentgraph = AgentGraph(graph)
-    agentdata!(agentgraph, game, simparams, startingcondition)
-    return agentgraph
+    return graph
 end
+
+# """
+#     GamesOnNetworks.initialize_graph!(graphmodel::GraphModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+
+# Initialize and return an AgentGraph instance.
+# """
+# function initialize_graph!(::CompleteModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+#     graph = complete_graph(number_agents(simparams))
+#     agentgraph = AgentGraph(graph)
+#     initialize_agent_data!(agentgraph, game, simparams, startingcondition)
+#     return agentgraph
+# end
+
+# function initialize_graph!(graphmodel::ErdosRenyiModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+#     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
+#     while true
+#         if ne(graph) >= 1 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+#             break
+#         end
+#         graph = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
+#     end
+#     agentgraph = AgentGraph(graph)
+#     initialize_agent_data!(agentgraph, game, simparams, startingcondition)
+#     return agentgraph
+# end
+# function initialize_graph!(graphmodel::SmallWorldModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+#     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
+#     while true
+#         if ne(graph) >= 1
+#             break
+#         end
+#         graph = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
+#     end
+#     agentgraph = AgentGraph(graph)
+#     initialize_agent_data!(agentgraph, game, simparams, startingcondition)
+#     return agentgraph
+# end
+# function initialize_graph!(graphmodel::ScaleFreeModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+#     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
+#     while true
+#         if ne(graph) >= 1
+#             break
+#         end
+#         graph = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
+#     end
+#     agentgraph = AgentGraph(graph)
+#     initialize_agent_data!(agentgraph, game, simparams, startingcondition)
+#     return agentgraph
+# end
+# function initialize_graph!(graphmodel::StochasticBlockModel, game::Game, simparams::SimParams, startingcondition::StartingCondition)
+#     @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide number of agents evenly"
+#     block_size = Int(number_agents(simparams) / blocks(graphmodel))
+#     p_in_vector = Vector{Float64}([])
+#     block_sizes_vector = Vector{Int}([])
+#     for _ in 1:blocks(graphmodel)
+#         push!(p_in_vector, p_in(graphmodel))
+#         push!(block_sizes_vector, block_size)
+#     end
+#     graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
+#     while true
+#         if ne(graph) >= 1
+#             break
+#         end
+#         graph = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
+#     end
+#     agentgraph = AgentGraph(graph)
+#     initialize_agent_data!(agentgraph, game, simparams, startingcondition)
+#     return agentgraph
+# end
 
 
 """
-    agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::StoppingCondition)
+    initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::StoppingCondition)
 
 Initialize the agent data for an AgentGraph instance based on the StoppingCondition concrete type.
 """
-function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::FractiousState)
+function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::FractiousState)
     for (vertex, agent) in enumerate(agents(agentgraph))
         #set memory initialization
         if vertex % 2 == 0
@@ -91,7 +136,7 @@ function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::
     return nothing
 end
 
-function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::EquityState)
+function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::EquityState)
     for agent in agents(agentgraph)
         #set memory initialization
         recollection = strategies(game, 1)[2]
@@ -105,7 +150,7 @@ function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::
     return nothing
 end
 
-function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::RandomState)
+function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::RandomState)
     for agent in agents(agentgraph)
         #set memory initialization
         empty!(memory(agent))
@@ -122,7 +167,7 @@ end
 
 ############################ tagged versions (not currently using) ##############################
 
-# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::FractiousState)
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::FractiousState)
 #     for (vertex, agent) in enumerate(agentgraph.agents)
 #         if simparams.tags
 #             if rand() <= simparams.tag1_proportion
@@ -147,7 +192,7 @@ end
 #     return nothing
 # end
 
-# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::EquityState)
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::EquityState)
 #     for (vertex, agent) in enumerate(agentgraph.agents)
 #         if rand() <= simparams.tag1_proportion
 #             agent.tag = simparams.tag1
@@ -166,7 +211,7 @@ end
 #     return nothing
 # end
 
-# function agentdata!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::RandomState)
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, startingcondition::RandomState)
 #     for (vertex, agent) in enumerate(agentgraph.agents)
 #         if rand() <= simparams.tag1_proportion
 #             agent.tag = simparams.tag1

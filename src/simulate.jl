@@ -2,54 +2,76 @@
 
 #NOTE: clean this stuff up
 
-# function timeout(model::SimModel, db_info::Union{Nothing, DBInfo}; exit_code::Int=85)
-#     if isnothing(SETTINGS.database) #if database functionality isn't active, simply exit when timeout is reached
-#         return () -> exit(exit_code)
-#     else
-#         return () -> (begin
-#             db_checkpoint(db_info, db_info, exit_code=exit_code)
-#             exit(exit_code)
-#         end)
-#     end
+# function timeout(::SimModel; timer, exit_code::Int=85)
+#     close(timer)
+#     # println(myid())
+#     println("timeout reached. exiting...")
+#     state = fetch(@spawnat(workers()[1], getfield(Main, :state)))
+#     println(state)
+#     interrupt() #terminates all workers
+#     # configure() #reconfigure processes?
+#     # exit(exit_code) #do we want to full-on exit the repl for the non database case? I dont think so
 # end
 
-const to = TimerOutput()
+function timeout(::SimModel, state::State; timer, exit_code::Int=85)
+    close(timer)
+    # println(myid())
+    println("timeout reached. exiting...")
+    println(state)
+    interrupt() #terminates all workers
+    # configure() #reconfigure processes?
+    # exit(exit_code) #do we want to full-on exit the repl for the non database case? I dont think so
+end
+
+function timeout(model::SimModel, state::State, db_info::DBInfo, model_id::Integer, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, distributed_uuid::Union{String, Nothing}; timer, exit_code::Int=85)
+        # return () -> exit(exit_code)
+    close(timer)
+    db_checkpoint(db_info, state, model_id, sim_group_id, prev_simulation_uuid, distributed_uuid)
+    # else
+        # return () -> (begin
+        #     db_checkpoint(db_info, db_info, sim_group_id, prev_simulation_uuid, distributed_uuid)
+        #     exit(exit_code)
+        # end)
+    print("pushed to db")
+    println("exitiinnggg")
+    exit(exit_code)
+end
+
+
 
 """
-    simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+    simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
 
 Run a simulation using the model provided.
 """
-function simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
-    # timer = Timer(timeout(model, SETTINGS.database))
-    _simulate_model_barrier(model, SETTINGS.database)
-    return nothing #NOTE: returning nothing for now but might want to return state in the future
-    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
+function simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
+    # if !isnothing(SETTINGS.checkpoint) SETTINGS.checkpoint.start_time = time() end #fine for now
+    return _simulate_model_barrier(model, SETTINGS.database, start_time=time())
+    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
 end
 
 
 """
-    simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+    simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
 
 Run a simulation using a model stored in the configured database with the given model_id. The model will be reconstructed to be used in the simulation.
 Note: a database must be configured to use this method and a model with the given model_id must exist in the configured database.
 """
-function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
 
     # timer = Timer(timeout(model, SETTINGS.database))
-    _simulate_model_barrier(model_id, SETTINGS.database)
-    return nothing
-    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
+    return _simulate_model_barrier(model_id, SETTINGS.database, start_time=time())
+    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
 
     # if nworkers() > 1
-    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id, preserve_graph=preserve_graph)
+    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
     # else
     #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
     # end
 end
 
-# function simulate(model_list::Vector{<:SimModel}; preserve_graph::Bool=false)
+# function simulate(model_list::Vector{<:SimModel})
 #     for model in model_list
 #         show(model)
 #         flush(stdout)
@@ -59,145 +81,176 @@ end
 # end
 
 
-function _simulate_model_barrier(model::SimModel, ::Nothing; preserve_graph::Bool=false, kwargs...)
-    _simulate_distributed_barrier(model; preserve_graph=preserve_graph)
-    return nothing
+function _simulate_model_barrier(model::SimModel, ::Nothing; start_time::Float64, kwargs...)
+    return _simulate_distributed_barrier(model, start_time=start_time)
 end
 
-function _simulate_model_barrier(model::SimModel, db_info::DBInfo; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+function _simulate_model_barrier(model::SimModel, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     model_id = db_insert_model(db_info, model, SETTINGS.use_seed)
-    _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, preserve_graph=preserve_graph)
-    return nothing
-
+    return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
-function _simulate_model_barrier(model_id::Int, db_info::DBInfo; db_group_id::Union{Nothing, Integer} = nothing, preserve_graph::Bool=false)
+function _simulate_model_barrier(model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
     model = db_get_model(model_id) #construct model associated with id
-    _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, preserve_graph=preserve_graph)
-    return nothing
+    return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
 
-
-function _simulate_distributed_barrier(model::SimModel; preserve_graph::Bool=false, kwargs...) #NOTE: should preserve_graph be in simparams?
+function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwargs...) #NOTE: should preserve_graph be in simparams?
     show(model)
-    flush(stdout) #flush buffer
-
-    state = State(model)
-    
-    # @sync @distributed for process in 1:nworkers()
+    flush(stdout) #flush buffer   
+        
+    # states::Vector{State} = @distributed (append!) for process in 1:nworkers() #without reducer, need @sync @distributed ...
     #     print("Process $process of $(nworkers())")
     #     flush(stdout)
-    #     if !preserve_graph
-    #         state = State(model) #regenerate state so each process has a different graph
-    #     end
-    #     _simulate(model, state)
+    #     # if !preserve_graph
+    #     #     state = State(model) #regenerate state so each process has a different graph
+    #     # end
+    #     [_simulate(model, start_time=start_time)]
     # end
-    _simulate(model, state)
-    return nothing
+
+    result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+
+    @distributed for process in 1:nworkers()
+        print("Process $process of $(nworkers())")
+        flush(stdout)
+        # if !preserve_graph
+        #     state = State(model) #regenerate state so each process has a different graph
+        # end
+        _simulate(model, channel=result_channel, start_time=start_time)
+    end
+
+    received = 0
+    result_states = Vector{State}()
+    while received < nworkers()
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        result_state = take!(result_channel)
+        push!(result_states, result_state)
+        received += 1
+    end
+    println("DONE")
+
+    return result_states
 end
 
 
-function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; model_id::Int, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
-    # sim_model_id = db_insert_model(db_info, model, SETTINGS.use_seed)
-    # if isnothing(model_id(model))
-        
-    # end
-    distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
+function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+    # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
-    if nworkers() > 1
-        println("\nSimulation Distributed UUID: $distributed_uuid")
-        db_init_distributed(distributed_uuid)
-    end
-
-    # db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
-    # sim_model_id = db_insert_model(db_info, model, SETTINGS.use_seed)
-    # if isnothing(model_id(model))
-        
+    # db_info_list = [db_info]
+    # if nworkers() > 1
+    #     println("\nSimulation Distributed UUID: $distributed_uuid")
+    #     db_info_list = db_init_distributed(distributed_uuid)
     # end
 
     show(model)
     flush(stdout) #flush buffer
 
-    state = State(model)
 
-    @sync @distributed for process in 1:nworkers() #NOTE: run_count could be number workers
+    # states::Vector{State} = @distributed (append!) for (process, db_info) in collect(enumerate(db_info_list))
+    #     print("Process $process of $(nworkers())")
+    #     flush(stdout)
+    #     # if !preserve_graph
+    #     #     state = State(model) #regenerate state so each process has a different graph
+    #     # end
+    #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
+    # end
+
+    result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+
+    @distributed for process in 1:nworkers()
         print("Process $process of $(nworkers())")
         flush(stdout)
-        if !preserve_graph
-            state = State(model) #regenerate state so each process has a different graph
+    # if !preserve_graph
+    #     state = State(model) #regenerate state so each process has a different graph
+    # end
+        _simulate(model, channel=result_channel, start_time=start_time)
+    end
+    
+    # if nworkers() > 1
+    #     db_collect_temp(db_info, distributed_uuid, cleanup_directory=true)
+    # end
+    received = 0
+    result_states = Vector{State}()
+    while received < nworkers()
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        result_state = take!(result_channel)
+        if iscomplete(result_state)
+            db_insert_simulation(db_info, result_state, model_id, db_group_id)
+        else
+            if !isnothing(SETTINGS.checkpoint)
+                db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
+            end
         end
-        _simulate(model, state, db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid) #db_id_tuple=db_id_tuple
+        push!(result_states, result_state)
+        received += 1
     end
+    println("DONE")
 
-    if nworkers() > 1
-        db_collect_temp(db_info, distributed_uuid, cleanup_directory=true)
-    end
-    return nothing
+    return result_states
 end
 
 
-function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; model_id::Int, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
 
     show(model)
     flush(stdout) #flush buffer
 
-    state = State(model)
-
-    @sync @distributed for process in 1:nworkers() #NOTE: run_count could be number workers
+    states::Vector{State} = @distributed (append!) for process in 1:nworkers() #NOTE: run_count could be number workers
         print("Process $process of $(nworkers())")
         flush(stdout)
-        if !preserve_graph
-            state = State(model) #regenerate state so each process has a different graph
-        end
-        _simulate(model, state, db_info, model_id=model_id, db_group_id=db_group_id)
+        # if !preserve_graph
+        #     state = State(model) #regenerate state so each process has a different graph
+        # end
+        [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, start_time=start_time)]
     end
-    return nothing
+
+    return states
 end
 
 
 
+# function _simulate(model::SimModel; start_time::Float64, kwargs...)
+#     state = State(model) #create state in this scope to later return
 
-function _simulate(model::SimModel, state::State; kwargs...)
-    if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
-        Random.seed!(random_seed(model))
-    end
+#     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
+#         Random.seed!(random_seed(model))
+#     end
 
-    @timeit to "stopping condition" begin
-    while !is_stopping_condition(state, stoppingcondition(model))
-        @timeit to "period" run_period!(model, state)
-    end
-    end
+#     timeout = SETTINGS.checkpoint.timeout
 
-    println(" --> periods elapsed: $(period(state))")
-    # return state
-    return nothing
-end
+#     while !is_stopping_condition(state, stoppingcondition(model))
+#         run_period!(model, state)
+#         (time() - start_time) > timeout && break
+#     end
 
-function _simulate(model::SimModel, state::State, db_info::DBInfo; model_id::Int, db_group_id::Union{Nothing, Integer} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
+#     println(" --> periods elapsed: $(period(state))")
+
+#     return state
+# end
+
+function _simulate(model::SimModel; channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+    state = State(model)
+
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
 
-
-    # if isnothing(db_id_tuple)
-    #     db_id_tuple = db_construct_id_tuple(db_info, model, SETTINGS.use_seed)
-    # end
-
-
-    # @timeit to "simulate" begin
+    timeout = SETTINGS.timeout
+    completed = true
     while !is_stopping_condition(state, stoppingcondition(model))
-        #play a period worth of games
-        # @timeit to "period" runPeriod!(model, to)
         run_period!(model, state)
+        if (time() - start_time) > timeout
+            completed = false
+            break
+        end
     end
-    # end
+
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer
-    db_insert_simulation(db_info, state, model_id, db_group_id, prev_simulation_uuid, distributed_uuid)
-    # return state
-    return nothing
+    completed && complete(state)
+    put!(channel, state)
 end
 
 
@@ -226,7 +279,7 @@ end
 #     return periods_elapsed
 # end
 
-# function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false) #NOTE: should preserve_graph be in simparams?
+# function simulate_distributed(model::SimModel; run_count::Integer = 1, use_seed::Bool = false) #NOTE: should preserve_graph be in simparams?
 #     show(model)
 #     flush(stdout) #flush buffer
 
@@ -240,7 +293,7 @@ end
 #     end
 # end
 
-# function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false, preserve_graph::Bool=false)
+# function simulation_iterator(model_list::Vector{<:SimModel}; run_count::Integer = 1, use_seed::Bool = false)
 #     for model in model_list
 #         show(model)
 #         flush(stdout)
@@ -287,7 +340,7 @@ end
 # end
 
 
-# function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+# function simulate_distributed(model::SimModel, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing)
 #     distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
 #     if nworkers() > 1
@@ -315,7 +368,7 @@ end
 # end
 
 
-# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing)
 #     distributed_uuid = "$(uuid4())"
 
 #     if nworkers() > 1
@@ -384,7 +437,7 @@ end
 # end
 
 
-# function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+# function simulate_distributed(model::SimModel, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing)
 #     distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
     
@@ -413,7 +466,7 @@ end
 # end
 
 
-# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing, preserve_graph::Bool=false)
+# function simulation_iterator(model_list::Vector{<:SimModel}, db_filepath::String, db_store_period::Integer; run_count::Integer = 1, use_seed::Bool = false, db_group_id::Union{Integer, Nothing} = nothing)
 #     distributed_uuid = "$(uuid4())"
 
 #     if nworkers() > 1

@@ -17,13 +17,20 @@ struct SimModel{S1, S2, L}
     startingcondition::StartingCondition
     stoppingcondition::StoppingCondition
 
+    graph::Graph #the specific graph structure should be specified within a model
+
     function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition) where {S1, S2, L}
         # initialize_stopping_condition!(stoppingcondition, simparams, agentgraph)
-        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition)
+        graph::Graph = generate_graph(graphmodel, simparams)
+        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
     # end
+end
+
+function SimModels(game::Game, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; count::Int)
+    return fill(SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition), count)
 end
 
 
@@ -155,9 +162,18 @@ Get the StoppingCondition instance in the model.
 stoppingcondition(model::SimModel) = getfield(model, :stoppingcondition)
 
 
+graph(model::SimModel) = getfield(model, :graph)
 
 
+#SimModel constructor barriers (used to initialize state components from model)
 
+function AgentGraph(model::SimModel)
+    agentgraph::AgentGraph = AgentGraph(graph(model))
+    initialize_agent_data!(agentgraph, game(model), simparams(model), startingcondition(model))
+    return agentgraph
+end
+
+PreAllocatedArrays(model::SimModel) = PreAllocatedArrays(game(model))
 
 
 
