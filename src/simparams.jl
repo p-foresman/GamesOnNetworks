@@ -5,7 +5,7 @@
 
 Type to define and store simulation parameters.
 """
-struct SimParams #NOTE: put periods_elapsed into SimParams (default 0) and allow user to define the matches_per_period (default 1?)
+struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     number_agents::Int #switch to 'population'
     memory_length::Int
     error::Float64
@@ -21,6 +21,12 @@ struct SimParams #NOTE: put periods_elapsed into SimParams (default 0) and allow
     end
     function SimParams()
         return new()
+    end
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, random_seed::Int)
+        @assert number_agents >= 2 "'population' must be >= 2"
+        @assert memory_length >= 1 "'memory_length' must be positive"
+        @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
+        return new(number_agents, memory_length, error, random_seed)
     end
 end
 

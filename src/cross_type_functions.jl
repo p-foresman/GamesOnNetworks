@@ -230,23 +230,23 @@ end
 # end
 
 """
-    initialize_stopping_condition!(stoppingcondition::StoppingCondition, simparams::SimParams, agentgraph::AgentGraph)
+    initialize_stoppingcondition!(stoppingcondition::StoppingCondition, simparams::SimParams, agentgraph::AgentGraph)
 
 Initialize the stopping condition for a model.
 """
-function initialize_stopping_condition!(stoppingcondition::EquityPsychological, simparams::SimParams, agentgraph::AgentGraph)
+function initialize_stoppingcondition!(stoppingcondition::EquityPsychological, simparams::SimParams, graph::Graph)
     sufficient_equity!(stoppingcondition, (1 - error_rate(simparams)) * memory_length(simparams))
-    sufficient_transitioned!(stoppingcondition, Float64(number_agents(simparams) - number_hermits(agentgraph)))
+    sufficient_transitioned!(stoppingcondition, Float64(number_agents(simparams) - number_hermits(graph)))
     return nothing
 end
 
-function initialize_stopping_condition!(stoppingcondition::EquityBehavioral, simparams::SimParams, agentgraph::AgentGraph)
-    sufficient_transitioned!(stoppingcondition, (1 - error_rate(simparams)) * (number_agents(simparams) - number_hermits(agentgraph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+function initialize_stoppingcondition!(stoppingcondition::EquityBehavioral, simparams::SimParams, graph::Graph)
+    sufficient_transitioned!(stoppingcondition, (1 - error_rate(simparams)) * (number_agents(simparams) - number_hermits(graph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
     period_cutoff!(stoppingcondition, memory_length(simparams))
     period_count!(stoppingcondition, 0)
     return nothing
 end
 
-function initialize_stopping_condition!(::PeriodCutoff, ::SimParams, ::AgentGraph)
+function initialize_stoppingcondition!(::PeriodCutoff, ::SimParams, ::Graph)
     return nothing
 end

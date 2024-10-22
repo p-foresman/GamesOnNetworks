@@ -1,4 +1,3 @@
-const Graph = SimpleGraph{Int}
 const AgentSet{N} = SVector{N, Agent}
 const VertexSet{V} = SVector{V, Int}
 const Relationship = Graphs.SimpleEdge{Int}
@@ -56,7 +55,7 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
         agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
         number_hermits = 0
         for vertex in 1:N #could make graph-type specific multiple dispatch so this only needs to happen for ER and SBM (otherwise num_hermits=0)
-            if degree(graph, vertex) == 0
+            if iszero(degree(graph, vertex))
                 ishermit!(agents[vertex], true)
                 number_hermits += 1
             end
@@ -154,6 +153,6 @@ components(agentgraph::AgentGraph, component_number::Integer) = getindex(compone
 
 Get the number of hermits (vertecies with degree=0) in an AgentGraph instance.
 """
-number_hermits(agentgraph::AgentGraph) = getfield(agentgraph, :number_hermits)
+number_hermits(agentgraph::AgentGraph) = number_hermits(graph(agentgraph))
 
 

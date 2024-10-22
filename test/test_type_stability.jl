@@ -4,11 +4,23 @@ const payoff_matrix = [(0, 0) (0, 0) (70, 30);
                         (0, 0) (50, 50) (50, 30);
                         (30, 70) (30, 50) (30, 30)]
 
-const model = SimModel(Game{3, 3}("Bargaining Game", payoff_matrix),
+# function is_stopping_condition(state::State, stoppingcondition::EquityPsychological) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+#     number_transitioned = 0
+#     for agent in agents(state)
+#         if !ishermit(agent)
+#             if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
+#                 number_transitioned += 1
+#             end
+#         end
+#     end 
+#     return number_transitioned >= sufficient_transitioned(stoppingcondition)
+# end
+
+const model6 = SimModel(Game("Bargaining Game", payoff_matrix),
                         SimParams(10, 10, 0.1),
-                        CompleteModel(),
+                        StochasticBlockModel(3, 2, 0.5, 0.5),
                         FractiousState(),
-                        PeriodCutoff(10000))
+                        EquityPsychological(2))
 
 models = SimModels(Game{3, 3}("Bargaining Game", payoff_matrix),
 SimParams(10, 10, 0.1),

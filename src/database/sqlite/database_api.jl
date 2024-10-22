@@ -146,8 +146,10 @@ function sql_dump_graphmodel(graphmodel::GM) where {GM<:GraphModel}
     params = ""
     values = ""
     for param in fieldnames(GM)
-        params *= "$param, "
-        values *= "$(getfield(graphmodel, param)), "
+        if param != :type
+            params *= "$param, "
+            values *= "$(getfield(graphmodel, param)), "
+        end
     end
     params = string(rstrip(params, [' ', ',']))
     if !isempty(params)
@@ -215,12 +217,12 @@ end
 
 function db_insert_startingcondition(db_info::SQLiteInfo, startingcondition::StartingCondition)
     startingcondition_json_str = JSON3.write(typeof(startingcondition)(startingcondition)) #generates a "raw" starting condition object for the database
-    name = name(startingcondition)
+    startingcondition_type = type(startingcondition)
 
     startingcondition_id = nothing
     while startingcondition_id === nothing
         try
-            startingcondition_id = execute_insert_startingcondition(db_info, name, startingcondition_json_str)
+            startingcondition_id = execute_insert_startingcondition(db_info, startingcondition_type, startingcondition_json_str)
         catch
             if e isa SQLiteException
                 println("An error has been caught in db_insert_startingcondition():")
@@ -237,12 +239,12 @@ end
 
 function db_insert_stoppingcondition(db_info::SQLiteInfo, stoppingcondition::StoppingCondition)
     stoppingcondition_json_str = JSON3.write(typeof(stoppingcondition)(stoppingcondition)) #generates a "raw" stopping condition object for the database
-    name = name(stoppingcondition)
+    stoppingcondition_type = type(stoppingcondition)
 
     stoppingcondition_id = nothing
     while isnothing(stoppingcondition_id)
         try
-            stoppingcondition_id::Int = execute_insert_stoppingcondition(db_info, name, stoppingcondition_json_str)
+            stoppingcondition_id::Int = execute_insert_stoppingcondition(db_info, stoppingcondition_type, stoppingcondition_json_str)
             return stoppingcondition_id
         catch
             if e isa SQLiteException
@@ -276,11 +278,11 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
 
     model_startingcondition = startingcondition(model)
     startingcondition_str = JSON3.write(typeof(model_startingcondition)(model_startingcondition)) #generates a "raw" starting condition object for the database
-    startingcondition_name = displayname(model_startingcondition)
+    startingcondition_type = type(model_startingcondition)
 
     model_stoppingcondition = stoppingcondition(model)
     stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
-    stoppingcondition_name = displayname(model_stoppingcondition)
+    stoppingcondition_type = type(model_stoppingcondition)
 
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(model))))
 
@@ -294,8 +296,8 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
                                             game_name, game_str, game_size,
                                             graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
                                             model_simparams, simparams_str, seed_bool,
-                                            startingcondition_name, startingcondition_str,
-                                            stoppingcondition_name, stoppingcondition_str,
+                                            startingcondition_type, startingcondition_str,
+                                            stoppingcondition_type, stoppingcondition_str,
                                             adj_matrix_json_str)
     #     catch e
     #         if e isa SQLiteException
@@ -333,11 +335,14 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     #     db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
     # end
 
+    complete_bool = Int(iscomplete(state))
+
+
 
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), complete_bool, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -354,42 +359,68 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
 end
 
 
-function db_checkpoint(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing, distributed_uuid::Union{String, Nothing} = nothing)
-    db_insert_simulation(db_info, state, model_id, sim_group_id, prev_simulation_uuid, distributed_uuid)
-    return nothing
+
+#NOTE: FIX
+function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer) #MUST FIX TO USE UUID
+    df = execute_query_models(db_info, model_id)
+
+
+    #reproduce SimParams object
+    simparams = JSON3.read(df[1, :simparams], SimParams)
+
+    #reproduce Game object
+    payoff_matrix_size = JSON3.read(df[1, :payoff_matrix_size], Tuple)
+    game = JSON3.read(df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
+
+    #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
+    graphmodel = JSON3.read(df[1, :graphmodel], GraphModel)
+    # reproduced_adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
+    adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
+    # reproduced_graph = SimpleGraph(reproduced_adj_matrix)
+
+    startingcondition = JSON3.read(df[1, :startingcondition], StartingCondition)
+
+    println(df[1, :stoppingcondition])
+    stoppingcondition = JSON3.read(df[1, :stoppingcondition], StoppingCondition)
+
+    model = SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, adj_matrix; initialize_stoppingcondition=true) #want to reset stoppingcondition state
+
+    return model
 end
 
 
-# #NOTE: FIX
-# function db_restore_model(db_filepath::String, simulation_id::Integer) #MUST FIX TO USE UUID
-#     simulation_df = execute_query_simulations_for_restore(db_filepath, simulation_id)
-#     agents_df = execute_query_agents_for_restore(db_filepath, simulation_id)
+function db_restore_simulation(db_info::SQLiteInfo, simulation_id::Integer) #MUST FIX TO USE UUID
+    simulation_df = execute_query_simulations_for_restore(db_filepath, simulation_id)
+    agents_df = execute_query_agents_for_restore(db_filepath, simulation_id)
 
-#     #reproduce SimParams object
-#     reproduced_sim_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
+    #reproduce SimParams object
+    reproduced_sim_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
 
-#     #reproduce Game object
-#     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
-#     payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
-#     reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
+    #reproduce Game object
+    payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
+    payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
+    reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
 
-#     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
-#     reproduced_graph_model = JSON3.read(simulation_df[1, :graph_model], GraphModel)
-#     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
-#     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
-#     reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
-#     for vertex in vertices(reproduced_meta_graph)
-#         agent = JSON3.read(agents_df[vertex, :agent], Agent)
-#         set_prop!(reproduced_meta_graph, vertex, :agent, agent)
-#     end
+    #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
+    reproduced_graph_model = JSON3.read(simulation_df[1, :graph_model], GraphModel)
+    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
+    reproduced_graph = SimpleGraph(reproduced_adj_matrix)
+    reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
+    for vertex in vertices(reproduced_meta_graph)
+        agent = JSON3.read(agents_df[vertex, :agent], Agent)
+        set_prop!(reproduced_meta_graph, vertex, :agent, agent)
+    end
 
-#     #restore RNG to previous state
-#     if simulation_df[1, :use_seed] == 1
-#         seed_bool = true
-#         reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
-#         copy!(Random.default_rng(), reproduced_rng_state)
-#     else
-#         seed_bool = false
-#     end
-#     return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], sim_group_id=simulation_df[1, :sim_group_id])
-# end
+    #restore RNG to previous state
+    if simulation_df[1, :use_seed] == 1
+        seed_bool = true
+        reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
+        copy!(Random.default_rng(), reproduced_rng_state)
+    else
+        seed_bool = false
+    end
+
+    model = SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, adj_matrix; initialize_stoppingcondition=false) #dont want to reset any stoppingcondition state
+
+    return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], sim_group_id=simulation_df[1, :sim_group_id])
+end

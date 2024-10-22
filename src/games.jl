@@ -9,12 +9,13 @@ struct Game{S1, S2, L}
     name::String
     payoff_matrix::PayoffMatrix{S1, S2, L}
 
-    function Game(name::String, payoff_matrix::PayoffMatrix{S1, S2}) where {S1, S2}
-        L = S1 * S2
+    function Game{S1, S2, L}(name::String, payoff_matrix::PayoffMatrix{S1, S2, L}) where {S1, S2, L}
         return new{S1, S2, L}(name, payoff_matrix)
     end
-    function Game{S1, S2}(name::String, payoff_matrix::Matrix{Tuple{Int, Int}}) where {S1, S2}
-        L = S1 * S2
+    function Game(name::String, payoff_matrix::PayoffMatrix{S1, S2, L}) where {S1, S2, L}
+        return new{S1, S2, L}(name, payoff_matrix)
+    end
+    function Game{S1, S2, L}(name::String, payoff_matrix::Matrix{Tuple{Int, Int}}) where {S1, S2, L}
         static_payoff_matrix = PayoffMatrix{S1, S2, L}(payoff_matrix)
         return new{S1, S2, L}(name, static_payoff_matrix)
     end

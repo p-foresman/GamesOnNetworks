@@ -16,12 +16,21 @@ struct SimModel{S1, S2, L}
     graphmodel::GraphModel
     startingcondition::StartingCondition
     stoppingcondition::StoppingCondition
-
     graph::Graph #the specific graph structure should be specified within a model
 
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition) where {S1, S2, L}
-        # initialize_stopping_condition!(stoppingcondition, simparams, agentgraph)
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
         graph::Graph = generate_graph(graphmodel, simparams)
+        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
+    end
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, graph_adj_matrix::AdjacencyMatrix; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
+        graph = Graph(graph_adj_matrix)
+        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
+    end
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, graph_adj_matrix::MMatrix; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
+        graph = Graph(graph_adj_matrix)
+        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
         return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
@@ -161,8 +170,19 @@ Get the StoppingCondition instance in the model.
 """
 stoppingcondition(model::SimModel) = getfield(model, :stoppingcondition)
 
+"""
+    graph(model::SimModel)
 
+Get the graph associated with a SimModel instance.
+"""
 graph(model::SimModel) = getfield(model, :graph)
+
+"""
+    number_hermits(model::SimModel)
+
+Get the number of hermits (vertecies with degree=0) in the graph of a SimModel instance.
+"""
+number_hermits(model::SimModel) = number_hermits(graph(model))
 
 
 #SimModel constructor barriers (used to initialize state components from model)

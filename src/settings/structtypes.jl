@@ -16,14 +16,14 @@ StructTypes.StructType(::Type{SimParams}) = StructTypes.Struct()
 
 ############################## GraphParams Types ####################################
 #This StructTypes hierarchy is required to reproduce any given subtype from the abstract type input
-StructTypes.StructType(::Type{GraphParams}) = StructTypes.AbstractType()
-StructTypes.StructType(::Type{CompleteParams}) = StructTypes.Struct()
-StructTypes.StructType(::Type{ErdosRenyiParams}) = StructTypes.Struct()
-StructTypes.StructType(::Type{SmallWorldParams}) = StructTypes.Struct()
-StructTypes.StructType(::Type{ScaleFreeParams}) = StructTypes.Struct()
-StructTypes.StructType(::Type{StochasticBlockModelParams}) = StructTypes.Struct()
-StructTypes.subtypekey(::Type{GraphParams}) = :graph_type
-StructTypes.subtypes(::Type{GraphParams}) = (complete=CompleteParams, er=ErdosRenyiParams, sw=SmallWorldParams, sf=ScaleFreeParams, sbm=StochasticBlockModelParams)
+StructTypes.StructType(::Type{GraphModel}) = StructTypes.AbstractType()
+StructTypes.StructType(::Type{CompleteModel}) = StructTypes.Struct()
+StructTypes.StructType(::Type{ErdosRenyiModel}) = StructTypes.Struct()
+StructTypes.StructType(::Type{SmallWorldModel}) = StructTypes.Struct()
+StructTypes.StructType(::Type{ScaleFreeModel}) = StructTypes.Struct()
+StructTypes.StructType(::Type{StochasticBlockModel}) = StructTypes.Struct()
+StructTypes.subtypekey(::Type{GraphModel}) = :type
+StructTypes.subtypes(::Type{GraphModel}) = (CompleteModel=CompleteModel, ErdosRenyiModel=ErdosRenyiModel, SmallWorldModel=SmallWorldModel, ScaleFreeModel=ScaleFreeModel, StochasticBlockModel=StochasticBlockModel)
 
 
 ############################# StartingCondition Types ###############################
@@ -31,8 +31,8 @@ StructTypes.StructType(::Type{StartingCondition}) = StructTypes.AbstractType()
 StructTypes.StructType(::Type{FractiousState}) = StructTypes.Struct()
 StructTypes.StructType(::Type{EquityState}) = StructTypes.Struct()
 StructTypes.StructType(::Type{RandomState}) = StructTypes.Struct()
-StructTypes.subtypekey(::Type{StartingCondition}) = :name
-StructTypes.subtypes(::Type{StartingCondition}) = (fractious=FractiousState, equity=EquityState, random=RandomState)
+StructTypes.subtypekey(::Type{StartingCondition}) = :type
+StructTypes.subtypes(::Type{StartingCondition}) = (FractiousState=FractiousState, EquityState=EquityState, RandomState=RandomState)
 
 
 ############################# StoppingCondition Types ###############################
@@ -40,8 +40,8 @@ StructTypes.StructType(::Type{StoppingCondition}) = StructTypes.AbstractType()
 StructTypes.StructType(::Type{EquityPsychological}) = StructTypes.Mutable()
 StructTypes.StructType(::Type{EquityBehavioral}) = StructTypes.Mutable()
 StructTypes.StructType(::Type{PeriodCutoff}) = StructTypes.Struct()
-StructTypes.subtypekey(::Type{StoppingCondition}) = :name
-StructTypes.subtypes(::Type{StoppingCondition}) = (equity_psychological=EquityPsychological, equity_behavioral=EquityBehavioral, period_cutoff=PeriodCutoff)
+StructTypes.subtypekey(::Type{StoppingCondition}) = :type
+StructTypes.subtypes(::Type{StoppingCondition}) = (EquityPsychological=EquityPsychological, EquityBehavioral=EquityBehavioral, PeriodCutoff=PeriodCutoff)
 
 
 ####################### Xoshiro random number generator type ########################

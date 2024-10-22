@@ -184,6 +184,9 @@ include("simmodel.jl")
 #State type and methods
 include("state.jl")
 
+#include StructTypes for reconstructing custom structures
+include("settings/structtypes.jl")
+
 #api to sqlite and postgresql functionality
 include("database/database_api.jl")
 

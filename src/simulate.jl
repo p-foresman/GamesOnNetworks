@@ -92,7 +92,7 @@ end
 
 function _simulate_model_barrier(model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-    model = db_get_model(model_id) #construct model associated with id
+    model = db_reconstruct_model(db_info, model_id) #construct model associated with id
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
@@ -118,7 +118,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-        _simulate(model, channel=result_channel, start_time=start_time)
+        _simulate(model, State(model), channel=result_channel, start_time=start_time)
     end
 
     received = 0
@@ -165,7 +165,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     # if !preserve_graph
     #     state = State(model) #regenerate state so each process has a different graph
     # end
-        _simulate(model, channel=result_channel, start_time=start_time)
+        _simulate(model, State(model), channel=result_channel, start_time=start_time)
     end
     
     # if nworkers() > 1
@@ -230,9 +230,7 @@ end
 #     return state
 # end
 
-function _simulate(model::SimModel; channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
-    state = State(model)
-
+function _simulate(model::SimModel, state::State; channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end

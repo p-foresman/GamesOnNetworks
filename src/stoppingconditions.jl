@@ -17,14 +17,17 @@ Definition: If all agents (excluding hermits) have (1-ϵ)*m instances of the equ
 period, stop.
 """
 mutable struct EquityPsychological <: StoppingCondition
-    name::String #change to type?? or remove and use the type itself
+    type::String #change to type?? or remove and use the type itself
     strategy::Int
     sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     sufficient_transitioned::Float64
 
 
     function EquityPsychological(strategy::Integer)
-        return new("equity_psychological", strategy, 0., 0.)
+        return new("EquityPsychological", strategy, 0., 0.)
+    end
+    function EquityPsychological(::String, strategy::Integer, sufficient_equity::Float64, sufficient_transitioned::Float64)
+        return new("EquityPsychological", strategy, sufficient_equity, sufficient_transitioned)
     end
     function EquityPsychological(stoppingcondition::EquityPsychological) #used to get a "raw" version of the stopping condition to send to the database
         return EquityPsychological(strategy(stoppingcondition))
@@ -44,7 +47,7 @@ Definition: If (1-ϵ)*N agents (excluding hermits) have a behavioral/rational ch
 with the equity state for m number of periods in a row, stop.
 """
 mutable struct EquityBehavioral <: StoppingCondition
-    name::String
+    type::String
     strategy::Int
     sufficient_transitioned::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
     period_cutoff::Int #initialized to nothing (determine in simulation). DEFINITION: memory_length.
@@ -53,7 +56,10 @@ mutable struct EquityBehavioral <: StoppingCondition
     
 
     function EquityBehavioral(strategy::Integer)
-        return new("equity_behavioral", strategy, 0., 0, 0)
+        return new("EquityBehavioral", strategy, 0., 0, 0)
+    end
+    function EquityBehavioral(::String, strategy::Integer, sufficient_transitioned::Float64, period_cutoff::Int, period_count::Int)
+        return new("EquityBehavioral", strategy, sufficient_transitioned, period_cutoff, period_count)
     end
     function EquityBehavioral(stoppingcondition::EquityBehavioral) #used to get a "raw" version of the stopping condition to send to the database
         return EquityBehavioral(strategy(stoppingcondition))
@@ -68,11 +74,14 @@ Type denoting the "period cutoff" stopping condition.
 Definition: After a specified number of periods has passed, stop.
 """
 struct PeriodCutoff <: StoppingCondition
-    name::String
+    type::String
     period_cutoff::Int128
 
     function PeriodCutoff(period_cutoff::Integer)
-        return new("period_cutoff", period_cutoff)
+        return new("PeriodCutoff", period_cutoff)
+    end
+    function PeriodCutoff(::String, period_cutoff::Integer)
+        return new("PeriodCutoff", period_cutoff)
     end
     function PeriodCutoff(stoppingcondition::PeriodCutoff) #used to get a "raw" version of the stopping condition to send to the database
         return PeriodCutoff(period_cutoff(stoppingcondition))
@@ -89,7 +98,9 @@ end
 
 Get the stopping condition type.
 """
-type(stoppingcondition::StoppingCondition) = getfield(stoppingcondition, :name)
+type(stoppingcondition::StoppingCondition) = getfield(stoppingcondition, :type)
+# type(::SC) where {SC<:StoppingCondition} = string(SC)
+
 
 """
     strategy(stoppingcondition::EquityPsychological)

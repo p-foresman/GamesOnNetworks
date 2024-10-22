@@ -11,13 +11,15 @@ abstract type StartingCondition end
 Type denoting the "fractious state" starting condition.
 """
 struct FractiousState <: StartingCondition
-    name::String
-
+    type::String
     function FractiousState()
-        return new("fractious")
+        return new("FractiousState")
+    end
+    function FractiousState(::String)
+        return new("FractiousState")
     end
     function FractiousState(::FractiousState) #used to get a "raw" version of the starting condition to send to the database
-        return FractiousState()
+        return new("FractiousState")
     end
 end
 
@@ -27,13 +29,15 @@ end
 Type denoting the "equity state" starting condition.
 """
 struct EquityState <: StartingCondition
-    name::String
-
+    type::String
     function EquityState()
-        return new("equity")
+        return new("EquityState")
+    end
+    function EquityState(::String)
+        return new("EquityState")
     end
     function EquityState(::EquityState) #used to get a "raw" version of the starting condition to send to the database
-        return EquityState()
+        return EquityState("EquityState")
     end
 end
 
@@ -43,13 +47,15 @@ end
 Type denoting the "random state" starting condition.
 """
 struct RandomState <: StartingCondition
-    name::String
-
+    type::String
     function RandomState()
-        return new("random")
+        return new("RandomState")
+    end
+    function RandomState(::String)
+        return new("RandomState")
     end
     function RandomState(::RandomState) #used to get a "raw" version of the starting condition to send to the database
-        return RandomState()
+        return RandomState("RandomState")
     end
 end
 
@@ -63,7 +69,8 @@ end
 
 Get the starting condition type.
 """
-type(startingcondition::StartingCondition) = getfield(startingcondition, :name)
+type(startingcondition::StartingCondition) = getfield(startingcondition, :type)
+# type(::SC) where {SC<:StartingCondition} = string(SC)
 
 """
     displayname(startingcondition::StartingCondition)

@@ -21,7 +21,6 @@ mutable struct State{V, E, C}
         V = num_vertices(agentgraph)
         E = num_edges(agentgraph)
         C = num_components(agentgraph)
-        initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph) #NOTE: doesnt seem good to initialize model stopping condition in a different struct initializer!
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
         return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false)
     end

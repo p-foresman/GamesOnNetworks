@@ -18,7 +18,16 @@ abstract type GraphModel <: InteractionModel end #for static interaction models,
 
 Type to define and store graph interaction parameters for a complete graph.
 """
-struct CompleteModel <: GraphModel end #no constraining parameters
+struct CompleteModel <: GraphModel
+    type::String #type needed for JSON reconstruction
+    function CompleteModel()
+        return new("CompleteModel")
+    end
+    function CompleteModel(::String)
+        return new("CompleteModel")
+    end
+end #no constraining parameters
+
 
 """
     ErdosRenyiModel
@@ -26,10 +35,15 @@ struct CompleteModel <: GraphModel end #no constraining parameters
 Type to define and store graph interaction parameters for an Erdos-Renyi random graph.
 """
 struct ErdosRenyiModel <: GraphModel
+    type::String
     λ::Float64
     function ErdosRenyiModel(λ::Real)
         @assert λ >= 1 "'λ' parameter must be >= 1.0"
-        return new(Float64(λ))
+        return new("ErdosRenyiModel", Float64(λ))
+    end
+    function ErdosRenyiModel(::String, λ::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        return new("ErdosRenyiModel", Float64(λ))
     end
 end
 
@@ -39,12 +53,18 @@ end
 Type to define and store graph interaction parameters for a small-world (Watts-Strogatz) random graph.
 """
 struct SmallWorldModel <: GraphModel
+    type::String
     λ::Float64
     β::Float64
     function SmallWorldModel(λ::Real, β::Real)
         @assert λ >= 1 "'λ' parameter must be >= 1.0"
         @assert 0.0 <= β <= 1.0 "'β' parameter must be between 0.0 and 1.0"
-        return new(Float64(λ), Float64(β))
+        return new("SmallWorldModel", Float64(λ), Float64(β))
+    end
+    function SmallWorldModel(::String, λ::Real, β::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert 0.0 <= β <= 1.0 "'β' parameter must be between 0.0 and 1.0"
+        return new("SmallWorldModel", Float64(λ), Float64(β))
     end
 end
 
@@ -54,12 +74,18 @@ end
 Type to define and store graph interaction parameters for a scale-free random graph.
 """
 struct ScaleFreeModel <: GraphModel
+    type::String
     λ::Float64
     α::Float64
     function ScaleFreeModel(λ::Real, α::Real)
         @assert λ >= 1 "'λ' parameter must be >= 1.0"
         @assert α >= 2 "'α' parameter must be >= 2.0"
-        return new(Float64(λ), Float64(α))
+        return new("ScaleFreeModel", Float64(λ), Float64(α))
+    end
+    function ScaleFreeModel(::String, λ::Real, α::Real)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert α >= 2 "'α' parameter must be >= 2.0"
+        return new("ScaleFreeModel", Float64(λ), Float64(α))
     end
 end
 
@@ -69,6 +95,7 @@ end
 Type to define and store graph interaction parameters for a stochastic block model random graph.
 """
 struct StochasticBlockModel <: GraphModel
+    type::String
     λ::Float64
     blocks::Int
     p_in::Float64
@@ -78,7 +105,14 @@ struct StochasticBlockModel <: GraphModel
         @assert blocks >= 1 "'blocks' parameter must be a positive integer"
         @assert 0.0 <= p_in <= 1.0 "'p_in' parameter must be between 0.0 and 1.0"
         @assert 0.0 <= p_in <= 1.0 "'p_out' parameter must be between 0.0 and 1.0"
-        return new(λ, blocks, p_in, p_out)
+        return new("StochasticBlockModel", λ, blocks, p_in, p_out)
+    end
+    function StochasticBlockModel(::String, λ::Real, blocks::Int, p_in::Float64, p_out::Float64)
+        @assert λ >= 1 "'λ' parameter must be >= 1.0"
+        @assert blocks >= 1 "'blocks' parameter must be a positive integer"
+        @assert 0.0 <= p_in <= 1.0 "'p_in' parameter must be between 0.0 and 1.0"
+        @assert 0.0 <= p_in <= 1.0 "'p_out' parameter must be between 0.0 and 1.0"
+        return new("StochasticBlockModel", λ, blocks, p_in, p_out)
     end
 end
 
@@ -102,12 +136,9 @@ end
 
 Get the type of a GraphModel instance in a string.
 """
-type(::GM) where {GM<:GraphModel} = string(GM)
-# graph_type(::CompleteModel) = "Complete"
-# graph_type(::ErdosRenyiModel) = "ErdosRenyi"
-# graph_type(::SmallWorldModel) = "SmallWorld"
-# graph_type(::ScaleFreeModel) = "ScaleFree"
-# graph_type(::StochasticBlockModel) ="StochasticBlockModel"
+type(graphmodel::GraphModel) = getfield(graphmodel, :type)
+# type(::GM) where {GM<:GraphModel} = string(GM)
+
 
 """
     λ(erdos_renyi_model:ErdosRenyiModel)
