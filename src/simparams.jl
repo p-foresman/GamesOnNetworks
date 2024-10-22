@@ -10,26 +10,31 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     memory_length::Int
     error::Float64
     # matches_per_period::Function #allow users to define their own matches per period as a function of other parameters?
-    startingcondition::StartingCondition
-    stoppingcondition::StoppingCondition
+    startingcondition::String
+    stoppingcondition::String
+    extra::Dict{Symbol, Any}
     random_seed::Int #probably don't need a random seed in every SimParams struct?
 
 
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; random_seed::Union{Nothing, Int} = nothing)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::String, stoppingcondition::String; extra::Dict{Symbol, Any}=Dict{Symbol, Any}(), random_seed::Union{Nothing, Int} = nothing)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
+        @assert isdefined(Main, Symbol(startingcondition)) "the startingcondition provided is not a defined function"
+        @assert isdefined(Main, Symbol(stoppingcondition)) "the stoppingcondition provided is not a defined function"
         if random_seed === nothing random_seed = 1234 end
-        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, random_seed)
+        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, extra, random_seed)
     end
     function SimParams()
         return new()
     end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, random_seed::Int)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::String, stoppingcondition::String, extra::Dict{Symbol, Any}, random_seed::Int)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
-        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, random_seed)
+        @assert isdefined(Main, Symbol(startingcondition)) "the startingcondition provided is not a defined function"
+        @assert isdefined(Main, Symbol(stoppingcondition)) "the stoppingcondition provided is not a defined function"
+        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, extra, random_seed)
     end
 end
 

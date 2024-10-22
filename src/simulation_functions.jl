@@ -197,42 +197,42 @@ end
 
 #######################################################
 
-function is_stopping_condition(state::State, stoppingcondition::EquityPsychological) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
-    number_transitioned = 0
-    for agent in agents(state)
-        if !ishermit(agent)
-            if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
-                number_transitioned += 1
-            end
-        end
-    end 
-    return number_transitioned >= sufficient_transitioned(stoppingcondition)
-end
+# function is_stopping_condition(state::State, stoppingcondition::EquityPsychological) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+#     number_transitioned = 0
+#     for agent in agents(state)
+#         if !ishermit(agent)
+#             if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
+#                 number_transitioned += 1
+#             end
+#         end
+#     end 
+#     return number_transitioned >= sufficient_transitioned(stoppingcondition)
+# end
 
-function is_stopping_condition(state::State, stoppingcondition::EquityBehavioral) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
-    number_transitioned = 0
-    for agent in agents(state)
-        if !ishermit(agent)
-            if rational_choice(agent) == strategy(stoppingcondition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
-                number_transitioned += 1
-            end
-        end
-    end 
+# function is_stopping_condition(state::State, stoppingcondition::EquityBehavioral) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+#     number_transitioned = 0
+#     for agent in agents(state)
+#         if !ishermit(agent)
+#             if rational_choice(agent) == strategy(stoppingcondition) #if the agent is acting in an equitable fashion (if all agents act equitably, we can say that the behavioral equity norm is reached (ideally, there should be some time frame where all or most agents must have acted equitably))
+#                 number_transitioned += 1
+#             end
+#         end
+#     end 
 
-    if number_transitioned >= sufficient_transitioned(stoppingcondition)
-        increment_period_count!(stoppingcondition)
-        return period_count(stoppingcondition) >= period_cutoff(stoppingcondition)
-    else
-        period_count!(stoppingcondition, 0) #reset period count
-        return false
-    end
-end
+#     if number_transitioned >= sufficient_transitioned(stoppingcondition)
+#         increment_period_count!(stoppingcondition)
+#         return period_count(stoppingcondition) >= period_cutoff(stoppingcondition)
+#     else
+#         period_count!(stoppingcondition, 0) #reset period count
+#         return false
+#     end
+# end
 
 
 
-function is_stopping_condition(state::State, stoppingcondition::PeriodCutoff)
-    return period(state) >= period_cutoff(stoppingcondition)
-end
+# function is_stopping_condition(state::State, stoppingcondition::PeriodCutoff)
+#     return period(state) >= period_cutoff(stoppingcondition)
+# end
 
 
 

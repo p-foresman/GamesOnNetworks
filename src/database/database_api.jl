@@ -21,7 +21,7 @@ DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_con
 
 # include sqlite and postgresql specific APIs
 include("./sqlite/database_api.jl")
-include("./postgres/database_api.jl")
+# include("./postgres/database_api.jl")
 
 
 # function barriers to interface with sqlite/postgres-specific functions using configured database in environment variable 'SETTINGS'
@@ -43,11 +43,11 @@ db_insert_graph(::Nothing, ::GraphModel) = nothing
 db_insert_sim_params(simparams::SimParams, use_seed::Bool) = db_insert_sim_params(SETTINGS.database, simparams, use_seed)
 db_insert_sim_params(::Nothing, ::SimParams, ::Bool) = nothing
 
-db_insert_starting_condition(startingcondition::StartingCondition) = db_insert_starting_condition(SETTINGS.database, startingcondition)
-db_insert_starting_condition(::Nothing, ::StartingCondition) = nothing
+# db_insert_starting_condition(startingcondition::StartingCondition) = db_insert_starting_condition(SETTINGS.database, startingcondition)
+# db_insert_starting_condition(::Nothing, ::StartingCondition) = nothing
 
-db_insert_stopping_condition(stoppingcondition::StoppingCondition) = db_insert_stopping_condition(SETTINGS.database, stoppingcondition)
-db_insert_stopping_condition(::Nothing, ::StoppingCondition) = nothing
+# db_insert_stopping_condition(stoppingcondition::StoppingCondition) = db_insert_stopping_condition(SETTINGS.database, stoppingcondition)
+# db_insert_stopping_condition(::Nothing, ::StoppingCondition) = nothing
 
 function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, period::Integer, distributed_uuid::Union{String, Nothing} = nothing)
     db_insert_simulation(SETTINGS.database, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, period, distributed_uuid)

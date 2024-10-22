@@ -74,8 +74,8 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     #     [_simulate(model, start_time=start_time)]
     # end
 
+    stopping_condition_func = getfield(Main, Symbol(simparams(model).stoppingcondition))(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
-    stoppingcondition_func = simparams(model).stoppingcondition(model)
 
     @distributed for process in 1:nworkers()
         print("Process $process of $(nworkers())")
@@ -83,7 +83,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-        _simulate(model, State(model), stoppingcondition_func=stoppingcondition_func, channel=result_channel, start_time=start_time)
+        _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
 
     received = 0
@@ -122,6 +122,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
     # end
 
+    stopping_condition_func = getfield(Main, Symbol(simparams(model).stoppingcondition))(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
 
     @distributed for process in 1:nworkers()
@@ -130,7 +131,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     # if !preserve_graph
     #     state = State(model) #regenerate state so each process has a different graph
     # end
-        _simulate(model, State(model), channel=result_channel, start_time=start_time)
+        _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
     # if nworkers() > 1
@@ -195,14 +196,14 @@ end
 #     return state
 # end
 
-function _simulate(model::SimModel, state::State; stoppingcondition_func::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
 
     timeout = SETTINGS.timeout
     completed = true
-    while !stoppingcondition_func(state)
+    while !stopping_condition_reached(state)
         run_period!(model, state)
         if (time() - start_time) > timeout
             completed = false

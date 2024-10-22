@@ -18,14 +18,14 @@ export
     SmallWorldModel,
     ScaleFreeModel,
     StochasticBlockModel,
-    StartingCondition,
-    FractiousState,
-    EquityState,
-    RandomState,
-    StoppingCondition,
-    EquityPsychological,
-    EquityBehavioral,
-    PeriodCutoff,
+    # StartingCondition,
+    # FractiousState,
+    # EquityState,
+    # RandomState,
+    # StoppingCondition,
+    # EquityPsychological,
+    # EquityBehavioral,
+    # PeriodCutoff,
 
     # accessors
     game,
@@ -50,22 +50,24 @@ export
     matches_per_period,
     random_seed,
 
-    startingcondition,
+    # startingcondition,
     type, #rename?
 
-    stoppingcondition,
-    strategy, #rename?
-    sufficient_equity,
-    sufficient_equity!,
-    sufficient_transitioned,
-    sufficient_transitioned!,
-    period_cutoff,
-    period_cutoff!,
-    period_count,
-    period_count!,
-    increment_period_count!,
+    # stoppingcondition,
+    # strategy, #rename?
+    # sufficient_equity,
+    # sufficient_equity!,
+    # sufficient_transitioned,
+    # sufficient_transitioned!,
+    # period_cutoff,
+    # period_cutoff!,
+    # period_count,
+    # period_count!,
+    # increment_period_count!,
 
     count_strategy,
+
+    period,
 
 
     # agentgraph,
@@ -168,8 +170,8 @@ include("graphs.jl")
 include("games.jl")
 include("agents.jl")
 include("interactionmodels.jl")
-include("startingconditions.jl")
-include("stoppingconditions.jl")
+# include("startingconditions.jl")
+# include("stoppingconditions.jl")
 include("simparams.jl")
 include("agentgraph.jl")
 include("preallocatedarrays.jl")

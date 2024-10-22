@@ -7,6 +7,8 @@ mutable struct State{V, E, C}
     period::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
     complete::Bool
     custom_variables::Dict{Symbol, Any} #allows for extra state variables if the user needs them
+
+    # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
 
     #could add this stuff for ease of database use
@@ -24,7 +26,10 @@ mutable struct State{V, E, C}
         E = num_edges(agentgraph)
         C = num_components(agentgraph)
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, custom_variables)
+
+        extras = merge!(custom_variables, simparams(model).extra)
+        # is_stopping_condition_test = simparams(model).stoppingcondition(model)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, extras)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
@@ -380,12 +385,12 @@ reset_arrays!(state::State) = reset_arrays!(preallocatedarrays(state))
 # """
 # initialize_graph!(model::SimModel) = initialize_graph!(graphmodel(model), game(model), simparams(model), startingcondition(model)) #parameter spreading necessary for multiple dispatch
 
-"""
-    initialize_stopping_condition!(state::State, model::SimModel)
+# """
+#     initialize_stopping_condition!(state::State, model::SimModel)
 
-Initialize the stopping condition values for the model based on parameters of the model's SimParams instance and properties of the AgentGraph instance.
-"""
-initialize_stopping_condition!(state::State, model::SimModel) = initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph(state)) #parameter spreading necessary for multiple dispatch
+# Initialize the stopping condition values for the model based on parameters of the model's SimParams instance and properties of the AgentGraph instance.
+# """
+# initialize_stopping_condition!(state::State, model::SimModel) = initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph(state)) #parameter spreading necessary for multiple dispatch
 
 
 """

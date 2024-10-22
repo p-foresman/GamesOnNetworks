@@ -27,21 +27,21 @@ StructTypes.subtypes(::Type{GraphModel}) = (CompleteModel=CompleteModel, ErdosRe
 
 
 ############################# StartingCondition Types ###############################
-StructTypes.StructType(::Type{StartingCondition}) = StructTypes.AbstractType()
-StructTypes.StructType(::Type{FractiousState}) = StructTypes.Struct()
-StructTypes.StructType(::Type{EquityState}) = StructTypes.Struct()
-StructTypes.StructType(::Type{RandomState}) = StructTypes.Struct()
-StructTypes.subtypekey(::Type{StartingCondition}) = :type
-StructTypes.subtypes(::Type{StartingCondition}) = (FractiousState=FractiousState, EquityState=EquityState, RandomState=RandomState)
+# StructTypes.StructType(::Type{StartingCondition}) = StructTypes.AbstractType()
+# StructTypes.StructType(::Type{FractiousState}) = StructTypes.Struct()
+# StructTypes.StructType(::Type{EquityState}) = StructTypes.Struct()
+# StructTypes.StructType(::Type{RandomState}) = StructTypes.Struct()
+# StructTypes.subtypekey(::Type{StartingCondition}) = :type
+# StructTypes.subtypes(::Type{StartingCondition}) = (FractiousState=FractiousState, EquityState=EquityState, RandomState=RandomState)
 
 
 ############################# StoppingCondition Types ###############################
-StructTypes.StructType(::Type{StoppingCondition}) = StructTypes.AbstractType()
-StructTypes.StructType(::Type{EquityPsychological}) = StructTypes.Mutable()
-StructTypes.StructType(::Type{EquityBehavioral}) = StructTypes.Mutable()
-StructTypes.StructType(::Type{PeriodCutoff}) = StructTypes.Struct()
-StructTypes.subtypekey(::Type{StoppingCondition}) = :type
-StructTypes.subtypes(::Type{StoppingCondition}) = (EquityPsychological=EquityPsychological, EquityBehavioral=EquityBehavioral, PeriodCutoff=PeriodCutoff)
+# StructTypes.StructType(::Type{StoppingCondition}) = StructTypes.AbstractType()
+# StructTypes.StructType(::Type{EquityPsychological}) = StructTypes.Mutable()
+# StructTypes.StructType(::Type{EquityBehavioral}) = StructTypes.Mutable()
+# StructTypes.StructType(::Type{PeriodCutoff}) = StructTypes.Struct()
+# StructTypes.subtypekey(::Type{StoppingCondition}) = :type
+# StructTypes.subtypes(::Type{StoppingCondition}) = (EquityPsychological=EquityPsychological, EquityBehavioral=EquityBehavioral, PeriodCutoff=PeriodCutoff)
 
 
 ####################### Xoshiro random number generator type ########################

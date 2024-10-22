@@ -215,48 +215,48 @@ function db_insert_simparams(db_info::SQLiteInfo, simparams::SimParams, use_seed
     return simparams_id
 end
 
-function db_insert_startingcondition(db_info::SQLiteInfo, startingcondition::StartingCondition)
-    startingcondition_json_str = JSON3.write(typeof(startingcondition)(startingcondition)) #generates a "raw" starting condition object for the database
-    startingcondition_type = type(startingcondition)
+# function db_insert_startingcondition(db_info::SQLiteInfo, startingcondition::StartingCondition)
+#     startingcondition_json_str = JSON3.write(typeof(startingcondition)(startingcondition)) #generates a "raw" starting condition object for the database
+#     startingcondition_type = type(startingcondition)
 
-    startingcondition_id = nothing
-    while startingcondition_id === nothing
-        try
-            startingcondition_id = execute_insert_startingcondition(db_info, startingcondition_type, startingcondition_json_str)
-        catch
-            if e isa SQLiteException
-                println("An error has been caught in db_insert_startingcondition():")
-                showerror(stdout, e)
-                sleep(rand(0.1:0.1:4.0))
-            else
-                throw(e)
-            end
-        end
-    end
+#     startingcondition_id = nothing
+#     while startingcondition_id === nothing
+#         try
+#             startingcondition_id = execute_insert_startingcondition(db_info, startingcondition_type, startingcondition_json_str)
+#         catch
+#             if e isa SQLiteException
+#                 println("An error has been caught in db_insert_startingcondition():")
+#                 showerror(stdout, e)
+#                 sleep(rand(0.1:0.1:4.0))
+#             else
+#                 throw(e)
+#             end
+#         end
+#     end
 
-    return startingcondition_id
-end
+#     return startingcondition_id
+# end
 
-function db_insert_stoppingcondition(db_info::SQLiteInfo, stoppingcondition::StoppingCondition)
-    stoppingcondition_json_str = JSON3.write(typeof(stoppingcondition)(stoppingcondition)) #generates a "raw" stopping condition object for the database
-    stoppingcondition_type = type(stoppingcondition)
+# function db_insert_stoppingcondition(db_info::SQLiteInfo, stoppingcondition::StoppingCondition)
+#     stoppingcondition_json_str = JSON3.write(typeof(stoppingcondition)(stoppingcondition)) #generates a "raw" stopping condition object for the database
+#     stoppingcondition_type = type(stoppingcondition)
 
-    stoppingcondition_id = nothing
-    while isnothing(stoppingcondition_id)
-        try
-            stoppingcondition_id::Int = execute_insert_stoppingcondition(db_info, stoppingcondition_type, stoppingcondition_json_str)
-            return stoppingcondition_id
-        catch
-            if e isa SQLiteException
-                println("An error has been caught in db_insert_stoppingcondition():")
-                showerror(stdout, e)
-                sleep(rand(0.1:0.1:4.0))
-            else
-                throw(e)
-            end
-        end
-    end
-end
+#     stoppingcondition_id = nothing
+#     while isnothing(stoppingcondition_id)
+#         try
+#             stoppingcondition_id::Int = execute_insert_stoppingcondition(db_info, stoppingcondition_type, stoppingcondition_json_str)
+#             return stoppingcondition_id
+#         catch
+#             if e isa SQLiteException
+#                 println("An error has been caught in db_insert_stoppingcondition():")
+#                 showerror(stdout, e)
+#                 sleep(rand(0.1:0.1:4.0))
+#             else
+#                 throw(e)
+#             end
+#         end
+#     end
+# end
 
 
 
@@ -276,13 +276,13 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
     simparams_str = JSON3.write(model_simparams)
     seed_bool = Int(use_seed)
 
-    model_startingcondition = startingcondition(model)
-    startingcondition_str = JSON3.write(typeof(model_startingcondition)(model_startingcondition)) #generates a "raw" starting condition object for the database
-    startingcondition_type = type(model_startingcondition)
+    # model_startingcondition = startingcondition(model)
+    # startingcondition_str = JSON3.write(typeof(model_startingcondition)(model_startingcondition)) #generates a "raw" starting condition object for the database
+    # startingcondition_type = type(model_startingcondition)
 
-    model_stoppingcondition = stoppingcondition(model)
-    stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
-    stoppingcondition_type = type(model_stoppingcondition)
+    # model_stoppingcondition = stoppingcondition(model)
+    # stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
+    # stoppingcondition_type = type(model_stoppingcondition)
 
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(model))))
 
@@ -292,13 +292,11 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
     # model_id = nothing
     # while isnothing(model_id)
         # try
-            model_id = execute_insert_model(db_info,
-                                            game_name, game_str, game_size,
-                                            graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
-                                            model_simparams, simparams_str, seed_bool,
-                                            startingcondition_type, startingcondition_str,
-                                            stoppingcondition_type, stoppingcondition_str,
-                                            adj_matrix_json_str)
+    model_id = execute_insert_model(db_info,
+                                    game_name, game_str, game_size,
+                                    graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
+                                    model_simparams, simparams_str, seed_bool,
+                                    adj_matrix_json_str)
     #     catch e
     #         if e isa SQLiteException
     #             println("An error has been caught in db_insert_model():")
@@ -378,12 +376,12 @@ function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer) #MUST FIX 
     adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
     # reproduced_graph = SimpleGraph(reproduced_adj_matrix)
 
-    startingcondition = JSON3.read(df[1, :startingcondition], StartingCondition)
+    # startingcondition = JSON3.read(df[1, :startingcondition], StartingCondition)
 
-    println(df[1, :stoppingcondition])
-    stoppingcondition = JSON3.read(df[1, :stoppingcondition], StoppingCondition)
+    # println(df[1, :stoppingcondition])
+    # stoppingcondition = JSON3.read(df[1, :stoppingcondition], StoppingCondition)
 
-    model = SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, adj_matrix; initialize_stoppingcondition=true) #want to reset stoppingcondition state
+    model = SimModel(game, simparams, graphmodel, adj_matrix) #; initialize_stoppingcondition=true) #want to reset stoppingcondition state
 
     return model
 end

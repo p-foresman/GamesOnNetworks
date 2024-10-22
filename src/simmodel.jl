@@ -14,32 +14,32 @@ struct SimModel{S1, S2, L}
     game::Game{S1, S2, L}
     simparams::SimParams
     graphmodel::GraphModel
-    startingcondition::StartingCondition
-    stoppingcondition::StoppingCondition
+    # startingcondition::StartingCondition
+    # stoppingcondition::StoppingCondition
     graph::Graph #the specific graph structure should be specified within a model
 
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel) where {S1, S2, L}
         graph::Graph = generate_graph(graphmodel, simparams)
-        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
-        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
+        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, graph_adj_matrix::AdjacencyMatrix; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::AdjacencyMatrix) where {S1, S2, L}
         graph = Graph(graph_adj_matrix)
-        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
-        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
+        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, graph_adj_matrix::MMatrix; initialize_stoppingcondition::Bool=true) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::MMatrix) where {S1, S2, L}
         graph = Graph(graph_adj_matrix)
-        initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
-        return new{S1, S2, L}(game, simparams, graphmodel, startingcondition, stoppingcondition, graph)
+        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
     # end
 end
 
-function SimModels(game::Game, simparams::SimParams, graphmodel::GraphModel, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; count::Int)
-    return fill(SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition), count)
+function SimModels(game::Game, simparams::SimParams, graphmodel::GraphModel; count::Int)
+    return fill(SimModel(game, simparams, graphmodel), count)
 end
 
 
@@ -154,21 +154,21 @@ graphmodel(model::SimModel) = getfield(model, :graphmodel)
 
 
 #StartingCondition
-"""
-    startingcondition(model::SimModel)
+# """
+#     startingcondition(model::SimModel)
 
-Get the StartingCondition instance in the model.
-"""
-startingcondition(model::SimModel) = getfield(model, :startingcondition)
+# Get the StartingCondition instance in the model.
+# """
+# startingcondition(model::SimModel) = getfield(model, :startingcondition)
 
 
-#StoppingCondition
-"""
-    stoppingcondition(model::SimModel)
+# #StoppingCondition
+# """
+#     stoppingcondition(model::SimModel)
 
-Get the StoppingCondition instance in the model.
-"""
-stoppingcondition(model::SimModel) = getfield(model, :stoppingcondition)
+# Get the StoppingCondition instance in the model.
+# """
+# stoppingcondition(model::SimModel) = getfield(model, :stoppingcondition)
 
 """
     graph(model::SimModel)
@@ -189,7 +189,8 @@ number_hermits(model::SimModel) = number_hermits(graph(model))
 
 function AgentGraph(model::SimModel)
     agentgraph::AgentGraph = AgentGraph(graph(model))
-    initialize_agent_data!(agentgraph, game(model), simparams(model), startingcondition(model))
+    # initialize_agent_data!(agentgraph, game(model), simparams(model), startingcondition(model))
+    getfield(Main, Symbol(simparams(model).startingcondition))(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
     return agentgraph
 end
 
@@ -214,9 +215,11 @@ function Base.show(model::SimModel)
     print("Sim Params: ")
     show(simparams(model))
     print("Start: ")
-    show(startingcondition(model))
+    show(simparams(model).startingcondition)
+    println()
     print("Stop: ")
-    show(stoppingcondition(model))
+    show(simparams(model).stoppingcondition)
+    println()
 end
 
 
@@ -233,20 +236,16 @@ end
 
 Construct a list of models from the combinatorial set of component lists. Used for simulation_iterator() function.
 """
-function construct_model_list(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Union{Integer, Nothing}=nothing)
+function construct_model_list(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, slurm_task_id::Union{Integer, Nothing}=nothing)
     model_list = Vector{SimModel}([])
     model_number::Int = 1
     for game in game_list
         for simparams in sim_params_list
             for graphmodel in graph_model_list
-                for startingcondition in starting_condition_list
-                    for stoppingcondition in stopping_condition_list
-                        if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
-                            push!(model_list, SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, model_number))
-                        end
-                        model_number += 1
-                    end
+                if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
+                    push!(model_list, SimModel(game, simparams, graphmodel, model_number))
                 end
+                model_number += 1
             end
         end
     end
@@ -258,28 +257,22 @@ end
 
 From lists of component parts, select the model indexed by model_number and construct the model. Used for distributed computing on a workload manager like SLURM.
 """
-function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer, print_model::Bool=false)
+function select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, model_number::Integer, print_model::Bool=false)
    #add validation here??  
     current_model_number::Int = 1
     for game in game_list
         for simparams in sim_params_list
             for graphmodel in graph_model_list
-                for startingcondition in starting_condition_list
-                    for stoppingcondition in stopping_condition_list
-                        if current_model_number == model_number
-                            if print_model
-                                show(game)
-                                show(simparams)
-                                show(graphmodel)
-                                show(startingcondition)
-                                show(stoppingcondition)
-                                flush(stdout)
-                            end
-                            return SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, model_number)
-                        end
-                        current_model_number += 1
+                if current_model_number == model_number
+                    if print_model
+                        show(game)
+                        show(simparams)
+                        show(graphmodel)
+                        flush(stdout)
                     end
+                    return SimModel(game, simparams, graphmodel, model_number)
                 end
+                current_model_number += 1
             end
         end
     end

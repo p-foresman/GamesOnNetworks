@@ -113,55 +113,55 @@ end
 # end
 
 
-"""
-    initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::StoppingCondition)
+# """
+#     initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::StoppingCondition)
 
-Initialize the agent data for an AgentGraph instance based on the StoppingCondition concrete type.
-"""
-function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::FractiousState)
-    for (vertex, agent) in enumerate(agents(agentgraph))
-        #set memory initialization
-        if vertex % 2 == 0
-            recollection = strategies(game, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
-        else
-            recollection = strategies(game, 1)[3]
-        end
-        empty!(memory(agent))
-        rational_choice!(agent, Choice(0))
-        choice!(agent, Choice(0))
-        for _ in 1:memory_length(simparams)
-            push!(memory(agent), recollection)
-        end
-    end
-    return nothing
-end
+# Initialize the agent data for an AgentGraph instance based on the StoppingCondition concrete type.
+# """
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::FractiousState)
+#     for (vertex, agent) in enumerate(agents(agentgraph))
+#         #set memory initialization
+#         if vertex % 2 == 0
+#             recollection = strategies(game, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+#         else
+#             recollection = strategies(game, 1)[3]
+#         end
+#         empty!(memory(agent))
+#         rational_choice!(agent, Choice(0))
+#         choice!(agent, Choice(0))
+#         for _ in 1:memory_length(simparams)
+#             push!(memory(agent), recollection)
+#         end
+#     end
+#     return nothing
+# end
 
-function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::EquityState)
-    for agent in agents(agentgraph)
-        #set memory initialization
-        recollection = strategies(game, 1)[2]
-        empty!(memory(agent))
-        rational_choice!(agent, Choice(0))
-        choice!(agent, Choice(0))
-        for _ in 1:memory_length(simparams)
-            push!(memory(agent), recollection)
-        end
-    end
-    return nothing
-end
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::EquityState)
+#     for agent in agents(agentgraph)
+#         #set memory initialization
+#         recollection = strategies(game, 1)[2]
+#         empty!(memory(agent))
+#         rational_choice!(agent, Choice(0))
+#         choice!(agent, Choice(0))
+#         for _ in 1:memory_length(simparams)
+#             push!(memory(agent), recollection)
+#         end
+#     end
+#     return nothing
+# end
 
-function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::RandomState)
-    for agent in agents(agentgraph)
-        #set memory initialization
-        empty!(memory(agent))
-        rational_choice!(agent, Choice(0))
-        choice!(agent, Choice(0))
-        for _ in 1:memory_length(simparams)
-            push!(memory(agent), random_strategy(game, 1))
-        end
-    end
-    return nothing
-end
+# function initialize_agent_data!(agentgraph::AgentGraph, game::Game, simparams::SimParams, ::RandomState)
+#     for agent in agents(agentgraph)
+#         #set memory initialization
+#         empty!(memory(agent))
+#         rational_choice!(agent, Choice(0))
+#         choice!(agent, Choice(0))
+#         for _ in 1:memory_length(simparams)
+#             push!(memory(agent), random_strategy(game, 1))
+#         end
+#     end
+#     return nothing
+# end
 
 
 
@@ -229,24 +229,24 @@ end
 #     return nothing
 # end
 
-"""
-    initialize_stoppingcondition!(stoppingcondition::StoppingCondition, simparams::SimParams, agentgraph::AgentGraph)
+# """
+#     initialize_stoppingcondition!(stoppingcondition::StoppingCondition, simparams::SimParams, agentgraph::AgentGraph)
 
-Initialize the stopping condition for a model.
-"""
-function initialize_stoppingcondition!(stoppingcondition::EquityPsychological, simparams::SimParams, graph::Graph)
-    sufficient_equity!(stoppingcondition, (1 - error_rate(simparams)) * memory_length(simparams))
-    sufficient_transitioned!(stoppingcondition, Float64(number_agents(simparams) - number_hermits(graph)))
-    return nothing
-end
+# Initialize the stopping condition for a model.
+# """
+# function initialize_stoppingcondition!(stoppingcondition::EquityPsychological, simparams::SimParams, graph::Graph)
+#     sufficient_equity!(stoppingcondition, (1 - error_rate(simparams)) * memory_length(simparams))
+#     sufficient_transitioned!(stoppingcondition, Float64(number_agents(simparams) - number_hermits(graph)))
+#     return nothing
+# end
 
-function initialize_stoppingcondition!(stoppingcondition::EquityBehavioral, simparams::SimParams, graph::Graph)
-    sufficient_transitioned!(stoppingcondition, (1 - error_rate(simparams)) * (number_agents(simparams) - number_hermits(graph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
-    period_cutoff!(stoppingcondition, memory_length(simparams))
-    period_count!(stoppingcondition, 0)
-    return nothing
-end
+# function initialize_stoppingcondition!(stoppingcondition::EquityBehavioral, simparams::SimParams, graph::Graph)
+#     sufficient_transitioned!(stoppingcondition, (1 - error_rate(simparams)) * (number_agents(simparams) - number_hermits(graph))) # (1-error) term removes the agents that are expected to choose randomly, attemting to factor out the error
+#     period_cutoff!(stoppingcondition, memory_length(simparams))
+#     period_count!(stoppingcondition, 0)
+#     return nothing
+# end
 
-function initialize_stoppingcondition!(::PeriodCutoff, ::SimParams, ::Graph)
-    return nothing
-end
+# function initialize_stoppingcondition!(::PeriodCutoff, ::SimParams, ::Graph)
+#     return nothing
+# end

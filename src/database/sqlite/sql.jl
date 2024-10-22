@@ -54,6 +54,8 @@ function sql_create_simparams_table(::SQLiteInfo)
         number_agents INTEGER NOT NULL,
         memory_length INTEGER NOT NULL,
         error REAL NOT NULL,
+        startingcondition TEXT NOT NULL,
+        stoppingcondition TEXT NOT NULL,
         simparams TEXT NOT NULL,
         use_seed BOOLEAN NOT NULL,
         UNIQUE(simparams, use_seed),
@@ -62,29 +64,29 @@ function sql_create_simparams_table(::SQLiteInfo)
     """
 end
 
-function sql_create_startingconditions_table(::SQLiteInfo)
-    """
-    CREATE TABLE IF NOT EXISTS startingconditions
-    (
-        id INTEGER PRIMARY KEY,
-        type TEXT NOT NULL,
-        startingcondition TEXT NOT NULL,
-        UNIQUE(type, startingcondition)
-    );
-    """
-end
+# function sql_create_startingconditions_table(::SQLiteInfo)
+#     """
+#     CREATE TABLE IF NOT EXISTS startingconditions
+#     (
+#         id INTEGER PRIMARY KEY,
+#         type TEXT NOT NULL,
+#         startingcondition TEXT NOT NULL,
+#         UNIQUE(type, startingcondition)
+#     );
+#     """
+# end
 
-function sql_create_stoppingconditions_table(::SQLiteInfo)
-    """
-    CREATE TABLE IF NOT EXISTS stoppingconditions
-    (
-        id INTEGER PRIMARY KEY,
-        type TEXT NOT NULL,
-        stoppingcondition TEXT NOT NULL,
-        UNIQUE(type, stoppingcondition)
-    );
-    """
-end
+# function sql_create_stoppingconditions_table(::SQLiteInfo)
+#     """
+#     CREATE TABLE IF NOT EXISTS stoppingconditions
+#     (
+#         id INTEGER PRIMARY KEY,
+#         type TEXT NOT NULL,
+#         stoppingcondition TEXT NOT NULL,
+#         UNIQUE(type, stoppingcondition)
+#     );
+#     """
+# end
 
 function sql_create_models_table(::SQLiteInfo)
     """
@@ -94,8 +96,6 @@ function sql_create_models_table(::SQLiteInfo)
         game_id INTEGER NOT NULL,
         graphmodel_id INTEGER NOT NULL,
         simparams_id INTEGER NOT NULL,
-        startingcondition_id INTEGER NOT NULL,
-        stoppingcondition_id INTEGER NOT NULL,
         graph_adj_matrix TEXT NOT NULL,
         FOREIGN KEY (game_id)
             REFERENCES games (game_id)
@@ -106,13 +106,7 @@ function sql_create_models_table(::SQLiteInfo)
         FOREIGN KEY (simparams_id)
             REFERENCES simparams (id)
             ON DELETE CASCADE,
-        FOREIGN KEY (startingcondition_id)
-            REFERENCES startingconditions (id)
-            ON DELETE CASCADE,
-        FOREIGN KEY (stoppingcondition_id)
-            REFERENCES stoppingconditions (id)
-            ON DELETE CASCADE,
-        UNIQUE(game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id, graph_adj_matrix)
+        UNIQUE(game_id, graphmodel_id, simparams_id, graph_adj_matrix)
     );
     """
 end
@@ -210,8 +204,8 @@ function execute_init_db(db_info::SQLiteInfo)
     db_execute(db, sql_create_games_table(db_info))
     db_execute(db, sql_create_graphmodels_table(db_info))
     db_execute(db, sql_create_simparams_table(db_info))
-    db_execute(db, sql_create_startingconditions_table(db_info))
-    db_execute(db, sql_create_stoppingconditions_table(db_info))
+    # db_execute(db, sql_create_startingconditions_table(db_info))
+    # db_execute(db, sql_create_stoppingconditions_table(db_info))
     db_execute(db, sql_create_models_table(db_info))
     db_execute(db, sql_create_groups_table(db_info))
     db_execute(db, sql_create_simulations_table(db_info))
@@ -290,6 +284,8 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         number_agents,
         memory_length,
         error,
+        startingcondition,
+        stoppingcondition,
         simparams,
         use_seed
     )
@@ -298,6 +294,8 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         $(number_agents(simparams)),
         $(memory_length(simparams)),
         $(error_rate(simparams)),
+        '$(simparams.startingcondition)',
+        '$(simparams.stoppingcondition)',
         '$simparams_str',
         $use_seed
     )
@@ -307,51 +305,49 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
     """
 end
 
-function sql_insert_startingcondition(type::String, startingcondition_str::String)
-    """
-    INSERT OR IGNORE INTO startingconditions
-    (
-        type,
-        startingcondition
-    )
-    VALUES
-    (
-        '$type',
-        '$(startingcondition_str)'
-    )
-    ON CONFLICT (type, startingcondition) DO UPDATE
-        SET type = startingconditions.type
-    RETURNING id;
-    """
-end
+# function sql_insert_startingcondition(type::String, startingcondition_str::String)
+#     """
+#     INSERT OR IGNORE INTO startingconditions
+#     (
+#         type,
+#         startingcondition
+#     )
+#     VALUES
+#     (
+#         '$type',
+#         '$(startingcondition_str)'
+#     )
+#     ON CONFLICT (type, startingcondition) DO UPDATE
+#         SET type = startingconditions.type
+#     RETURNING id;
+#     """
+# end
 
-function sql_insert_stoppingcondition(type::String, stoppingcondition_str::String)
-    """
-    INSERT OR IGNORE INTO stoppingconditions
-    (
-        type,
-        stoppingcondition
-    )
-    VALUES
-    (
-        '$type',
-        '$(stoppingcondition_str)'
-    )
-    ON CONFLICT (type, stoppingcondition) DO UPDATE
-        SET type = stoppingconditions.type
-    RETURNING id;
-    """
-end
+# function sql_insert_stoppingcondition(type::String, stoppingcondition_str::String)
+#     """
+#     INSERT OR IGNORE INTO stoppingconditions
+#     (
+#         type,
+#         stoppingcondition
+#     )
+#     VALUES
+#     (
+#         '$type',
+#         '$(stoppingcondition_str)'
+#     )
+#     ON CONFLICT (type, stoppingcondition) DO UPDATE
+#         SET type = stoppingconditions.type
+#     RETURNING id;
+#     """
+# end
 
-function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, startingcondition_id::Integer, stoppingcondition_id::Integer, graph_adj_matrix_str::String)
+function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, graph_adj_matrix_str::String)
    """
     INSERT OR IGNORE INTO models
     (
         game_id,
         graphmodel_id,
         simparams_id,
-        startingcondition_id,
-        stoppingcondition_id,
         graph_adj_matrix
     )
     VALUES
@@ -359,11 +355,9 @@ function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id
         $game_id,
         $graphmodel_id,
         $simparams_id,
-        $startingcondition_id,
-        $stoppingcondition_id,
         '$graph_adj_matrix_str'
     )
-    ON CONFLICT (game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id, graph_adj_matrix) DO UPDATE
+    ON CONFLICT (game_id, graphmodel_id, simparams_id, graph_adj_matrix) DO UPDATE
         SET game_id = models.game_id
     RETURNING id;
     """ 
@@ -384,15 +378,15 @@ function execute_insert_simparams(db::SQLiteDB, simparams::SimParams, simparams_
     return id
 end
 
-function execute_insert_startingcondition(db::SQLiteDB, type::String, startingcondition_str::String)
-    id::Int = db_query(db, sql_insert_startingcondition(type, startingcondition_str))[1, :id]
-    return id
-end
+# function execute_insert_startingcondition(db::SQLiteDB, type::String, startingcondition_str::String)
+#     id::Int = db_query(db, sql_insert_startingcondition(type, startingcondition_str))[1, :id]
+#     return id
+# end
 
-function execute_insert_stoppingcondition(db::SQLiteDB, type::String, stoppingcondition_str::String)
-    id::Int = db_query(db, sql_insert_stoppingcondition(type, stoppingcondition_str))[1, :id]
-    return id
-end
+# function execute_insert_stoppingcondition(db::SQLiteDB, type::String, stoppingcondition_str::String)
+#     id::Int = db_query(db, sql_insert_stoppingcondition(type, stoppingcondition_str))[1, :id]
+#     return id
+# end
 
 #dont want to be able to insert a model without all the other components (although could be useful to create new models in the database to choose from?)
 # function execute_insert_model(db::SQLiteDB, game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, startingcondition_id::Integer, stoppingcondition_id::Integer)
@@ -404,8 +398,6 @@ function execute_insert_model(db_info::SQLiteInfo,
                             game_name::String, game_str::String, payoff_matrix_size::String,
                             graphmodel_display::String, graphmodel_type::String, graphmodel_str::String, graphmodel_params_str::String, graphmodel_values_str::String, #NOTE: should try to make all parameters String typed so they can be plugged right into sql
                             simparams::SimParams, simparams_str::String, use_seed::Integer,
-                            startingcondition_type::String, startingcondition_str::String,
-                            stoppingcondition_type::String, stoppingcondition_str::String,
                             graph_adj_matrix_str::String)
 
 
@@ -414,10 +406,10 @@ function execute_insert_model(db_info::SQLiteInfo,
     game_id = execute_insert_game(db, game_name, game_str, payoff_matrix_size)
     graphmodel_id = execute_insert_graphmodel(db, graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str)
     simparams_id = execute_insert_simparams(db, simparams, simparams_str, use_seed)
-    startingcondition_id = execute_insert_startingcondition(db, startingcondition_type, startingcondition_str)
-    stoppingcondition_id = execute_insert_stoppingcondition(db, stoppingcondition_type, stoppingcondition_str)
+    # startingcondition_id = execute_insert_startingcondition(db, startingcondition_type, startingcondition_str)
+    # stoppingcondition_id = execute_insert_stoppingcondition(db, stoppingcondition_type, stoppingcondition_str)
     # id = execute_insert_model(db, game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id)
-    id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id, graph_adj_matrix_str))[1, :id]
+    id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, graph_adj_matrix_str))[1, :id]
     db_commit_transaction(db)
     db_close(db)
     return id
@@ -555,29 +547,29 @@ function execute_query_sim_params(db_info::SQLiteInfo, sim_params_id::Integer)
     return df
 end
 
-function execute_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM starting_conditions
-                                        WHERE starting_condition_id = $starting_condition_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
+# function execute_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
+#     db = DB(db_info; busy_timeout=3000)
+#     query = DBInterface.execute(db, "
+#                                         SELECT *
+#                                         FROM starting_conditions
+#                                         WHERE starting_condition_id = $starting_condition_id;
+#                                 ")
+#     df = DataFrame(query) #must create a DataFrame to acces query data
+#     db_close(db)
+#     return df
+# end
 
-function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM stopping_conditions
-                                        WHERE stopping_condition_id = $stopping_condition_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
+# function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
+#     db = DB(db_info; busy_timeout=3000)
+#     query = DBInterface.execute(db, "
+#                                         SELECT *
+#                                         FROM stopping_conditions
+#                                         WHERE stopping_condition_id = $stopping_condition_id;
+#                                 ")
+#     df = DataFrame(query) #must create a DataFrame to acces query data
+#     db_close(db)
+#     return df
+# end
 
 function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     db = DB(db_info; busy_timeout=3000)
@@ -625,15 +617,11 @@ function sql_query_models(model_id::Integer)
         simparams.use_seed,
         graphmodels.graphmodel,
         games.game,
-        games.payoff_matrix_size,
-        startingconditions.startingcondition,
-        stoppingconditions.stoppingcondition
+        games.payoff_matrix_size
     FROM models
     INNER JOIN games ON models.game_id = games.id
     INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
     INNER JOIN simparams ON models.simparams_id = simparams.id
-    INNER JOIN startingconditions ON models.startingcondition_id = startingconditions.id
-    INNER JOIN stoppingconditions ON models.stoppingcondition_id = stoppingconditions.id
     WHERE models.id = $model_id;
     """
 end
