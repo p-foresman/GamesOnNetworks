@@ -1,23 +1,39 @@
 using GamesOnNetworks
 
-const payoff_matrix = [(0, 0) (0, 0) (70, 30);
-                        (0, 0) (50, 50) (50, 30);
-                        (30, 70) (30, 50) (30, 30)]
+struct EquityPsychologicalTest <: StoppingCondition
+    type::String #change to type?? or remove and use the type itself
+    strategy::Int
+    # sufficient_equity::Float64 #defined within constructor #could be eliminated (defined on a per-stopping condition basis) (do we want the stopping condition nested within SimParams?) #NOTE: REMOVE
+    # sufficient_transitioned::Float64
 
-# function is_stopping_condition(state::State, stoppingcondition::EquityPsychological) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
-#     number_transitioned = 0
-#     for agent in agents(state)
-#         if !ishermit(agent)
-#             if count_strategy(memory(agent), strategy(stoppingcondition)) >= sufficient_equity(stoppingcondition) #this is hard coded to strategy 2 (M) for now. Should change later!
-#                 number_transitioned += 1
-#             end
-#         end
-#     end 
-#     return number_transitioned >= sufficient_transitioned(stoppingcondition)
-# end
 
-const model6 = SimModel(Game("Bargaining Game", payoff_matrix),
-                        SimParams(10, 10, 0.1),
+    function EquityPsychologicalTest(strategy::Integer)
+        return new("EquityPsychologicalTest", strategy)
+    end
+    function EquityPsychologicalTest(::String, strategy::Integer)
+        return new("EquityPsychologicalTest", strategy)
+    end
+end
+
+function (stoppingcondition::EquityPsychologicalTest)(model::SimModel) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+    sufficient_equity = (1 - error_rate(model)) * memory_length(model)
+    sufficient_transitioned = number_agents(model) - number_hermits(model)
+    
+    return (state::GamesOnNetworks.State) -> begin
+        number_transitioned = 0
+        for agent in agents(state)
+            if !ishermit(agent)
+                if count_strategy(memory(agent), stoppingcondition.strategy) >= sufficient_equity
+                    number_transitioned += 1
+                end
+            end
+        end 
+        return number_transitioned >= sufficient_transitioned
+    end
+end
+
+const model = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+                        SimParams(10, 10, 0.1, FractiousState(), EquityPsychologicalTest(2)),
                         StochasticBlockModel(3, 2, 0.5, 0.5),
                         FractiousState(),
                         EquityPsychological(2))

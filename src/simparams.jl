@@ -9,24 +9,27 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     number_agents::Int #switch to 'population'
     memory_length::Int
     error::Float64
-    random_seed::Int #probably don't need a random seed in every SimParams struct?
     # matches_per_period::Function #allow users to define their own matches per period as a function of other parameters?
+    startingcondition::StartingCondition
+    stoppingcondition::StoppingCondition
+    random_seed::Int #probably don't need a random seed in every SimParams struct?
 
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64; random_seed::Union{Nothing, Int} = nothing)
+
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::StartingCondition, stoppingcondition::StoppingCondition; random_seed::Union{Nothing, Int} = nothing)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
         if random_seed === nothing random_seed = 1234 end
-        return new(number_agents, memory_length, error, random_seed)
+        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, random_seed)
     end
     function SimParams()
         return new()
     end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, random_seed::Int)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::StartingCondition, stoppingcondition::StoppingCondition, random_seed::Int)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
-        return new(number_agents, memory_length, error, random_seed)
+        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, random_seed)
     end
 end
 

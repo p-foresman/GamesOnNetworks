@@ -2,42 +2,6 @@
 
 #NOTE: clean this stuff up
 
-# function timeout(::SimModel; timer, exit_code::Int=85)
-#     close(timer)
-#     # println(myid())
-#     println("timeout reached. exiting...")
-#     state = fetch(@spawnat(workers()[1], getfield(Main, :state)))
-#     println(state)
-#     interrupt() #terminates all workers
-#     # configure() #reconfigure processes?
-#     # exit(exit_code) #do we want to full-on exit the repl for the non database case? I dont think so
-# end
-
-function timeout(::SimModel, state::State; timer, exit_code::Int=85)
-    close(timer)
-    # println(myid())
-    println("timeout reached. exiting...")
-    println(state)
-    interrupt() #terminates all workers
-    # configure() #reconfigure processes?
-    # exit(exit_code) #do we want to full-on exit the repl for the non database case? I dont think so
-end
-
-function timeout(model::SimModel, state::State, db_info::DBInfo, model_id::Integer, sim_group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, distributed_uuid::Union{String, Nothing}; timer, exit_code::Int=85)
-        # return () -> exit(exit_code)
-    close(timer)
-    db_checkpoint(db_info, state, model_id, sim_group_id, prev_simulation_uuid, distributed_uuid)
-    # else
-        # return () -> (begin
-        #     db_checkpoint(db_info, db_info, sim_group_id, prev_simulation_uuid, distributed_uuid)
-        #     exit(exit_code)
-        # end)
-    print("pushed to db")
-    println("exitiinnggg")
-    exit(exit_code)
-end
-
-
 
 """
     simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
@@ -111,6 +75,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     # end
 
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+    stoppingcondition_func = simparams(model).stoppingcondition(model)
 
     @distributed for process in 1:nworkers()
         print("Process $process of $(nworkers())")
@@ -118,7 +83,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-        _simulate(model, State(model), channel=result_channel, start_time=start_time)
+        _simulate(model, State(model), stoppingcondition_func=stoppingcondition_func, channel=result_channel, start_time=start_time)
     end
 
     received = 0
@@ -230,14 +195,14 @@ end
 #     return state
 # end
 
-function _simulate(model::SimModel, state::State; channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::SimModel, state::State; stoppingcondition_func::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
     end
 
     timeout = SETTINGS.timeout
     completed = true
-    while !is_stopping_condition(state, stoppingcondition(model))
+    while !stoppingcondition_func(state)
         run_period!(model, state)
         if (time() - start_time) > timeout
             completed = false

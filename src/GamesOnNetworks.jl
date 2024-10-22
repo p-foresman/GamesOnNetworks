@@ -18,9 +18,11 @@ export
     SmallWorldModel,
     ScaleFreeModel,
     StochasticBlockModel,
+    StartingCondition,
     FractiousState,
     EquityState,
     RandomState,
+    StoppingCondition,
     EquityPsychological,
     EquityBehavioral,
     PeriodCutoff,
@@ -63,10 +65,12 @@ export
     period_count!,
     increment_period_count!,
 
+    count_strategy,
+
 
     # agentgraph,
     # graph,
-    # agents,
+    agents,
     # # edges, #rename?
     # random_edge,
     # components,
@@ -74,10 +78,10 @@ export
     # # component_vertex_sets,
     # # component_edge_sets,
     # # random_component_edge,
-    # number_hermits,
+    number_hermits,
 
-    # ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
-    # memory,
+    ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
+    memory,
     # rational_choice,
     # rational_choice!,
     # choice,
@@ -164,9 +168,9 @@ include("graphs.jl")
 include("games.jl")
 include("agents.jl")
 include("interactionmodels.jl")
-include("simparams.jl")
 include("startingconditions.jl")
 include("stoppingconditions.jl")
+include("simparams.jl")
 include("agentgraph.jl")
 include("preallocatedarrays.jl")
 

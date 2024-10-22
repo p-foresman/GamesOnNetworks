@@ -3,8 +3,10 @@
 mutable struct State{V, E, C}
     const agentgraph::AgentGraph{V, E, C}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
+
     period::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
     complete::Bool
+    custom_variables::Dict{Symbol, Any} #allows for extra state variables if the user needs them
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
 
     #could add this stuff for ease of database use
@@ -13,7 +15,7 @@ mutable struct State{V, E, C}
     # prev_simulation_uuid
     # distributed_uuid
 
-    function State(model::SimModel)
+    function State(model::SimModel; custom_variables::Dict{Symbol, Any}=Dict{Symbol, Any}())
         agentgraph::AgentGraph = AgentGraph(model)
         # V = nv(graph(agentgraph))
         # E = ne(graph(agentgraph))
@@ -22,7 +24,7 @@ mutable struct State{V, E, C}
         E = num_edges(agentgraph)
         C = num_components(agentgraph)
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, custom_variables)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
