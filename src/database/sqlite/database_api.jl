@@ -334,13 +334,14 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     # end
 
     complete_bool = Int(iscomplete(state))
-
+    
+    state_user_variables = JSON3.write(user_variables(state)) #store these explicitly because their values may be different from defaults if they were updated by a user function
 
 
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), complete_bool, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), complete_bool, state_user_variables, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -358,67 +359,44 @@ end
 
 
 
-#NOTE: FIX
-function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer) #MUST FIX TO USE UUID
+
+function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer)
     df = execute_query_models(db_info, model_id)
 
-
-    #reproduce SimParams object
     simparams = JSON3.read(df[1, :simparams], SimParams)
-
-    #reproduce Game object
     payoff_matrix_size = JSON3.read(df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
-
-    #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
     graphmodel = JSON3.read(df[1, :graphmodel], GraphModel)
-    # reproduced_adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
     adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
-    # reproduced_graph = SimpleGraph(reproduced_adj_matrix)
 
-    # startingcondition = JSON3.read(df[1, :startingcondition], StartingCondition)
-
-    # println(df[1, :stoppingcondition])
-    # stoppingcondition = JSON3.read(df[1, :stoppingcondition], StoppingCondition)
-
-    model = SimModel(game, simparams, graphmodel, adj_matrix) #; initialize_stoppingcondition=true) #want to reset stoppingcondition state
+    model = SimModel(game, simparams, graphmodel, adj_matrix)
 
     return model
 end
 
 
-function db_restore_simulation(db_info::SQLiteInfo, simulation_id::Integer) #MUST FIX TO USE UUID
-    simulation_df = execute_query_simulations_for_restore(db_filepath, simulation_id)
-    agents_df = execute_query_agents_for_restore(db_filepath, simulation_id)
-
-    #reproduce SimParams object
-    reproduced_sim_params = JSON3.read(simulation_df[1, :sim_params], SimParams)
-
-    #reproduce Game object
+function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
+    simulation_df, agents_df = execute_query_simulations_for_restore(db_info, simulation_uuid)
+    
+    simparams = JSON3.read(simulation_df[1, :simparams], SimParams)
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
-    payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
-    reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
+    game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
+    graphmodel = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
+    adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
+    state_user_variables = UserVariables(JSON3.read(simulation_df[1, :user_variables]))
 
-    #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
-    reproduced_graph_model = JSON3.read(simulation_df[1, :graph_model], GraphModel)
-    reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
-    reproduced_graph = SimpleGraph(reproduced_adj_matrix)
-    reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
-    for vertex in vertices(reproduced_meta_graph)
-        agent = JSON3.read(agents_df[vertex, :agent], Agent)
-        set_prop!(reproduced_meta_graph, vertex, :agent, agent)
+    model = SimModel(game, simparams, graphmodel, adj_matrix)
+    agents = Vector{Agent}()
+    for row in eachrow(agents_df)
+        push!(agents, JSON3.read(row[:agent], Agent))
     end
+    state_agentgraph = AgentGraph(graph(model), AgentSet{length(agents)}(agents))
+    state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables)
 
     #restore RNG to previous state
-    if simulation_df[1, :use_seed] == 1
-        seed_bool = true
-        reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
-        copy!(Random.default_rng(), reproduced_rng_state)
-    else
-        seed_bool = false
-    end
+    reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
+    copy!(Random.default_rng(), reproduced_rng_state)
 
-    model = SimModel(game, simparams, graphmodel, startingcondition, stoppingcondition, adj_matrix; initialize_stoppingcondition=false) #dont want to reset any stoppingcondition state
 
-    return (game=reproduced_game, sim_params=reproduced_sim_params, graph_model=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], sim_group_id=simulation_df[1, :sim_group_id])
+    return (model, state)
 end

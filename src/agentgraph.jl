@@ -43,7 +43,6 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     graph::Graph #NOTE: this is already stored in SimModel, do we need to store it here? probably should still
     agents::AgentSet{N}
     components::ComponentSet{C} #NOTE: different ConnectedComponents will have different V and E static params, meaning that getting a specific component from this set wont be type stable. Doesn't account for a huge change in practice with one component, but could find a way to fix or optimize by not using a component set if there is only one component
-    number_hermits::Int #is this necessary?
 
     # vertices::VertexSet{N}
     # matches_per_period::Int
@@ -52,12 +51,10 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     function AgentGraph(graph::Graph)
         N = nv(graph)
         E = ne(graph)
-        agents::SVector{N, Agent} = [Agent("Agent $agent_number") for agent_number in 1:N]
-        number_hermits = 0
+        agents::AgentSet{N} = [Agent("Agent $agent_number") for agent_number in 1:N]
         for vertex in 1:N #could make graph-type specific multiple dispatch so this only needs to happen for ER and SBM (otherwise num_hermits=0)
             if iszero(degree(graph, vertex))
                 ishermit!(agents[vertex], true)
-                number_hermits += 1
             end
         end
         vertex_sets, edge_sets, C = connected_component_sets(graph)
@@ -69,7 +66,22 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
         # d = E / possible_edge_count(N)
         # matches_per_period = Int(ceil(d * N / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless)
 
-        return new{N, E, C}(graph, agents, ComponentSet{C}(components), number_hermits)#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
+        return new{N, E, C}(graph, agents, ComponentSet{C}(components))#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
+    end
+    function AgentGraph(graph::Graph, agents::AgentSet{A}) where {A}
+        N = nv(graph)
+        @assert N == A "graph vertex count must equal the number of agents supplied"
+        E = ne(graph)
+        vertex_sets, edge_sets, C = connected_component_sets(graph)
+        components = []
+        for component_number in 1:C
+            push!(components, ConnectedComponent(vertex_sets[component_number], edge_sets[component_number]))
+        end
+
+        # d = E / possible_edge_count(N)
+        # matches_per_period = Int(ceil(d * N / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless)
+
+        return new{N, E, C}(graph, agents, ComponentSet{C}(components))#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
     end
 end
 

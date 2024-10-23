@@ -18,6 +18,8 @@ export
     SmallWorldModel,
     ScaleFreeModel,
     StochasticBlockModel,
+    State, #should this be exported?
+    AgentGraph, #should this be exported?
     # StartingCondition,
     # FractiousState,
     # EquityState,
@@ -49,6 +51,9 @@ export
     error_rate,
     matches_per_period,
     random_seed,
+    UserVariables,
+    user_variables,
+    set_user_variable!,
 
     # startingcondition,
     type, #rename?
@@ -168,16 +173,16 @@ include("graphs.jl")
 
 #custom types and their methods
 include("games.jl")
-include("agents.jl")
+include("simparams.jl")
 include("interactionmodels.jl")
+include("agents.jl")
 # include("startingconditions.jl")
 # include("stoppingconditions.jl")
-include("simparams.jl")
 include("agentgraph.jl")
 include("preallocatedarrays.jl")
 
 #functions which require a combination of types
-include("cross_type_functions.jl")
+# include("cross_type_functions.jl")
 
 #simulation functions should go here and model barrier functions should be in the simulation_model.jl file
 #basically, make sure to delagate any functions pertaining to individual types to that file, then add

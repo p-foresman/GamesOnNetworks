@@ -216,3 +216,52 @@ displayname(graphmodel::ScaleFreeModel) = "ScaleFree λ=$(λ(graphmodel)) α=$(�
 displayname(graphmodel::StochasticBlockModel) = "StochasticBlockModel λ=$(λ(graphmodel)) blocks=$(blocks(graphmodel)) p_in=$(p_in(graphmodel)) p_out=$(p_out(graphmodel))"
 
 Base.show(graphmodel::GraphModel) = println(displayname(graphmodel))
+
+
+
+# Graph Generators (maybe not the best place to put them)
+
+function generate_graph(::CompleteModel, simparams::SimParams)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = complete_graph(number_agents(simparams))
+    return graph
+end
+
+function generate_graph(graphmodel::ErdosRenyiModel, simparams::SimParams)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
+    end
+    return graph
+end
+
+function generate_graph(graphmodel::SmallWorldModel, simparams::SimParams)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
+    end
+    return graph
+end
+
+function generate_graph(graphmodel::ScaleFreeModel, simparams::SimParams)
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
+    end
+    return graph
+end
+
+function generate_graph(graphmodel::StochasticBlockModel, simparams::SimParams)
+    @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide population evenly"
+    block_size = Int(number_agents(simparams) / blocks(graphmodel))
+    p_in_vector = Vector{Float64}([])
+    block_sizes_vector = Vector{Int}([])
+    for _ in 1:blocks(graphmodel)
+        push!(p_in_vector, p_in(graphmodel))
+        push!(block_sizes_vector, block_size)
+    end
+    graph::Graphs.SimpleGraphs.SimpleGraph{Int} = stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
+    if ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
+        return generate_graph(graphmodel, simparams)
+    end
+    return graph
+end

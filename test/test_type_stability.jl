@@ -68,7 +68,7 @@ function period_cutoff(::SimModel)
 end
 
 const model = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-                        SimParams(10, 10, 0.1, "fractious_starting_condition", "equity_behavioral", extras=Dict{Symbol, Any}(:period_count=>0)),
+                        SimParams(10, 10, 0.1, "fractious_starting_condition", "equity_behavioral", extra=Dict{Symbol, Any}(:period_count=>0)),
                         CompleteModel())
 
 models = SimModels(Game{3, 3}("Bargaining Game", payoff_matrix),

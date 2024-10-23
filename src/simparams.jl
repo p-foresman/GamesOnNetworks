@@ -1,4 +1,4 @@
-#NOTE: should starting and stopping conditions be added into SimParams??
+const UserVariables = Dict{Symbol, Any}
 
 """
     SimParams
@@ -10,31 +10,31 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     memory_length::Int
     error::Float64
     # matches_per_period::Function #allow users to define their own matches per period as a function of other parameters?
-    startingcondition::String
-    stoppingcondition::String
-    extra::Dict{Symbol, Any}
+    starting_condition_fn_str::String
+    stopping_condition_fn_str::String
+    user_variables::UserVariables
     random_seed::Int #probably don't need a random seed in every SimParams struct?
 
 
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::String, stoppingcondition::String; extra::Dict{Symbol, Any}=Dict{Symbol, Any}(), random_seed::Union{Nothing, Int} = nothing)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String; user_variables::UserVariables=UserVariables(), random_seed::Union{Nothing, Int} = nothing)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
-        @assert isdefined(Main, Symbol(startingcondition)) "the startingcondition provided is not a defined function"
-        @assert isdefined(Main, Symbol(stoppingcondition)) "the stoppingcondition provided is not a defined function"
+        @assert isdefined(Main, Symbol(starting_condition_fn_str)) "the starting_condition_fn_str provided does not correlate to a defined function"
+        @assert isdefined(Main, Symbol(stopping_condition_fn_str)) "the stopping_condition_fn_str provided does not correlate to a defined function"
         if random_seed === nothing random_seed = 1234 end
-        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, extra, random_seed)
+        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables, random_seed)
     end
     function SimParams()
         return new()
     end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, startingcondition::String, stoppingcondition::String, extra::Dict{Symbol, Any}, random_seed::Int)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String, user_variables::UserVariables, random_seed::Int)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
-        @assert isdefined(Main, Symbol(startingcondition)) "the startingcondition provided is not a defined function"
-        @assert isdefined(Main, Symbol(stoppingcondition)) "the stoppingcondition provided is not a defined function"
-        return new(number_agents, memory_length, error, startingcondition, stoppingcondition, extra, random_seed)
+        @assert isdefined(Main, Symbol(starting_condition_fn_str)) "the starting_condition_fn_str provided does not correlate to a defined function"
+        @assert isdefined(Main, Symbol(stopping_condition_fn_str)) "the stopping_condition_fn_str provided does not correlate to a defined function"
+        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables, random_seed)
     end
 end
 
@@ -78,12 +78,53 @@ Get the random seed for the simulation.
 """
 random_seed(simparams::SimParams) = getfield(simparams, :random_seed)
 
+
+"""
+    starting_condition_fn_str(simparams::SimParams)
+
+Get the 'starting_condition_fn_str' SimParams field.
+"""
+starting_condition_fn_str(simparams::SimParams) = getfield(simparams, :starting_condition_fn_str)
+
+"""
+    starting_condition_fn(simparams::SimParams)
+
+Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' SimParams field.
+"""
+starting_condition_fn(simparams::SimParams) = getfield(Main, Symbol(starting_condition_fn_str(simparams)))
+
+
+"""
+    stopping_condition_fn_str(simparams::SimParams)
+
+Get the 'stopping_condition_fn_str' SimParams field.
+"""
+stopping_condition_fn_str(simparams::SimParams) = getfield(simparams, :stopping_condition_fn_str)
+
+"""
+    stopping_condition_fn(simparams::SimParams)
+
+Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' SimParams field.
+"""
+stopping_condition_fn(simparams::SimParams) = getfield(Main, Symbol(stopping_condition_fn_str(simparams)))
+
+
+"""
+    user_variables(simparams::SimParams)
+
+Get the extra user-defined SimParam variables. Note: these should denote default values and should only be updated in State!
+"""
+user_variables(simparams::SimParams) = getfield(simparams, :user_variables)
+
+# setfield!(::SimParams, :user_variables, ::Any) = raise Exception() #dont want user to be able to change this
+
+
 """
     displayname(simparams::SimParams)
 
 Get the string used for displaying a SimParams instance.
 """
-displayname(simparams::SimParams) = "N=$(number_agents(simparams)) m=$(memory_length(simparams)) e=$(error_rate(simparams))"
+displayname(simparams::SimParams) = "N=$(number_agents(simparams)) m=$(memory_length(simparams)) e=$(error_rate(simparams)) starting=$(starting_condition_fn_str(simparams)) stopping=$(stopping_condition_fn_str(simparams))"
 
 Base.show(simparams::SimParams) = println(displayname(simparams))
 

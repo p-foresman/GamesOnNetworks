@@ -74,7 +74,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     #     [_simulate(model, start_time=start_time)]
     # end
 
-    stopping_condition_func = getfield(Main, Symbol(simparams(model).stoppingcondition))(model) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
 
     @distributed for process in 1:nworkers()
@@ -122,7 +122,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
     # end
 
-    stopping_condition_func = getfield(Main, Symbol(simparams(model).stoppingcondition))(model) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
 
     @distributed for process in 1:nworkers()

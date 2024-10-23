@@ -1,12 +1,9 @@
-
-
 mutable struct State{V, E, C}
     const agentgraph::AgentGraph{V, E, C}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
-
     period::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
     complete::Bool
-    custom_variables::Dict{Symbol, Any} #allows for extra state variables if the user needs them
+    const user_variables::UserVariables #allows for extra state variables if the user needs them
 
     # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
@@ -17,7 +14,7 @@ mutable struct State{V, E, C}
     # prev_simulation_uuid
     # distributed_uuid
 
-    function State(model::SimModel; custom_variables::Dict{Symbol, Any}=Dict{Symbol, Any}())
+    function State(model::SimModel; user_variables::UserVariables=UserVariables()) #NOTE: probably dont need user_variables in this constructor
         agentgraph::AgentGraph = AgentGraph(model)
         # V = nv(graph(agentgraph))
         # E = ne(graph(agentgraph))
@@ -27,9 +24,14 @@ mutable struct State{V, E, C}
         C = num_components(agentgraph)
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
 
-        extras = merge!(custom_variables, simparams(model).extra)
+        all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         # is_stopping_condition_test = simparams(model).stoppingcondition(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, extras)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables)
+    end
+    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables=UserVariables()) where {V, E, C}
+        preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
+        all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
+        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
@@ -376,7 +378,29 @@ Reset the cached arrays in the model's PreAllocatedArrays instance to zeros.
 reset_arrays!(state::State) = reset_arrays!(preallocatedarrays(state))
 
 
+"""
+    user_variables(state::State)
 
+Get the extra user-defined State variables.
+"""
+user_variables(state::State) = getfield(state, :user_variables)
+
+"""
+    user_variables(state::State, variable::Symbol)
+
+Get the value of the specified user-defined variable.
+"""
+user_variables(state::State, variable::Symbol) = user_variables(state)[variable]
+
+"""
+    set_user_variable!(state::State, variable::Symbol, value::)
+
+Get the extra user-defined State variables.
+"""
+function set_user_variable!(state::State, variable::Symbol, value::T) where {T}
+    @assert user_variables(state)[variable] isa T "Type of user variable must remain constant!"
+    user_variables(state)[variable] = value
+end
 
 # """
 #     initialize_graph!(model::SimModel)
@@ -393,24 +417,24 @@ reset_arrays!(state::State) = reset_arrays!(preallocatedarrays(state))
 # initialize_stopping_condition!(state::State, model::SimModel) = initialize_stopping_condition!(stoppingcondition(model), simparams(model), agentgraph(state)) #parameter spreading necessary for multiple dispatch
 
 
-"""
-    reset_agent_graph!(state::State, model::SimModel)
+# """
+#     reset_agent_graph!(state::State, model::SimModel)
 
-Reset the AgentGraph of the model state.
-"""
-reset_agent_graph!(state::State, model::SimModel) = initialize_agent_data!(agentgraph(state), game(model), simparams(model), startingcondition(model))
+# Reset the AgentGraph of the model state.
+# """
+# reset_agent_graph!(state::State, model::SimModel) = initialize_agent_data!(agentgraph(state), game(model), simparams(model), startingcondition(model))
 
-"""
-    reset_model!(model::SimModel)
+# """
+#     reset_model!(model::SimModel)
 
-Reset the model to its initial state.
-"""
-function reset_state!(state::State, model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
-    reset_agent_graph!(state, model)
-    initialize_stopping_condition!(state, model)
-    reset_arrays!(state)
-    return nothing
-end
+# Reset the model to its initial state.
+# """
+# function reset_state!(state::State, model::SimModel) #NOTE: THIS DOESNT WORK BECAUSE OF IMMUTABLE STRUCT (could work within individual fields)
+#     reset_agent_graph!(state, model)
+#     initialize_stopping_condition!(state, model)
+#     reset_arrays!(state)
+#     return nothing
+# end
 
 # function regenerate_state(model::SimModel) #can just call State(model)
 #     return State(model)

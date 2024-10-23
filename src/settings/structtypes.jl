@@ -44,6 +44,7 @@ StructTypes.subtypes(::Type{GraphModel}) = (CompleteModel=CompleteModel, ErdosRe
 # StructTypes.subtypes(::Type{StoppingCondition}) = (EquityPsychological=EquityPsychological, EquityBehavioral=EquityBehavioral, PeriodCutoff=PeriodCutoff)
 
 
+
 ####################### Xoshiro random number generator type ########################
 #Needed to read and write the state of the Xoshiro RNG with JSON3 package
 StructTypes.StructType(::Type{Random.Xoshiro}) = StructTypes.Mutable()

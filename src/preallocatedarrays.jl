@@ -6,7 +6,7 @@
 Type to pre-allocate vectors for simulation calculations, thus improving performance.
 """
 struct PreAllocatedArrays #{N} #N is number of players (optimize for 2?) #NOTE: should i store these with invividual agents??? Could call this GameState?
-    players::Vector{Agent}
+    players::Vector{Agent} #NOTE: should this just store indices to look up agents?
     opponent_strategy_recollection::SVector{2, Vector{Int}}
     opponent_strategy_probs::SVector{2, Vector{Float64}}
     player_expected_utilities::SVector{2, Vector{Float32}}

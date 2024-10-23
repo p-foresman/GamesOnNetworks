@@ -54,8 +54,8 @@ function sql_create_simparams_table(::SQLiteInfo)
         number_agents INTEGER NOT NULL,
         memory_length INTEGER NOT NULL,
         error REAL NOT NULL,
-        startingcondition TEXT NOT NULL,
-        stoppingcondition TEXT NOT NULL,
+        starting_condition TEXT NOT NULL,
+        stopping_condition TEXT NOT NULL,
         simparams TEXT NOT NULL,
         use_seed BOOLEAN NOT NULL,
         UNIQUE(simparams, use_seed),
@@ -147,6 +147,7 @@ function sql_create_simulations_table(::SQLiteInfo)
         rng_state TEXT NOT NULL,
         period INTEGER NOT NULL,
         complete BOOLEAN NOT NULL,
+        user_variables TEXT NOT NULL,
         FOREIGN KEY (group_id)
             REFERENCES groups (id)
             ON DELETE CASCADE,
@@ -284,8 +285,8 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         number_agents,
         memory_length,
         error,
-        startingcondition,
-        stoppingcondition,
+        starting_condition,
+        stopping_condition,
         simparams,
         use_seed
     )
@@ -294,8 +295,8 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         $(number_agents(simparams)),
         $(memory_length(simparams)),
         $(error_rate(simparams)),
-        '$(simparams.startingcondition)',
-        '$(simparams.stoppingcondition)',
+        '$(starting_condition_fn_str(simparams))',
+        '$(stopping_condition_fn_str(simparams))',
         '$simparams_str',
         $use_seed
     )
@@ -446,7 +447,7 @@ function execute_insert_group(db_info::SQLiteInfo, description::String)
 end
 
 
-function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, period::Integer, complete::Integer)
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, period::Integer, complete::Integer, user_variables::String)
     """
     INSERT INTO simulations
     (
@@ -456,7 +457,8 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         model_id,
         rng_state,
         period,
-        complete
+        complete,
+        user_variables
     )
     VALUES
     (
@@ -466,7 +468,8 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         $model_id,
         '$rng_state',
         $period,
-        $complete
+        $complete,
+        '$user_variables'
 
     );
     ON CONFLICT () DO UPDATE
@@ -487,7 +490,7 @@ function sql_insert_agents(agent_values_string::String) #kind of a cop-out param
     """
 end
 
-function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, rng_state::String, period::Integer, complete::Integer, agent_list::Vector{String})
+function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, rng_state::String, period::Integer, complete::Integer, user_variables::String, agent_list::Vector{String})
     uuid = "$(uuid4())"
     
     #prepare simulation SQL
@@ -503,7 +506,7 @@ function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group
 
     db = DB(db_info)
     db_begin_transaction(db)
-    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, period, complete))
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, period, complete, user_variables))
     db_execute(db, sql_insert_agents(agent_values_string))
     db_commit_transaction(db)
     db_close(db)
@@ -626,6 +629,40 @@ function sql_query_models(model_id::Integer)
     """
 end
 
+function sql_query_simulations(simulation_uuid::String)
+    """
+    SELECT
+        simulations.uuid,
+        models.graph_adj_matrix,
+        simparams.simparams,
+        simparams.use_seed,
+        games.game,
+        games.payoff_matrix_size,
+        graphmodels.graphmodel,
+        simulations.group_id,
+        simparams.use_seed,
+        simulations.rng_state,
+        simulations.period,
+        simulations.complete,
+        simulations.user_variables
+    FROM simulations
+    INNER JOIN models ON simulations.model_id = models.id
+    INNER JOIN games ON models.game_id = games.id
+    INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
+    INNER JOIN simparams ON models.simparams_id = simparams.id
+    WHERE simulations.uuid = '$simulation_uuid';
+    """
+end
+
+function sql_query_agents(simulation_uuid::String)
+    """
+    SELECT agent
+    FROM agents
+    WHERE simulation_uuid = '$simulation_uuid'
+    ORDER BY id ASC;
+    """
+end
+
 function execute_query_models(db_info::SQLiteInfo, model_id::Integer)
     db = DB(db_info)
     query = db_query(db, sql_query_models(model_id))
@@ -633,47 +670,28 @@ function execute_query_models(db_info::SQLiteInfo, model_id::Integer)
     return query
 end
 
-function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT
-                                            simulations.simulation_id,
-                                            simulations.group_id,
-                                            sim_params.sim_params,
-                                            sim_params.use_seed,
-                                            simulations.rng_state,
-                                            simulations.period,
-                                            simulations.graph_adj_matrix,
-                                            graphmodels.graph_params,
-                                            games.game,
-                                            games.payoff_matrix_size,
-                                            starting_conditions.starting_condition,
-                                            stopping_conditions.stopping_condition
-                                        FROM simulations
-                                        INNER JOIN games USING(game_id)
-                                        INNER JOIN graphmodels USING(graph_id)
-                                        INNER JOIN sim_params USING(sim_params_id)
-                                        INNER JOIN starting_conditions USING(starting_condition_id)
-                                        INNER JOIN stopping_conditions USING(stopping_condition_id)
-                                        WHERE simulations.simulation_id = $simulation_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
+function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+    db = DB(db_info)
+    db_begin_transaction(db)
+    simulation_query = db_query(db, sql_query_simulations(simulation_uuid))
+    agents_query = db_query(db, sql_query_agents(simulation_uuid))
+    db_commit_transaction(db)
     db_close(db)
-    return df
+    return (simulation_query, agents_query)
 end
 
-function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT agent
-                                        FROM agents
-                                        WHERE simulation_id = $simulation_id
-                                        ORDER BY agent_id ASC;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
+# function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+#     db = DB(db_info; busy_timeout=3000)
+#     query = DBInterface.execute(db, "
+#                                         SELECT agent
+#                                         FROM agents
+#                                         WHERE simulation_id = $simulation_id
+#                                         ORDER BY agent_id ASC;
+#                                 ")
+#     df = DataFrame(query) #must create a DataFrame to acces query data
+#     db_close(db)
+#     return df
+# end
 
 
 #NOTE: FIX

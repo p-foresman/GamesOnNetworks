@@ -136,6 +136,51 @@ Get the random seed for the model.
 random_seed(model::SimModel) = random_seed(simparams(model))
 
 
+"""
+    starting_condition_fn_str(model::SimModel)
+
+Get the 'starting_condition_fn_str' SimParams field.
+"""
+starting_condition_fn_str(model::SimModel) = starting_condition_fn_str(simparams(model))
+
+"""
+    starting_condition_fn(model::SimModel)
+
+Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' SimParams field.
+"""
+starting_condition_fn(model::SimModel) = starting_condition_fn(simparams(model))
+
+"""
+    starting_condition_fn_call(model::SimModel, agentgraph::AgentGraph)
+
+Call the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' SimParams field.
+"""
+starting_condition_fn_call(model::SimModel, agentgraph::AgentGraph) = starting_condition_fn(model)(model, agentgraph)
+
+
+"""
+    stopping_condition_fn_str(model::SimModel)
+
+Get the 'stopping_condition_fn_str' SimParams field.
+"""
+stopping_condition_fn_str(model::SimModel) = stopping_condition_fn_str(simparams(model))
+
+"""
+    stopping_condition_fn(model::SimModel)
+
+Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' SimParams field.
+"""
+stopping_condition_fn(model::SimModel) = stopping_condition_fn(simparams(model))
+
+"""
+    get_enclosed_stopping_condition_fn(model::SimModel)
+
+Call the user-defined stopping condition function which correlates to the String stored in the 'starting_condition_fn_str' SimParams field to get the enclosed function.
+"""
+get_enclosed_stopping_condition_fn(model::SimModel) = stopping_condition_fn(model)(model) #NOTE: this closure method can probably be eliminated
+
+
+
 # GraphModel
 """
     graphmodel(model::SimModel)
@@ -190,7 +235,7 @@ number_hermits(model::SimModel) = number_hermits(graph(model))
 function AgentGraph(model::SimModel)
     agentgraph::AgentGraph = AgentGraph(graph(model))
     # initialize_agent_data!(agentgraph, game(model), simparams(model), startingcondition(model))
-    getfield(Main, Symbol(simparams(model).startingcondition))(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
+    starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
     return agentgraph
 end
 
@@ -214,12 +259,12 @@ function Base.show(model::SimModel)
     show(graphmodel(model))
     print("Sim Params: ")
     show(simparams(model))
-    print("Start: ")
-    show(simparams(model).startingcondition)
-    println()
-    print("Stop: ")
-    show(simparams(model).stoppingcondition)
-    println()
+    # print("Start: ")
+    # show(simparams(model).startingcondition)
+    # println()
+    # print("Stop: ")
+    # show(simparams(model).stoppingcondition)
+    # println()
 end
 
 
