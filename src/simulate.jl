@@ -35,6 +35,11 @@ function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
     # end
 end
 
+function simulate(simulation_uuid::String)
+    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(simulation_uuid::String)' method without a database configured."
+
+end
+
 # function simulate(model_list::Vector{<:SimModel})
 #     for model in model_list
 #         show(model)
@@ -134,16 +139,16 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
         _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
-    # if nworkers() > 1
-    #     db_collect_temp(db_info, distributed_uuid, cleanup_directory=true)
-    # end
+
     received = 0
+    completed = 0
     result_states = Vector{State}()
     while received < nworkers()
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         if iscomplete(result_state)
             db_insert_simulation(db_info, result_state, model_id, db_group_id)
+            completed += 1
         else
             if !isnothing(SETTINGS.checkpoint)
                 db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
@@ -152,28 +157,34 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
         push!(result_states, result_state)
         received += 1
     end
+
+    # if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
+    #     exit(85)
+    # end
+
     println("DONE")
 
     return result_states
 end
 
 
-function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+#NOTE: dont think this needs to be a thing anymore since PostgresInfo version should be the same as SQLiteInfo version now (I think)
+# function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
 
-    show(model)
-    flush(stdout) #flush buffer
+#     show(model)
+#     flush(stdout) #flush buffer
 
-    states::Vector{State} = @distributed (append!) for process in 1:nworkers() #NOTE: run_count could be number workers
-        print("Process $process of $(nworkers())")
-        flush(stdout)
-        # if !preserve_graph
-        #     state = State(model) #regenerate state so each process has a different graph
-        # end
-        [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, start_time=start_time)]
-    end
+#     states::Vector{State} = @distributed (append!) for process in 1:nworkers() #NOTE: run_count could be number workers
+#         print("Process $process of $(nworkers())")
+#         flush(stdout)
+#         # if !preserve_graph
+#         #     state = State(model) #regenerate state so each process has a different graph
+#         # end
+#         [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, start_time=start_time)]
+#     end
 
-    return states
-end
+#     return states
+# end
 
 
 
