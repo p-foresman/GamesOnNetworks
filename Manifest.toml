@@ -2,7 +2,7 @@
 
 julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "42c627116bda3931d4c45fe25e91e9cbbfa20be1"
+project_hash = "d149eb221a50cf712de4c06ecd10268da0995da5"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1009,6 +1009,12 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jl
 git-tree-sha1 = "e127b609fb9ecba6f201ba7ab753d5a605d53801"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.54.1+0"
+
+[[deps.ParallelDataTransfer]]
+deps = ["Distributed"]
+git-tree-sha1 = "bc589aa8c8d7cd9551541d0d63414ef8b894af8e"
+uuid = "2dcacdae-9679-587a-88bb-8b444fb7085b"
+version = "0.5.1"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]

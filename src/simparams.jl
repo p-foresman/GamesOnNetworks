@@ -79,6 +79,21 @@ Get the random seed for the simulation.
 random_seed(simparams::SimParams) = getfield(simparams, :random_seed)
 
 
+
+
+const _starting_condition_registry = Vector{Expr}()
+
+"""
+    @startingcondition fn
+
+A macro used to register user starting conditions to be used in GamesOnNetworks. This MUST precede any starting conditions used in a user's simulations.
+"""
+macro startingcondition(fn)
+    push!(_starting_condition_registry, fn)
+    @everywhere eval($fn) #NOTE: could do GamesOnNetworks.eval() to evaluate it into the global scope of GamesOnNetworks instead of Main
+    return nothing
+end
+
 """
     starting_condition_fn_str(simparams::SimParams)
 
@@ -94,6 +109,21 @@ Get the user-defined starting condition function which correlates to the String 
 starting_condition_fn(simparams::SimParams) = getfield(Main, Symbol(starting_condition_fn_str(simparams)))
 
 
+
+
+const _stopping_condition_registry = Vector{Expr}()
+
+"""
+    @stoppingcondition fn
+
+A macro used to register user stopping conditions to be used in GamesOnNetworks. This MUST precede any stopping conditions used in a user's simulations.
+"""
+macro stoppingcondition(fn)
+    push!(_stopping_condition_registry, fn)
+    @everywhere eval($fn) #NOTE: could do GamesOnNetworks.eval() to evaluate it into the global scope of GamesOnNetworks instead of Main
+    return nothing
+end
+
 """
     stopping_condition_fn_str(simparams::SimParams)
 
@@ -107,6 +137,13 @@ stopping_condition_fn_str(simparams::SimParams) = getfield(simparams, :stopping_
 Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' SimParams field.
 """
 stopping_condition_fn(simparams::SimParams) = getfield(Main, Symbol(stopping_condition_fn_str(simparams)))
+
+
+function _assert_registries()
+    @assert !isempty(_starting_condition_registry) "Must define at least one starting condition function with the @startingcondition macro"
+    @assert !isempty(_stopping_condition_registry) "Must define at least one stopping condition function with the @stoppingcondition macro"
+    return nothing
+end
 
 
 """

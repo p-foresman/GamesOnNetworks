@@ -1,7 +1,7 @@
 using GamesOnNetworks
 
 
-function fractious_starting_condition(model::SimModel, agentgraph::AgentGraph)
+@startingcondition function fractious_starting_condition(model::SimModel, agentgraph::AgentGraph)
     for (vertex, agent) in enumerate(agents(agentgraph))
         if vertex % 2 == 0
             recollection = strategies(model, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
@@ -15,7 +15,7 @@ function fractious_starting_condition(model::SimModel, agentgraph::AgentGraph)
     return nothing
 end
 
-function equity_starting_condition(model::SimModel, agentgraph::AgentGraph)
+@startingcondition function equity_starting_condition(model::SimModel, agentgraph::AgentGraph)
     for agent in agents(agentgraph)
         recollection = strategies(model, 1)[2]
         for _ in 1:memory_length(model)
@@ -25,7 +25,7 @@ function equity_starting_condition(model::SimModel, agentgraph::AgentGraph)
     return nothing
 end
 
-function random_starting_condition(model::SimModel, agentgraph::AgentGraph)
+@startingcondition function random_starting_condition(model::SimModel, agentgraph::AgentGraph)
     for agent in agents(agentgraph)
         # empty!(memory(agent)) #NOTE: make sure these arent needed (shouldnt be because agentgraph is initialized with these values when state is initialized. When state is reconstructed, starting condition isn't used anyway)
         # rational_choice!(agent, Choice(0))
@@ -37,7 +37,7 @@ function random_starting_condition(model::SimModel, agentgraph::AgentGraph)
     return nothing
 end
 
-function equity_psychological(model::SimModel) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+@stoppingcondition function equity_psychological(model::SimModel) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     sufficient_equity = (1 - error_rate(model)) * memory_length(model)
     sufficient_transitioned = number_agents(model) - number_hermits(model)
     
@@ -54,7 +54,7 @@ function equity_psychological(model::SimModel) #game only needed for behavioral 
     end
 end
 
-function equity_behavioral(model::SimModel) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
+@stoppingcondition function equity_behavioral(model::SimModel) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
     sufficient_transitioned = (1 - error_rate(model)) * (number_agents(model) - number_hermits(model))
     period_cutoff = memory_length(model)
 
@@ -78,12 +78,34 @@ function equity_behavioral(model::SimModel) #game only needed for behavioral sto
     end
 end
 
-function period_cutoff(::SimModel)
+@stoppingcondition function period_cutoff(::SimModel)
+    println("aaaa")
     return (state::State) -> begin
         return period(state) >= user_variables(state, :period_cutoff) #this is hard-coded now, but should add to state extra variables or something?
     end
 end
 
+
 const model = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-                        SimParams(10, 10, 0.1, "fractious_starting_condition", "equity_behavioral", user_variables=UserVariables(:period_count=>0)),
+                        SimParams(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>10000000)),
                         CompleteModel())
+
+# function some_func()
+#     println("some funccc")
+# end
+
+
+# function test()
+#     println(workers())
+#     include_remote("./user/user_script.jl")
+#         # @everywhere workers() function some_func end
+#     # for m in methods(some_func)
+#         #     @everywhere workers() eval($m)
+#     # end
+#     # passobj(1, workers(), :some_func)
+#     @everywhere println("x = ", some_func)
+# end
+
+# function test()
+#     @everywhere println(fractious_starting_condition)
+# end

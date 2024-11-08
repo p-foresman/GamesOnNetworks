@@ -209,6 +209,17 @@ function configure()
                     using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                 end)
             end
+
+            #define user-defined starting and stopping conditions on all workers (only matters if user reconfigures processes with GamesOnNetworks.configure())
+            #NOTE: this seems sketch but is working fine for now
+            for fn in _starting_condition_registry
+                # @startingcondition eval($fn)
+                @everywhere eval($fn)
+            end
+            for fn in _stopping_condition_registry
+                # @stoppingcondition eval($fn)
+                @everywhere eval($fn)
+            end
         end
         println("$(SETTINGS.procs) processe(s) initialized")
         println("configuration complete")

@@ -54,6 +54,8 @@ export
     UserVariables,
     user_variables,
     set_user_variable!,
+    @startingcondition,
+    @stoppingcondition,
 
     # startingcondition,
     type, #rename?
@@ -163,7 +165,8 @@ using
     DataStructures,
     # Memoize,
     TimerOutputs,
-    Suppressor
+    Suppressor,
+    ParallelDataTransfer
 
 #basic utility functions
 include("utility.jl")

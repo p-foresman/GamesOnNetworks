@@ -1,9 +1,14 @@
+
+
 mutable struct State{V, E, C}
     const agentgraph::AgentGraph{V, E, C}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
     period::Int128 #NOTE: should this be added? if so, must make struct mutable and add const before agentgraph and preallocatedarrays
     complete::Bool
     const user_variables::UserVariables #allows for extra state variables if the user needs them
+
+    model_id::Union{Int, Nothing}
+    prev_simulation_uuid::Union{String, Nothing}
 
     # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
@@ -26,12 +31,12 @@ mutable struct State{V, E, C}
 
         all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         # is_stopping_condition_test = simparams(model).stoppingcondition(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing)
     end
-    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables=UserVariables()) where {V, E, C}
+    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String) where {V, E, C}
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
         all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
-        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables)
+        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))

@@ -464,7 +464,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
     (
         '$uuid',
         $group_id,
-        '$prev_simulation_uuid',
+        $(prev_simulation_uuid == "NULL" ? prev_simulation_uuid : "'$prev_simulation_uuid'"),
         $model_id,
         '$rng_state',
         $period,
@@ -477,6 +477,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
     RETURNING uuid
     """
 end
+
 
 function sql_insert_agents(agent_values_string::String) #kind of a cop-out parameter but fine for now
     """
@@ -633,6 +634,8 @@ function sql_query_simulations(simulation_uuid::String)
     """
     SELECT
         simulations.uuid,
+        simulations.prev_simulation_uuid,
+        simulations.model_id,
         models.graph_adj_matrix,
         simparams.simparams,
         simparams.use_seed,
@@ -678,6 +681,26 @@ function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_u
     db_commit_transaction(db)
     db_close(db)
     return (simulation_query, agents_query)
+end
+
+function sql_query_incomplete_simulations()
+    """
+    SELECT uuid
+    FROM simulations tabA
+    WHERE complete = 0
+    AND NOT EXISTS (
+        SELECT *
+        FROM simulations tabB
+        WHERE tabB.prev_simulation_uuid = tabA.uuid
+    )
+    """
+end
+
+function execute_query_incomplete_simulations(db_info::SQLiteInfo)
+    db = DB(db_info)
+    query = db_query(db, sql_query_incomplete_simulations())
+    db_close(db)
+    return query
 end
 
 # function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)

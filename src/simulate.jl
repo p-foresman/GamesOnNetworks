@@ -9,6 +9,8 @@
 Run a simulation using the model provided.
 """
 function simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
+
+
     # if !isnothing(SETTINGS.checkpoint) SETTINGS.checkpoint.start_time = time() end #fine for now
     return _simulate_model_barrier(model, SETTINGS.database, start_time=time())
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
@@ -35,9 +37,16 @@ function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
     # end
 end
 
+function simulate() #NOTE: probably don't want this method for simulation continuation
+    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate()' method without a database configured."
+
+    return _simulate_model_barrier(SETTINGS.database, start_time=time())
+end
+
 function simulate(simulation_uuid::String)
     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(simulation_uuid::String)' method without a database configured."
 
+    return _simulate_model_barrier(simulation_uuid, SETTINGS.database, start_time=time())
 end
 
 # function simulate(model_list::Vector{<:SimModel})
@@ -63,6 +72,22 @@ function _simulate_model_barrier(model_id::Int, db_info::DBInfo; start_time::Flo
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
     model = db_reconstruct_model(db_info, model_id) #construct model associated with id
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
+end
+
+function _simulate_model_barrier(db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    simulation_uuids = db_get_incomplete_simulation_uuids(SETTINGS.database)
+    model_state_tuples = Vector{Tuple{SimModel, State}}()
+    for simulation_uuid in simulation_uuids
+        push!(model_state_tuples, db_reconstruct_simulation(SETTINGS.database, simulation_uuid))
+    end
+
+    return _simulate_distributed_barrier(model_state_tuples, db_info, start_time=start_time, db_group_id=db_group_id)
+end
+
+function _simulate_model_barrier(simulation_uuid::String, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    model_state::Tuple{SimModel, State} = db_reconstruct_simulation(SETTINGS.database, simulation_uuid)
+
+    return _simulate_distributed_barrier(model_state, db_info, start_time=start_time, db_group_id=db_group_id)
 end
 
 
@@ -133,9 +158,9 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     @distributed for process in 1:nworkers()
         print("Process $process of $(nworkers())")
         flush(stdout)
-    # if !preserve_graph
-    #     state = State(model) #regenerate state so each process has a different graph
-    # end
+        # if !preserve_graph
+        #     state = State(model) #regenerate state so each process has a different graph
+        # end
         _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
@@ -146,19 +171,109 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     while received < nworkers()
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        if iscomplete(result_state)
-            db_insert_simulation(db_info, result_state, model_id, db_group_id)
-            completed += 1
-        else
-            if !isnothing(SETTINGS.checkpoint)
-                db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
-            end
-        end
+        db_insert_simulation(db_info, result_state, model_id, db_group_id)
+        if iscomplete(result_state) completed += 1 end
+        push!(result_states, result_state)
+        received += 1
+    end
+    # while received < nworkers()
+    #     #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+    #     result_state = take!(result_channel)
+    #     if iscomplete(result_state)
+    #         db_insert_simulation(db_info, result_state, model_id, db_group_id)
+    #         completed += 1
+    #     else
+    #         if !isnothing(SETTINGS.checkpoint)
+    #             db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
+    #         end
+    #     end
+    #     push!(result_states, result_state)
+    #     received += 1
+    # end
+
+    # if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
+    #     println("CHECKPOINT")
+    #     exit(85)
+    # end
+
+    println("DONE")
+
+    return result_states
+end
+
+function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel, State}}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+    # show(model)
+    # flush(stdout) #flush buffer
+
+
+    # stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+    num_processes = length(model_state_tuples)
+    @distributed for model_state in model_state_tuples
+        print("Process $(myid()) of $num_processes")
+        flush(stdout)
+        # if !preserve_graph
+        #     state = State(model) #regenerate state so each process has a different graph
+        # end
+        stopping_condition_func = get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+        _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+    end
+    
+
+    received = 0
+    completed = 0
+    result_states = Vector{State}()
+    while received < num_processes
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        result_state = take!(result_channel)
+        db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
+        if iscomplete(result_state) completed += 1 end
         push!(result_states, result_state)
         received += 1
     end
 
+
+    if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
+        println("CHECKPOINT")
+        # exit(85)
+    end
+
+    println("DONE")
+
+    return result_states
+end
+
+
+function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+    # show(model)
+    # flush(stdout) #flush buffer
+
+
+    # stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+        # if !preserve_graph
+        #     state = State(model) #regenerate state so each process has a different graph
+        # end
+    stopping_condition_func = get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+
+    _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+    
+
+    received = 0
+    completed = 0
+    result_states = Vector{State}()
+    while received < 1
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        result_state = take!(result_channel)
+        db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
+        if iscomplete(result_state) completed += 1 end
+        push!(result_states, result_state)
+        received += 1
+    end
+
+
     # if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
+    #     println("CHECKPOINT")
     #     exit(85)
     # end
 
