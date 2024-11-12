@@ -405,3 +405,7 @@ function db_get_incomplete_simulation_uuids(db_info::SQLiteInfo)
     uuids::Vector{String} = execute_query_incomplete_simulations(db_info)[:, :uuid]
     return uuids
 end
+
+function db_has_incomplete_simulations(db_info::SQLiteInfo)
+    return !isempty(db_get_incomplete_simulation_uuids(db_info))
+end

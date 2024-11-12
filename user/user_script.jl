@@ -79,7 +79,6 @@ end
 end
 
 @stoppingcondition function period_cutoff(::SimModel)
-    println("aaaa")
     return (state::State) -> begin
         return period(state) >= user_variables(state, :period_cutoff) #this is hard-coded now, but should add to state extra variables or something?
     end
@@ -90,22 +89,11 @@ const model = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (
                         SimParams(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>10000000)),
                         CompleteModel())
 
-# function some_func()
-#     println("some funccc")
-# end
 
-
-# function test()
-#     println(workers())
-#     include_remote("./user/user_script.jl")
-#         # @everywhere workers() function some_func end
-#     # for m in methods(some_func)
-#         #     @everywhere workers() eval($m)
-#     # end
-#     # passobj(1, workers(), :some_func)
-#     @everywhere println("x = ", some_func)
-# end
-
-# function test()
-#     @everywhere println(fractious_starting_condition)
-# end
+if GamesOnNetworks.db_has_incomplete_simulations()
+    println("simulating incomplete")
+    simulate()
+else
+    println("simulating model")
+    simulate(model)
+end

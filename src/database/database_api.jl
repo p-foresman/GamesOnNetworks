@@ -80,6 +80,10 @@ function db_construct_id_tuple(db_info::DBInfo, model::SimModel, use_seed::Bool)
 end
 
 
+function db_has_incomplete_simulations()
+    return db_has_incomplete_simulations(SETTINGS.database)
+end
+
 # function db_insert_model(model::SimModel)
 #     return db
 # end

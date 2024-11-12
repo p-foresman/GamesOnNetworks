@@ -165,16 +165,16 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     end
     
 
-    received = 0
-    completed = 0
+    num_received = 0
+    num_completed = 0
     result_states = Vector{State}()
-    while received < nworkers()
+    while num_received < nworkers()
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         db_insert_simulation(db_info, result_state, model_id, db_group_id)
-        if iscomplete(result_state) completed += 1 end
+        if iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
-        received += 1
+        num_received += 1
     end
     # while received < nworkers()
     #     #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
@@ -191,10 +191,10 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     #     received += 1
     # end
 
-    # if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
-    #     println("CHECKPOINT")
-    #     exit(85)
-    # end
+    if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
+        println("CHECKPOINT")
+        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+    end
 
     println("DONE")
 
@@ -208,9 +208,9 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
 
     # stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
-    num_processes = length(model_state_tuples)
+    num_incomplete = length(model_state_tuples)
     @distributed for model_state in model_state_tuples
-        print("Process $(myid()) of $num_processes")
+        print("Process $(myid()) of $num_incomplete")
         flush(stdout)
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
@@ -220,22 +220,22 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
     end
     
 
-    received = 0
-    completed = 0
+    num_received = 0
+    num_completed = 0
     result_states = Vector{State}()
-    while received < num_processes
-        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+    while num_received < num_incomplete
+        #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if iscomplete(result_state) completed += 1 end
+        if iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
-        received += 1
+        num_received += 1
     end
 
 
-    if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
+    if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
         println("CHECKPOINT")
-        # exit(85)
+        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
     end
 
     println("DONE")
@@ -244,6 +244,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
 end
 
 
+#NOTE: this one needs to be cleaned up (this is the case where a single simulation is continued)
 function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # show(model)
     # flush(stdout) #flush buffer
@@ -259,23 +260,23 @@ function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_i
     _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     
 
-    received = 0
-    completed = 0
+    num_received = 0
+    num_completed = 0
     result_states = Vector{State}()
-    while received < 1
-        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+    while num_received < 1
+        #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if iscomplete(result_state) completed += 1 end
+        if iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
-        received += 1
+        num_received += 1
     end
 
 
-    # if completed < length(result_states) #if all simulations aren't completed, exit with checkpoint exit code
-    #     println("CHECKPOINT")
-    #     exit(85)
-    # end
+    if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
+        println("CHECKPOINT")
+        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+    end
 
     println("DONE")
 

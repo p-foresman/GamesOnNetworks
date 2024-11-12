@@ -38,7 +38,8 @@ struct Settings
     procs::Int
     timeout::Int
     database::Union{DBInfo, Nothing} #if nothing, not using database
-    checkpoint::Union{Checkpoint, Nothing}
+    checkpoint::Bool
+    checkpoint_exit_code::Int
     # data_script::Union{Nothing, String}
 end
 
@@ -69,7 +70,12 @@ function Settings(settings::Dict{String, Any})
     @assert selected_db isa String "the denoted default database must be a String (can be an empty string if not using a database)"
     
     @assert haskey(databases, "checkpoint") "config file must have a 'checkpoint' boolean variable. This field's value only matters if a database is selected"
-    @assert haskey(databases, "checkpoint_database") "config file must have a 'checkpoint_database' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string to use main selected database"
+    checkpoint = databases["checkpoint"]
+    @assert checkpoint isa Bool "'checkpoint' value must be a Bool"
+    @assert haskey(databases, "checkpoint_exit_code") "config file must have a 'checkpoint_exit_code' positive integer variable"
+    checkpoint_exit_code = databases["checkpoint_exit_code"]
+    @assert checkpoint_exit_code isa Int && checkpoint_exit_code >= 0 "'checkpoint_exit_code' value must be a positive Int (>=1) OR 0 (denoting no exit)"
+    # @assert haskey(databases, "checkpoint_database") "config file must have a 'checkpoint_database' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string to use main selected database"
 
     # @assert haskey(databases, "data_script") "config file must have a 'data_script' variable in the [databases] table specifying the path to a data loading script to be loaded on database initialization OR an empty string if no data loading is required"
     # data_script = databases["data_script"]
@@ -83,22 +89,23 @@ function Settings(settings::Dict{String, Any})
 
     #if selected_db exists, must validate selected database. Otherwise, not using database
     database = nothing #selected database
-    checkpoint = nothing #checkpoint database
+    # checkpoint = nothing #checkpoint database
     if !isempty(selected_db)
         database = validate_database(databases, "selected", selected_db)
 
 
-        if databases["checkpoint"]
-            checkpoint_db = databases["checkpoint_database"]
-            if isempty(checkpoint_db)
-                checkpoint = Checkpoint(database)
-            else
-               checkpoint = Checkpoint(validate_database(databases, "checkpoint_database", checkpoint_db))
-            end
-        end
+
+        # if databases["checkpoint"]
+        #     checkpoint_db = databases["checkpoint_database"]
+        #     if isempty(checkpoint_db)
+        #         checkpoint = Checkpoint(database)
+        #     else
+        #        checkpoint = Checkpoint(validate_database(databases, "checkpoint_database", checkpoint_db))
+        #     end
+        # end
     end
 
-    return Settings(settings, use_seed, procs, timeout, database, checkpoint)
+    return Settings(settings, use_seed, procs, timeout, database, checkpoint, checkpoint_exit_code)
 end
 
 function Settings(config_path::String)
@@ -182,17 +189,17 @@ function configure()
                 println("PostgreSQL database initialized")
             end
 
-            if !isnothing(SETTINGS.checkpoint) && SETTINGS.checkpoint.database != SETTINGS.database
-                print("initializing checkpoint databse [$(db_type(SETTINGS.checkpoint.database)).$(SETTINGS.checkpoint.database.name)]... ")
+            # if !isnothing(SETTINGS.checkpoint) && SETTINGS.checkpoint.database != SETTINGS.database
+            #     print("initializing checkpoint databse [$(db_type(SETTINGS.checkpoint.database)).$(SETTINGS.checkpoint.database.name)]... ")
 
-                db_init(SETTINGS.checkpoint.database)
+            #     db_init(SETTINGS.checkpoint.database)
 
-                if SETTINGS.checkpoint.database isa SQLiteInfo
-                    println("SQLite database file initialized at $(SETTINGS.checkpoint.database.filepath)")
-                else
-                    println("PostgreSQL database initialized")
-                end
-            end
+            #     if SETTINGS.checkpoint.database isa SQLiteInfo
+            #         println("SQLite database file initialized at $(SETTINGS.checkpoint.database.filepath)")
+            #     else
+            #         println("PostgreSQL database initialized")
+            #     end
+            # end
         end
 
         resetprocs() #resets the process count to 1 for proper reconfigure
