@@ -79,14 +79,14 @@ function db_construct_id_tuple(db_info::DBInfo, model::SimModel, use_seed::Bool)
     return db_id_tuple
 end
 
+function db_insert_model(model::SimModel)
+    return db_insert_model(SETTINGS.database, model, SETTINGS.use_seed)
+end
 
 function db_has_incomplete_simulations()
     return db_has_incomplete_simulations(SETTINGS.database)
 end
 
-# function db_insert_model(model::SimModel)
-#     return db
-# end
 
 
 # function db_insert_model_data(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition})

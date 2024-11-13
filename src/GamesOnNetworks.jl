@@ -165,8 +165,7 @@ using
     DataStructures,
     # Memoize,
     TimerOutputs,
-    Suppressor,
-    ParallelDataTransfer
+    Suppressor
 
 #basic utility functions
 include("utility.jl")
