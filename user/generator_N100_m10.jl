@@ -22,32 +22,32 @@ function generate_db()
 
                         #ER
                         count += 1
-                        GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ErdosRenyiModel(l)))
+                        # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ErdosRenyiModel(l)))
 
 
 
                         #SW
                         for b in 0.0:0.05:1.0
                             count += 1
-                            GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, SmallWorldModel(l, b)))
+                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, SmallWorldModel(l, b)))
                         end
 
 
                         #SF
                         for a in 2.0:0.2:10
                             count += 1
-                            GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ScaleFreeModel(l, a)))
+                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ScaleFreeModel(l, a)))
                         end
 
 
                         #SBM
                         for p in 0.1:0.1:1.0
                             count += 1
-                            GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(1, 2, p, 0.01)))
+                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(1, 2, p, 0.01)))
                         end
 
                         count += 1
-                        GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(1, 2, 0.01, 0.01)))
+                        # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(1, 2, 0.01, 0.01)))
                     end
                 end
             end

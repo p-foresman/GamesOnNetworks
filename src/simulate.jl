@@ -167,10 +167,13 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     # end
 
     stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
-    result_channel = RemoteChannel(()->Channel{State}(nworkers()))
+    
+    num_procs = SETTINGS.procs #nworkers()
+    println("num procs: $num_procs")
+    result_channel = RemoteChannel(()->Channel{State}(num_procs))
 
-    @distributed for process in 1:nworkers()
-        print("Process $process of $(nworkers())")
+    @distributed for process in 1:num_procs
+        print("Process $process of $(num_procs)")
         flush(stdout)
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
@@ -182,7 +185,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     num_received = 0
     num_completed = 0
     result_states = Vector{State}()
-    while num_received < nworkers()
+    while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         db_insert_simulation(db_info, result_state, model_id, db_group_id)
