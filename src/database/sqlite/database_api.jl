@@ -287,8 +287,8 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
     adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(model))))
 
 
-    println(graphmodel_params_str)
-    println(graphmodel_values_str)
+    # println(graphmodel_params_str)
+    # println(graphmodel_values_str)
     # model_id = nothing
     # while isnothing(model_id)
         # try
@@ -310,7 +310,6 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
 
     return model_id
 end
-
 
 
 function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)

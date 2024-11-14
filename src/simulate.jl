@@ -37,6 +37,20 @@ function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
     # end
 end
 
+function simulate(model::SimModel, model_id::Int; db_group_id::Union{Nothing, Integer} = nothing) #NOTE: potentially dangerous method that could screw up database integrity
+    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model::SimModel, model_id::Int)' method without a database configured."
+
+    # timer = Timer(timeout(model, SETTINGS.database))
+    return _simulate_distributed_barrier(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
+    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+
+    # if nworkers() > 1
+    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # else
+    #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
+    # end
+end
+
 function simulate() #NOTE: probably don't want this method for simulation continuation
     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate()' method without a database configured."
 

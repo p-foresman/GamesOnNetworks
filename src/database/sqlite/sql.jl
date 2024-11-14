@@ -800,7 +800,6 @@ end
 
 
 
-
 function querySimulationsForBoxPlot(db_info::SQLiteInfo; game_id::Integer, number_agents::Integer, memory_length::Integer, error::Float64, graph_ids::Union{Vector{<:Integer}, Nothing} = nothing, sample_size::Int)
     graph_ids_sql = ""
     if graph_ids !== nothing
