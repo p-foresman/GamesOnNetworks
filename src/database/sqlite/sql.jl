@@ -342,10 +342,11 @@ end
 #     """
 # end
 
-function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, graph_adj_matrix_str::String)
+function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id::Integer, graph_adj_matrix_str::String; model_id::Union{Nothing, Integer}=nothing)
    """
     INSERT OR IGNORE INTO models
     (
+        $(!isnothing(model_id) ? "id," : "")
         game_id,
         graphmodel_id,
         simparams_id,
@@ -353,6 +354,7 @@ function sql_insert_model(game_id::Integer, graphmodel_id::Integer, simparams_id
     )
     VALUES
     (
+        $(!isnothing(model_id) ? "$model_id," : "")
         $game_id,
         $graphmodel_id,
         $simparams_id,
@@ -399,7 +401,8 @@ function execute_insert_model(db_info::SQLiteInfo,
                             game_name::String, game_str::String, payoff_matrix_size::String,
                             graphmodel_display::String, graphmodel_type::String, graphmodel_str::String, graphmodel_params_str::String, graphmodel_values_str::String, #NOTE: should try to make all parameters String typed so they can be plugged right into sql
                             simparams::SimParams, simparams_str::String, use_seed::Integer,
-                            graph_adj_matrix_str::String)
+                            graph_adj_matrix_str::String;
+                            model_id::Union{Nothing, Integer}=nothing)
 
 
     db = DB(db_info)
@@ -410,7 +413,7 @@ function execute_insert_model(db_info::SQLiteInfo,
     # startingcondition_id = execute_insert_startingcondition(db, startingcondition_type, startingcondition_str)
     # stoppingcondition_id = execute_insert_stoppingcondition(db, stoppingcondition_type, stoppingcondition_str)
     # id = execute_insert_model(db, game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id)
-    id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, graph_adj_matrix_str))[1, :id]
+    id::Int = db_query(db, sql_insert_model(game_id, graphmodel_id, simparams_id, graph_adj_matrix_str; model_id=model_id))[1, :id]
     db_commit_transaction(db)
     db_close(db)
     return id

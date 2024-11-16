@@ -3,6 +3,8 @@ const VertexSet{V} = SVector{V, Int}
 const Relationship = Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 
+#NOTE: STATIC ARRAYS SHOULDNT BE MORE THAN 100 ELEMENTS!
+
 """
     GamesOnNetworks.AgentGraph{N, E, C} <: AbstractGraph{Int}
 

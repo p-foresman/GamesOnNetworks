@@ -113,6 +113,7 @@ export
     # period!,
     # increment_period,
 
+    graph,
     displayname,
     # reset_model!,
     # regenerate_model,

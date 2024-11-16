@@ -3,7 +3,17 @@ Extension of Graphs.jl
 """
 
 const Graph = SimpleGraph{Int}
-const AdjacencyMatrix = Graphs.SparseMatrixCSC{Int64, Int64}
+# const AdjacencyMatrix = Graphs.SparseMatrixCSC{Int64, Int64}
+
+"""
+    Graph(matrix_str::String)
+
+Create a Graphs.SimpleGraph{Int} from a matrix string.
+"""
+SimpleGraph{Int}(matrix_str::String) = Graph(eval(Meta.parse(matrix_str))) # can call Graph(matrix_str::String) and this will be called
+
+adjacency_matrix_str(graph::Graph) = string(Matrix(adjacency_matrix(graph)))
+
 
 possible_edge_count(N::Int) = Int((N * (N-1)) / 2)
 edge_density(N::Integer, λ::Real) = λ / (N - 1)
@@ -81,5 +91,5 @@ function stochastic_block_model_rg(block_sizes::Vector{<:Integer}, λ::Real, in_
     affinity_matrix = Graphs.SimpleGraphs.sbmaffinity(in_block_probs, out_block_prob, block_sizes)
     N = sum(block_sizes)
     num_edges = edge_count(N, edge_density(N, λ))
-    return SimpleGraph(N, num_edges, Graphs.StochasticBlockModel(block_sizes, affinity_matrix))
+    return Graphs.SimpleGraph(N, num_edges, Graphs.StochasticBlockModel(block_sizes, affinity_matrix))
 end

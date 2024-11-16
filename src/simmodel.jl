@@ -20,17 +20,17 @@ struct SimModel{S1, S2, L}
 
     function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel) where {S1, S2, L}
         graph::Graph = generate_graph(graphmodel, simparams)
-        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::AdjacencyMatrix) where {S1, S2, L}
-        graph = Graph(graph_adj_matrix)
-        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph::Graph) where {S1, S2, L}
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::MMatrix) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::Matrix) where {S1, S2, L}
         graph = Graph(graph_adj_matrix)
-        # initialize_stoppingcondition && initialize_stoppingcondition!(stoppingcondition, simparams, graph)
+        return new{S1, S2, L}(game, simparams, graphmodel, graph)
+    end
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix_str::String) where {S1, S2, L}
+        graph = Graph(graph_adj_matrix_str)
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)

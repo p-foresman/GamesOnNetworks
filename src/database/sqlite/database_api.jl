@@ -260,7 +260,7 @@ end
 
 
 
-function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
+function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool; model_id::Union{Nothing, Integer}=nothing)
     model_game = game(model)
     game_name = displayname(model_game)
     game_str = JSON3.write(model_game)
@@ -284,7 +284,7 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
     # stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
     # stoppingcondition_type = type(model_stoppingcondition)
 
-    adj_matrix_json_str = JSON3.write(Matrix(adjacency_matrix(graph(model))))
+    adj_matrix_str = adjacency_matrix_str(graph(model))
 
 
     # println(graphmodel_params_str)
@@ -296,7 +296,8 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool)
                                     game_name, game_str, game_size,
                                     graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
                                     model_simparams, simparams_str, seed_bool,
-                                    adj_matrix_json_str)
+                                    adj_matrix_str;
+                                    model_id=model_id)
     #     catch e
     #         if e isa SQLiteException
     #             println("An error has been caught in db_insert_model():")
@@ -366,9 +367,9 @@ function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer)
     payoff_matrix_size = JSON3.read(df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
     graphmodel = JSON3.read(df[1, :graphmodel], GraphModel)
-    adj_matrix = JSON3.read(df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
+    regen_graph = Graph(df[1, :graph_adj_matrix])
 
-    model = SimModel(game, simparams, graphmodel, adj_matrix)
+    model = SimModel(game, simparams, graphmodel, regen_graph)
 
     return model
 end
@@ -377,21 +378,36 @@ end
 function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
     simulation_df, agents_df = execute_query_simulations_for_restore(db_info, simulation_uuid)
     
+    println("a")
     simparams = JSON3.read(simulation_df[1, :simparams], SimParams)
+    println("b")
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
+    println("c")
     game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
+    println("d")
     graphmodel = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
-    adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{simparams.number_agents, simparams.number_agents, Int})
+    println("e")
+    println(simulation_df[1, :graph_adj_matrix])
+    regen_graph = Graph(simulation_df[1, :graph_adj_matrix])
+    println("f")
     state_user_variables = UserVariables(JSON3.read(simulation_df[1, :user_variables]))
-
-    model = SimModel(game, simparams, graphmodel, adj_matrix)
+    println("g")
+    println(game)
+    println(simparams)
+    println(graphmodel)
+    println(graph)
+    model = SimModel(game, simparams, graphmodel, regen_graph)
+    println("h")
     agents = Vector{Agent}()
+    println("i")
     for row in eachrow(agents_df)
         push!(agents, JSON3.read(row[:agent], Agent))
     end
+    println("j")
     state_agentgraph = AgentGraph(graph(model), AgentSet{length(agents)}(agents))
+    println("k")
     state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables, simulation_df[1, :model_id], simulation_df[1, :uuid])
-
+    println("l")
     #restore RNG to previous state
     reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
     copy!(Random.default_rng(), reproduced_rng_state)

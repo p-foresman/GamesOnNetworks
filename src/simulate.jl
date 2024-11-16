@@ -41,7 +41,7 @@ function simulate(model::SimModel, model_id::Int; db_group_id::Union{Nothing, In
     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model::SimModel, model_id::Int)' method without a database configured."
 
     # timer = Timer(timeout(model, SETTINGS.database))
-    return _simulate_distributed_barrier(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
+    return _simulate_model_barrier(model, model_id, SETTINGS.database; db_group_id=db_group_id, start_time=time())
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
 
     # if nworkers() > 1
@@ -88,8 +88,18 @@ function _simulate_model_barrier(model_id::Int, db_info::DBInfo; start_time::Flo
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
+
+function _simulate_model_barrier(model::SimModel, model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    id = db_insert_model(db_info, model, SETTINGS.use_seed; model_id=model_id)
+    println("id: ", id)
+    return _simulate_distributed_barrier(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
+end
+
+
 function _simulate_model_barrier(db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     simulation_uuids = db_get_incomplete_simulation_uuids(SETTINGS.database)
+    println(simulation_uuids)
     model_state_tuples = Vector{Tuple{SimModel, State}}()
     for simulation_uuid in simulation_uuids
         push!(model_state_tuples, db_reconstruct_simulation(SETTINGS.database, simulation_uuid))
