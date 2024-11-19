@@ -420,11 +420,11 @@ function _simulate_distributed_barrier_osg(model::SimModel, db_info::SQLiteInfo;
 
     stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
-    num_procs = SETTINGS.procs #nworkers()
-    println("num procs: $num_procs")
+    # num_procs = SETTINGS.procs #nworkers()
+    # println("num procs: $num_procs")
 
-    print("Process $process of $(num_procs)")
-    flush(stdout)
+    # print("Process $process of $(num_procs)")
+    # flush(stdout)
     # if !preserve_graph
     #     state = State(model) #regenerate state so each process has a different graph
     # end
