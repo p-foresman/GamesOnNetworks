@@ -9,7 +9,7 @@ function generate_db()
     for N in [100]
         # println(N)
         for m in [10] #run more later?
-            for e in 0.05:0.01:0.1 #go both lower and higher later
+            for e in 0.1:-0.01:0.05 #go both lower and higher later
                 # l_max = N - 1
                 for l in 3:0.5:10 #run more later
                     for stop in ["equity_psychological", "equity_behavioral"]
@@ -62,7 +62,7 @@ function get_model_from_generator(model_id::Integer)
     for N in [100]
         # println(N)
         for m in [10] #run more later?
-            for e in 0.05:0.01:0.1 #go both lower and higher later
+            for e in 0.1:-0.01:0.05 #go both lower and higher later
                 # l_max = N - 1
                 for l in 3:0.5:10 #run more later
                     for stop in ["equity_psychological", "equity_behavioral"]

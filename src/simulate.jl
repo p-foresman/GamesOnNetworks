@@ -375,100 +375,92 @@ end
 
 ########## no distributed just to test ##############
 
-# function simulate_osg(model::SimModel, model_id::Int; db_group_id::Union{Nothing, Integer} = nothing) #NOTE: potentially dangerous method that could screw up database integrity
-#     @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model::SimModel, model_id::Int)' method without a database configured."
+function simulate_osg(model::SimModel, model_id::Int; db_group_id::Union{Nothing, Integer} = nothing) #NOTE: potentially dangerous method that could screw up database integrity
+    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model::SimModel, model_id::Int)' method without a database configured."
 
-#     # timer = Timer(timeout(model, SETTINGS.database))
-#     return _simulate_model_barrier_osg(model, model_id, SETTINGS.database; db_group_id=db_group_id, start_time=time())
-#     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # timer = Timer(timeout(model, SETTINGS.database))
+    return _simulate_model_barrier_osg(model, model_id, SETTINGS.database; db_group_id=db_group_id, start_time=time())
+    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
 
-#     # if nworkers() > 1
-#     #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
-#     # else
-#     #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
-#     # end
-# end
+    # if nworkers() > 1
+    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # else
+    #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
+    # end
+end
 
-# function _simulate_model_barrier_osg(model::SimModel, model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-#     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-#     id = db_insert_model(db_info, model, SETTINGS.use_seed; model_id=model_id)
-#     println("id: ", id)
-#     return _simulate_distributed_barrier_osg(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
-# end
+function _simulate_model_barrier_osg(model::SimModel, model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    id = db_insert_model(db_info, model, SETTINGS.use_seed; model_id=model_id)
+    println("id: ", id)
+    return _simulate_distributed_barrier_osg(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
+end
 
-# function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
-#     # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
+function _simulate_distributed_barrier_osg(model::SimModel, db_info::SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+    # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
-#     # db_info_list = [db_info]
-#     # if nworkers() > 1
-#     #     println("\nSimulation Distributed UUID: $distributed_uuid")
-#     #     db_info_list = db_init_distributed(distributed_uuid)
-#     # end
+    # db_info_list = [db_info]
+    # if nworkers() > 1
+    #     println("\nSimulation Distributed UUID: $distributed_uuid")
+    #     db_info_list = db_init_distributed(distributed_uuid)
+    # end
 
-#     show(model)
-#     flush(stdout) #flush buffer
+    show(model)
+    flush(stdout) #flush buffer
 
 
-#     # states::Vector{State} = @distributed (append!) for (process, db_info) in collect(enumerate(db_info_list))
-#     #     print("Process $process of $(nworkers())")
-#     #     flush(stdout)
-#     #     # if !preserve_graph
-#     #     #     state = State(model) #regenerate state so each process has a different graph
-#     #     # end
-#     #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
-#     # end
+    # states::Vector{State} = @distributed (append!) for (process, db_info) in collect(enumerate(db_info_list))
+    #     print("Process $process of $(nworkers())")
+    #     flush(stdout)
+    #     # if !preserve_graph
+    #     #     state = State(model) #regenerate state so each process has a different graph
+    #     # end
+    #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
+    # end
 
-#     stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
-#     num_procs = SETTINGS.procs #nworkers()
-#     println("num procs: $num_procs")
-#     result_channel = RemoteChannel(()->Channel{State}(num_procs))
+    num_procs = SETTINGS.procs #nworkers()
+    println("num procs: $num_procs")
 
-#     @distributed for process in 1:num_procs
-#         print("Process $process of $(num_procs)")
-#         flush(stdout)
-#         # if !preserve_graph
-#         #     state = State(model) #regenerate state so each process has a different graph
-#         # end
-#         _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
-#     end
+    print("Process $process of $(num_procs)")
+    flush(stdout)
+    # if !preserve_graph
+    #     state = State(model) #regenerate state so each process has a different graph
+    # end
+    result_state::State = _simulate_osg(model, State(model), stopping_condition_reached=stopping_condition_func, start_time=start_time)
     
+    db_insert_simulation(db_info, result_state, model_id, db_group_id)
+    if !iscomplete(result_state) #if all simulations aren't completed, exit with checkpoint exit code
+        println("CHECKPOINT")
+        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+    end
 
-#     num_received = 0
-#     num_completed = 0
-#     result_states = Vector{State}()
-#     while num_received < num_procs
-#         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
-#         result_state = take!(result_channel)
-#         db_insert_simulation(db_info, result_state, model_id, db_group_id)
-#         if iscomplete(result_state) num_completed += 1 end
-#         push!(result_states, result_state)
-#         num_received += 1
-#     end
-#     # while received < nworkers()
-#     #     #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
-#     #     result_state = take!(result_channel)
-#     #     if iscomplete(result_state)
-#     #         db_insert_simulation(db_info, result_state, model_id, db_group_id)
-#     #         completed += 1
-#     #     else
-#     #         if !isnothing(SETTINGS.checkpoint)
-#     #             db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
-#     #         end
-#     #     end
-#     #     push!(result_states, result_state)
-#     #     received += 1
-#     # end
+    println("DONE")
 
-#     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
-#         println("CHECKPOINT")
-#         !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
-#     end
+    return result_state
+end
 
-#     println("DONE")
+function _simulate_osg(model::SimModel, state::State; stopping_condition_reached::Function, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+    if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
+        Random.seed!(random_seed(model))
+    end
 
-#     return result_states
-# end
+    timeout = SETTINGS.timeout
+    completed = true
+    while !stopping_condition_reached(state)
+        run_period!(model, state)
+        if (time() - start_time) > timeout
+            completed = false
+            break
+        end
+    end
+
+    println(" --> periods elapsed: $(period(state))")
+    flush(stdout) #flush buffer
+    completed && complete(state)
+    return state
+end
 
 
 
