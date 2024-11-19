@@ -389,12 +389,32 @@ function simulate_osg(model::SimModel, model_id::Int; db_group_id::Union{Nothing
     # end
 end
 
+function simulate_osg(; db_group_id::Union{Nothing, Integer} = nothing) #NOTE: potentially dangerous method that could screw up database integrity
+    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate()' method without a database configured."
+
+    return _simulate_model_barrier_osg(SETTINGS.database, start_time=time())
+end
+
 function _simulate_model_barrier_osg(model::SimModel, model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
     id = db_insert_model(db_info, model, SETTINGS.use_seed; model_id=model_id)
     println("id: ", id)
     return _simulate_distributed_barrier_osg(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
 end
+
+function _simulate_model_barrier_osg(db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    simulation_uuids = db_get_incomplete_simulation_uuids(SETTINGS.database)
+    if isempty(simulation_uuids)
+        return nothing
+    end
+    simulation_uuid = simulation_uuids[1]
+    println(simulation_uuid)
+    model_state = db_reconstruct_simulation(SETTINGS.database, simulation_uuid)
+
+    return _simulate_distributed_barrier_osg(model_state, db_info, start_time=start_time, db_group_id=db_group_id)
+end
+
 
 function _simulate_distributed_barrier_osg(model::SimModel, db_info::SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
@@ -420,17 +440,31 @@ function _simulate_distributed_barrier_osg(model::SimModel, db_info::SQLiteInfo;
 
     stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
-    # num_procs = SETTINGS.procs #nworkers()
-    # println("num procs: $num_procs")
-
-    # print("Process $process of $(num_procs)")
-    # flush(stdout)
-    # if !preserve_graph
-    #     state = State(model) #regenerate state so each process has a different graph
-    # end
     result_state::State = _simulate_osg(model, State(model), stopping_condition_reached=stopping_condition_func, start_time=start_time)
     
     db_insert_simulation(db_info, result_state, model_id, db_group_id)
+    if !iscomplete(result_state) #if all simulations aren't completed, exit with checkpoint exit code
+        println("CHECKPOINT")
+        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+    end
+
+    println("DONE")
+
+    return result_state
+end
+
+#NOTE: this one needs to be cleaned up (this is the case where a single simulation is continued)
+function _simulate_distributed_barrier_osg(model_state::Tuple{SimModel, State}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+    show(model_state[1])
+    flush(stdout) #flush buffer
+
+
+    stopping_condition_func = get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+
+    result_state::State = _simulate_osg(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, start_time=start_time)
+
+
+    db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
     if !iscomplete(result_state) #if all simulations aren't completed, exit with checkpoint exit code
         println("CHECKPOINT")
         !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
