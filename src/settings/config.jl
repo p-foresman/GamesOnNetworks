@@ -202,32 +202,32 @@ function configure()
             # end
         end
 
-        # resetprocs() #resets the process count to 1 for proper reconfigure
-        # if SETTINGS.procs > 1 #|| SETTINGS.timeout > 0 #if the timeout is active, need to add a process for the timer to run on
-        #     #initialize distributed processes with GamesOnNetworks available in their individual scopes
-        #     print("initializing $(SETTINGS.procs) distributed processes... ")
-        #     procs = addprocs(SETTINGS.procs)
-        #     @everywhere procs begin
-        #         eval(quote
-        #             # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
-        #             # using .GamesOnNetworks
-        #             import Pkg
-        #             Pkg.activate($$project_dirpath; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
-        #             using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
-        #         end)
-        #     end
+        resetprocs() #resets the process count to 1 for proper reconfigure
+        if SETTINGS.procs > 1 #|| SETTINGS.timeout > 0 #if the timeout is active, need to add a process for the timer to run on
+            #initialize distributed processes with GamesOnNetworks available in their individual scopes
+            print("initializing $(SETTINGS.procs) distributed processes... ")
+            procs = addprocs(SETTINGS.procs)
+            @everywhere procs begin
+                eval(quote
+                    # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
+                    # using .GamesOnNetworks
+                    import Pkg
+                    Pkg.activate($$project_dirpath; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
+                    using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
+                end)
+            end
 
-        #     #define user-defined starting and stopping conditions on all workers (only matters if user reconfigures processes with GamesOnNetworks.configure())
-        #     #NOTE: this seems sketch but is working fine for now
-        #     for fn in _starting_condition_registry
-        #         # @startingcondition eval($fn)
-        #         @everywhere eval($fn)
-        #     end
-        #     for fn in _stopping_condition_registry
-        #         # @stoppingcondition eval($fn)
-        #         @everywhere eval($fn)
-        #     end
-        # end
+            #define user-defined starting and stopping conditions on all workers (only matters if user reconfigures processes with GamesOnNetworks.configure())
+            #NOTE: this seems sketch but is working fine for now
+            for fn in _starting_condition_registry
+                # @startingcondition eval($fn)
+                @everywhere eval($fn)
+            end
+            for fn in _stopping_condition_registry
+                # @stoppingcondition eval($fn)
+                @everywhere eval($fn)
+            end
+        end
         println("$(SETTINGS.procs) processe(s) initialized")
         println("configuration complete")
     end
