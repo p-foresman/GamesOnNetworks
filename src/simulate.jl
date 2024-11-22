@@ -184,13 +184,13 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     @distributed for process in 1:num_procs
         print("Process $process of $(num_procs)")
         flush(stdout)
+
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
         _simulate(model, State(model), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
-
     num_received = 0
     num_completed = 0
     result_states = Vector{State}()
@@ -310,45 +310,6 @@ function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_i
 end
 
 
-#NOTE: dont think this needs to be a thing anymore since PostgresInfo version should be the same as SQLiteInfo version now (I think)
-# function _simulate_distributed_barrier(model::SimModel, db_info::PostgresInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
-
-#     show(model)
-#     flush(stdout) #flush buffer
-
-#     states::Vector{State} = @distributed (append!) for process in 1:nworkers() #NOTE: run_count could be number workers
-#         print("Process $process of $(nworkers())")
-#         flush(stdout)
-#         # if !preserve_graph
-#         #     state = State(model) #regenerate state so each process has a different graph
-#         # end
-#         [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, start_time=start_time)]
-#     end
-
-#     return states
-# end
-
-
-
-# function _simulate(model::SimModel; start_time::Float64, kwargs...)
-#     state = State(model) #create state in this scope to later return
-
-#     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs (NOTE: is prev_simulation_uuid needed here?? not running with db)
-#         Random.seed!(random_seed(model))
-#     end
-
-#     timeout = SETTINGS.checkpoint.timeout
-
-#     while !is_stopping_condition(state, stoppingcondition(model))
-#         run_period!(model, state)
-#         (time() - start_time) > timeout && break
-#     end
-
-#     println(" --> periods elapsed: $(period(state))")
-
-#     return state
-# end
-
 function _simulate(model::SimModel, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
     if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
         Random.seed!(random_seed(model))
@@ -360,6 +321,7 @@ function _simulate(model::SimModel, state::State; stopping_condition_reached::Fu
         run_period!(model, state)
         if (time() - start_time) > timeout
             completed = false
+            println("TIMED OUT AT $timeout")
             break
         end
     end
@@ -368,6 +330,8 @@ function _simulate(model::SimModel, state::State; stopping_condition_reached::Fu
     flush(stdout) #flush buffer
     completed && complete(state)
     put!(channel, state)
+
+    return nothing
 end
 
 
