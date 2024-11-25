@@ -70,7 +70,7 @@ end
 function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cleanup_directory::Bool = false)
     contents = readdir(directory_path)
     for item in contents
-        item_path = directory_path * "/" * item
+        item_path = normpath(joinpath(directory_path, item))
         if isfile(item_path)
             db_info_merger = SQLiteInfo("temp", item_path)
             success = false
@@ -95,6 +95,7 @@ function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cle
         end
     end
     cleanup_directory && rm(directory_path, recursive=true)
+    return nothing
 end
 
 

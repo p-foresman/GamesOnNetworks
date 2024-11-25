@@ -25,7 +25,40 @@ include("./sqlite/database_api.jl")
 
 
 # function barriers to interface with sqlite/postgres-specific functions using configured database in environment variable 'SETTINGS'
-DBConnection() = DBConnection(SETTINGS.database)
+
+"""
+    DB(;kwargs...)
+
+Create a connection to the configured database.
+"""
+DB(;kwargs...) = DB(SETTINGS.database, kwargs...)
+
+"""
+    db_execute(sql::SQL)
+
+Quick method to execute SQL on the configured database.
+"""
+function db_execute(sql::SQL)
+    db = DB()
+    result = db_execute(db, sql)
+    db_close(db)
+    return result
+end
+
+"""
+    db_query(sql::SQL)
+
+Quick method to make a query on the configured database. Returns a DataFrame containing results.
+"""
+function db_query(sql::SQL)
+    db = DB()
+    query = DataFrame(db_execute(db, sql))
+    db_close(db)
+    return query
+end
+# db_begin_transaction() = db_begin_transaction(SETTINGS.database)
+# db_close(db::SQLiteDB) = SQLite.close(db)
+# db_commit_transaction(db::SQLiteDB) = SQLite.commit(db)
 
 db_init() = db_init(SETTINGS.database)
 db_init(::Nothing) = nothing
@@ -79,12 +112,18 @@ function db_construct_id_tuple(db_info::DBInfo, model::SimModel, use_seed::Bool)
     return db_id_tuple
 end
 
-function db_insert_model(model::SimModel)
-    return db_insert_model(SETTINGS.database, model, SETTINGS.use_seed)
+
+function db_insert_model(model::SimModel; model_id::Union{Nothing, Integer}=nothing) #NOTE: use_seed needs to be more thought out here. Should it even be included in a model? (probably not, but in a simulation, YES!)
+    return db_insert_model(SETTINGS.database, model, SETTINGS.use_seed, model_id=model_id)
 end
 
 function db_has_incomplete_simulations()
     return db_has_incomplete_simulations(SETTINGS.database)
+end
+
+function db_collect_temp(directory_path::String; cleanup_directory::Bool = false)
+    db_collect_temp(SETTINGS.database, directory_path, cleanup_directory=cleanup_directory)
+    return nothing
 end
 
 
