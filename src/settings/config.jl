@@ -34,6 +34,7 @@ end
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
     use_seed::Bool
+    random_seed::Int
     # use_distributed::Bool
     procs::Int
     timeout::Int
@@ -47,6 +48,10 @@ function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "use_seed") "config file must have a 'use_seed' variable"
     use_seed = settings["use_seed"]
     @assert use_seed isa Bool "'use_seed' value must be a Bool"
+
+    @assert haskey(settings, "random_seed") "config file must have a 'random_seed' variable"
+    random_seed = settings["random_seed"]
+    @assert random_seed isa Int && random_seed >= 0 "'random_seed' value must be an Int (>= 0)"
 
 
     # @assert haskey(settings, "use_distributed") "config file must have a 'use_distributed' variable"
@@ -105,7 +110,7 @@ function Settings(settings::Dict{String, Any})
         # end
     end
 
-    return Settings(settings, use_seed, procs, timeout, database, checkpoint, checkpoint_exit_code)
+    return Settings(settings, use_seed, random_seed, procs, timeout, database, checkpoint, checkpoint_exit_code)
 end
 
 function Settings(config_path::String)

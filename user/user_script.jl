@@ -9,8 +9,21 @@ include("stoppingconditions.jl")
 #                         ErdosRenyiModel(7))
 
 const model = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-                        SimParams(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>900000000000)),
+                        SimParams(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>10000)),
                         CompleteModel())
+
+const model2 = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+                    SimParams(10, 10, 0.1, "fractious_starting_condition", "equity_psychological"),
+                    CompleteModel())
+
+const model3 = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+                    SimParams(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>100000000)),
+                    CompleteModel())
+
+const model4 = SimModel(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+                    SimParams(30, 19, 0.09, "fractious_starting_condition", "equity_psychological"),
+                    CompleteModel())
+                    
 
 println(model)
 

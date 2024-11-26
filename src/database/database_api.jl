@@ -82,10 +82,10 @@ db_insert_sim_params(::Nothing, ::SimParams, ::Bool) = nothing
 # db_insert_stopping_condition(stoppingcondition::StoppingCondition) = db_insert_stopping_condition(SETTINGS.database, stoppingcondition)
 # db_insert_stopping_condition(::Nothing, ::StoppingCondition) = nothing
 
-function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, period::Integer, distributed_uuid::Union{String, Nothing} = nothing)
-    db_insert_simulation(SETTINGS.database, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, period, distributed_uuid)
-end
-db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
+# function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, period::Integer, distributed_uuid::Union{String, Nothing} = nothing)
+#     db_insert_simulation(SETTINGS.database, SETTINGS.use_seed, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, period, distributed_uuid)
+# end
+# db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
 
 
 #not sure which method below is better (or if it matters at all). leaning towards second one to keep SETTINGS calls as high in the call stack as possible in an effort to optimize
@@ -114,7 +114,7 @@ end
 
 
 function db_insert_model(model::SimModel; model_id::Union{Nothing, Integer}=nothing) #NOTE: use_seed needs to be more thought out here. Should it even be included in a model? (probably not, but in a simulation, YES!)
-    return db_insert_model(SETTINGS.database, model, SETTINGS.use_seed, model_id=model_id)
+    return db_insert_model(SETTINGS.database, model, model_id=model_id)
 end
 
 function db_has_incomplete_simulations()

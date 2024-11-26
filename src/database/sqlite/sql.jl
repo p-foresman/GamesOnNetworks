@@ -58,9 +58,7 @@ function sql_create_simparams_table(::SQLiteInfo)
         starting_condition TEXT NOT NULL,
         stopping_condition TEXT NOT NULL,
         simparams TEXT NOT NULL,
-        use_seed BOOLEAN NOT NULL,
-        UNIQUE(simparams, use_seed),
-        CHECK (use_seed in (0, 1))
+        UNIQUE(simparams)
     );
     """
 end
@@ -146,6 +144,7 @@ function sql_create_simulations_table(::SQLiteInfo)
         prev_simulation_uuid TEXT DEFAULT NULL,
         model_id INTEGER NOT NULL,
         rng_state TEXT NOT NULL,
+        random_seed INTEGER DEFAULT NULL,
         period INTEGER NOT NULL,
         complete BOOLEAN NOT NULL,
         user_variables TEXT NOT NULL,
@@ -156,7 +155,8 @@ function sql_create_simulations_table(::SQLiteInfo)
             REFERENCES simulations (simulation_uuid),
         FOREIGN KEY (model_id)
             REFERENCES models (id),
-        UNIQUE(uuid)
+        UNIQUE(uuid),
+        CHECK (complete in (0, 1))
     );
     """
 end
@@ -279,7 +279,7 @@ function sql_insert_graphmodel(display::String, type::String, graphmodel_str::St
     """
 end
 
-function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_seed::Integer)
+function sql_insert_simparams(simparams::SimParams, simparams_str::String)
     """
     INSERT OR IGNORE INTO simparams
     (
@@ -288,8 +288,7 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         error,
         starting_condition,
         stopping_condition,
-        simparams,
-        use_seed
+        simparams
     )
     VALUES
     (
@@ -298,11 +297,10 @@ function sql_insert_simparams(simparams::SimParams, simparams_str::String, use_s
         $(error_rate(simparams)),
         '$(starting_condition_fn_str(simparams))',
         '$(stopping_condition_fn_str(simparams))',
-        '$simparams_str',
-        $use_seed
+        '$simparams_str'
     )
-    ON CONFLICT (simparams, use_seed) DO UPDATE
-        SET use_seed = simparams.use_seed
+    ON CONFLICT (simparams) DO UPDATE
+        SET number_agents = simparams.number_agents
     RETURNING id;
     """
 end
@@ -377,8 +375,8 @@ function execute_insert_graphmodel(db::SQLiteDB, display::String, type::String, 
     return id
 end
 
-function execute_insert_simparams(db::SQLiteDB, simparams::SimParams, simparams_str::String, use_seed::Integer)
-    id::Int = db_query(db, sql_insert_simparams(simparams, simparams_str, use_seed))[1, :id]
+function execute_insert_simparams(db::SQLiteDB, simparams::SimParams, simparams_str::String)
+    id::Int = db_query(db, sql_insert_simparams(simparams, simparams_str))[1, :id]
     return id
 end
 
@@ -401,7 +399,7 @@ end
 function execute_insert_model(db_info::SQLiteInfo,
                             game_name::String, game_str::String, payoff_matrix_size::String,
                             graphmodel_display::String, graphmodel_type::String, graphmodel_str::String, graphmodel_params_str::String, graphmodel_values_str::String, #NOTE: should try to make all parameters String typed so they can be plugged right into sql
-                            simparams::SimParams, simparams_str::String, use_seed::Integer,
+                            simparams::SimParams, simparams_str::String,
                             graph_adj_matrix_str::String;
                             model_id::Union{Nothing, Integer}=nothing)
 
@@ -410,7 +408,7 @@ function execute_insert_model(db_info::SQLiteInfo,
     db_begin_transaction(db)
     game_id = execute_insert_game(db, game_name, game_str, payoff_matrix_size)
     graphmodel_id = execute_insert_graphmodel(db, graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str)
-    simparams_id = execute_insert_simparams(db, simparams, simparams_str, use_seed)
+    simparams_id = execute_insert_simparams(db, simparams, simparams_str)
     # startingcondition_id = execute_insert_startingcondition(db, startingcondition_type, startingcondition_str)
     # stoppingcondition_id = execute_insert_stoppingcondition(db, stoppingcondition_type, stoppingcondition_str)
     # id = execute_insert_model(db, game_id, graphmodel_id, simparams_id, startingcondition_id, stoppingcondition_id)
@@ -451,7 +449,7 @@ function execute_insert_group(db_info::SQLiteInfo, description::String)
 end
 
 
-function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, period::Integer, complete::Integer, user_variables::String)
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, random_seed::String, period::Integer, complete::Integer, user_variables::String)
     """
     INSERT INTO simulations
     (
@@ -460,6 +458,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         prev_simulation_uuid,
         model_id,
         rng_state,
+        random_seed,
         period,
         complete,
         user_variables
@@ -471,6 +470,7 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         $(prev_simulation_uuid == "NULL" ? prev_simulation_uuid : "'$prev_simulation_uuid'"),
         $model_id,
         '$rng_state',
+        $random_seed,
         $period,
         $complete,
         '$user_variables'
@@ -495,12 +495,13 @@ function sql_insert_agents(agent_values_string::String) #kind of a cop-out param
     """
 end
 
-function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, rng_state::String, period::Integer, complete::Integer, user_variables::String, agent_list::Vector{String})
+function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, rng_state::String, random_seed::Union{Integer, Nothing}, period::Integer, complete::Integer, user_variables::String, agent_list::Vector{String})
     uuid = "$(uuid4())"
     
     #prepare simulation SQL
     group_id = isnothing(group_id) ? "NULL" : string(group_id)
     isnothing(prev_simulation_uuid) ?  prev_simulation_uuid = "NULL" : nothing
+    random_seed = isnothing(random_seed) ? "NULL" : string(random_seed)
 
     #prepare agents SQL
     agent_values_string = "" #construct a values string to insert multiple agents into db table
@@ -511,7 +512,7 @@ function execute_insert_simulation(db_info::SQLiteInfo, model_id::Integer, group
 
     db = DB(db_info)
     db_begin_transaction(db)
-    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, period, complete, user_variables))
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables))
     db_execute(db, sql_insert_agents(agent_values_string))
     db_commit_transaction(db)
     db_close(db)
@@ -622,7 +623,6 @@ function sql_query_models(model_id::Integer)
         models.id,
         models.graph_adj_matrix,
         simparams.simparams,
-        simparams.use_seed,
         graphmodels.graphmodel,
         games.game,
         games.payoff_matrix_size
@@ -640,14 +640,13 @@ function sql_query_simulations(simulation_uuid::String)
         simulations.uuid,
         simulations.prev_simulation_uuid,
         simulations.model_id,
+        simulations.random_seed,
         models.graph_adj_matrix,
         simparams.simparams,
-        simparams.use_seed,
         games.game,
         games.payoff_matrix_size,
         graphmodels.graphmodel,
         simulations.group_id,
-        simparams.use_seed,
         simulations.rng_state,
         simulations.period,
         simulations.complete,
@@ -731,7 +730,7 @@ end
 #                                             simulations.group_id,
 #                                             simulations.sim_params_id,
 #                                             simulations.graph_adj_matrix,
-#                                             simulations.use_seed,
+#                                             simulations.random_seed,
 #                                             simulations.rng_state,
 #                                             simulations.period,
 #                                             games.game,
@@ -779,7 +778,7 @@ function execute_merge_full(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
     db_execute(db, "INSERT OR IGNORE INTO games(game_name, game, payoff_matrix_size) SELECT game_name, game, payoff_matrix_size FROM merge_db.games;")
     db_execute(db, "INSERT OR IGNORE INTO graphmodels(graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out) SELECT graph, graph_type, graph_params, λ, β, α, blocks, p_in, p_out FROM merge_db.graphmodels;")
-    db_execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params, use_seed) SELECT number_agents, memory_length, error, sim_params, use_seed FROM merge_db.sim_params;")
+    db_execute(db, "INSERT OR IGNORE INTO sim_params(number_agents, memory_length, error, sim_params) SELECT number_agents, memory_length, error, sim_params FROM merge_db.sim_params;")
     db_execute(db, "INSERT OR IGNORE INTO starting_conditions(name, starting_condition) SELECT name, starting_condition FROM merge_db.starting_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO stopping_conditions(name, stopping_condition) SELECT name, stopping_condition FROM merge_db.stopping_conditions;")
     db_execute(db, "INSERT OR IGNORE INTO sim_groups(description) SELECT description FROM merge_db.sim_groups;")
@@ -795,7 +794,7 @@ function execute_merge_temp(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     db = DB(db_info_master)
     # db = DB(db_info; busy_timeout=rand(1:5000)) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?) NOTE: are all of these executes separate writes? can we put them all into one???
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
-    db_execute(db, "INSERT OR IGNORE INTO simulations(uuid, group_id, prev_simulation_uuid, model_id, rng_state, period, complete, user_variables) SELECT uuid, group_id, prev_simulation_uuid, model_id, rng_state, period, complete, user_variables FROM merge_db.simulations;")
+    db_execute(db, "INSERT OR IGNORE INTO simulations(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables) SELECT uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables FROM merge_db.simulations;")
     db_execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)

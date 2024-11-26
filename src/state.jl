@@ -7,8 +7,11 @@ mutable struct State{V, E, C}
     complete::Bool
     const user_variables::UserVariables #allows for extra state variables if the user needs them
 
-    model_id::Union{Int, Nothing}
-    prev_simulation_uuid::Union{String, Nothing}
+    const model_id::Union{Int, Nothing}
+    const prev_simulation_uuid::Union{String, Nothing}
+    const random_seed::Union{Int, Nothing}
+    
+    const rngstate::Union{String, Nothing}
 
     # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
@@ -19,7 +22,7 @@ mutable struct State{V, E, C}
     # prev_simulation_uuid
     # distributed_uuid
 
-    function State(model::SimModel; user_variables::UserVariables=UserVariables()) #NOTE: probably dont need user_variables in this constructor
+    function State(model::SimModel; user_variables::UserVariables=UserVariables(), random_seed::Union{Int, Nothing}=nothing) #NOTE: probably dont need user_variables in this constructor
         agentgraph::AgentGraph = AgentGraph(model)
         # V = nv(graph(agentgraph))
         # E = ne(graph(agentgraph))
@@ -31,12 +34,12 @@ mutable struct State{V, E, C}
 
         all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         # is_stopping_condition_test = simparams(model).stoppingcondition(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing, random_seed, nothing)
     end
-    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String) where {V, E, C}
+    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String, random_seed::Union{Int, Nothing}, rngstate::String) where {V, E, C}
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
         all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
-        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid)
+        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rngstate)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))

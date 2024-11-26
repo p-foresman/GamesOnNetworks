@@ -194,14 +194,13 @@ function db_insert_graphmodel(db_info::SQLiteInfo, graphmodel::GraphModel)
     return graphmodel_id
 end
 
-function db_insert_simparams(db_info::SQLiteInfo, simparams::SimParams, use_seed::Bool)
+function db_insert_simparams(db_info::SQLiteInfo, simparams::SimParams)
     simparams_json_str = JSON3.write(simparams)
-    seed_bool = Int(use_seed)
 
     simparams_id = nothing
     while isnothing(simparams_id)
         try
-            simparams_id = execute_insert_simparams(db_info, simparams, simparams_json_str, seed_bool)
+            simparams_id = execute_insert_simparams(db_info, simparams, simparams_json_str)
         catch e
             if e isa SQLiteException
                 println("An error has been caught in db_insert_simparams():")
@@ -261,7 +260,7 @@ end
 
 
 
-function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool; model_id::Union{Nothing, Integer}=nothing)
+function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{Nothing, Integer}=nothing)
     model_game = game(model)
     game_name = displayname(model_game)
     game_str = JSON3.write(model_game)
@@ -275,7 +274,6 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool; m
 
     model_simparams = simparams(model)
     simparams_str = JSON3.write(model_simparams)
-    seed_bool = Int(use_seed)
 
     # model_startingcondition = startingcondition(model)
     # startingcondition_str = JSON3.write(typeof(model_startingcondition)(model_startingcondition)) #generates a "raw" starting condition object for the database
@@ -296,7 +294,7 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel, use_seed::Bool; m
     model_id = execute_insert_model(db_info,
                                     game_name, game_str, game_size,
                                     graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
-                                    model_simparams, simparams_str, seed_bool,
+                                    model_simparams, simparams_str,
                                     adj_matrix_str;
                                     model_id=model_id)
     #     catch e
@@ -316,6 +314,7 @@ end
 
 function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
+    seed = state.random_seed #NOTE: make an accessor for this?
     rng_state = copy(Random.default_rng())
     rng_state_json = JSON3.write(rng_state)
 
@@ -335,6 +334,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     # end
 
     complete_bool = Int(iscomplete(state))
+
     
     state_user_variables = JSON3.write(user_variables(state)) #store these explicitly because their values may be different from defaults if they were updated by a user function
 
@@ -342,7 +342,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, period(state), complete_bool, state_user_variables, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, seed, period(state), complete_bool, state_user_variables, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -391,11 +391,11 @@ function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
         push!(agents, JSON3.read(row[:agent], Agent))
     end
     state_agentgraph = AgentGraph(graph(model), AgentSet{length(agents)}(agents))
-    state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables, simulation_df[1, :model_id], simulation_df[1, :uuid])
+    state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables, simulation_df[1, :model_id], simulation_df[1, :uuid], simulation_df[1, :random_seed], simulation_df[1, :rng_state])
+    
     #restore RNG to previous state
-    reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
-    copy!(Random.default_rng(), reproduced_rng_state)
-
+    # reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
+    # copy!(Random.default_rng(), reproduced_rng_state)
 
     return (model, state)
 end
