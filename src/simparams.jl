@@ -13,28 +13,27 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     starting_condition_fn_str::String
     stopping_condition_fn_str::String
     user_variables::UserVariables
-    random_seed::Int #probably don't need a random seed in every SimParams struct?
+    # random_seed::Int #probably don't need a random seed in every SimParams struct?
 
 
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String; user_variables::UserVariables=UserVariables(), random_seed::Union{Nothing, Int} = nothing)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String; user_variables::UserVariables=UserVariables())
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
         @assert isdefined(Main, Symbol(starting_condition_fn_str)) "the starting_condition_fn_str provided does not correlate to a defined function"
         @assert isdefined(Main, Symbol(stopping_condition_fn_str)) "the stopping_condition_fn_str provided does not correlate to a defined function"
-        if random_seed === nothing random_seed = 1234 end
-        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables, random_seed)
+        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables)
     end
     function SimParams()
         return new()
     end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String, user_variables::UserVariables, random_seed::Int)
+    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String, user_variables::UserVariables)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
         @assert isdefined(Main, Symbol(starting_condition_fn_str)) "the starting_condition_fn_str provided does not correlate to a defined function"
         @assert isdefined(Main, Symbol(stopping_condition_fn_str)) "the stopping_condition_fn_str provided does not correlate to a defined function"
-        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables, random_seed)
+        return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables)
     end
 end
 
@@ -71,12 +70,12 @@ error_rate(simparams::SimParams) = getfield(simparams, :error)
 # """
 # matches_per_period(simparams::SimParams) = getfield(simparams, :matches_per_period)
 
-"""
-    random_seed(simparams::SimParams)
+# """
+#     random_seed(simparams::SimParams)
 
-Get the random seed for the simulation.
-"""
-random_seed(simparams::SimParams) = getfield(simparams, :random_seed)
+# Get the random seed for the simulation.
+# """
+# random_seed(simparams::SimParams) = getfield(simparams, :random_seed)
 
 
 
