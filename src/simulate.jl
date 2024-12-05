@@ -328,12 +328,9 @@ end
 
 
 function _simulate(model::SimModel, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
-    # if SETTINGS.use_seed && isnothing(prev_simulation_uuid) #set seed only if the simulation has no past runs
-    #     Random.seed!(SETTINGS.random_seed)
-    # end
 
-    #restore the rng state if the simulation is continued. NOTE: not reproducing results with continued sims!!
-    !isnothing(model.rngstate) && copy!(Random.default_rng(), JSON3.read(model.rngstate, Random.Xoshiro))
+    #restore the rng state if the simulation is continued
+    restore_rng_state(state)
 
     timeout = SETTINGS.timeout
     completed = true
@@ -349,6 +346,7 @@ function _simulate(model::SimModel, state::State; stopping_condition_reached::Fu
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer
     completed && complete(state)
+    rng_state!(state) #update state's rng_state
     put!(channel, state)
 
     return nothing

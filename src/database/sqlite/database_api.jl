@@ -315,8 +315,9 @@ end
 function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
     #prepare simulation to be inserted
     seed = state.random_seed #NOTE: make an accessor for this?
-    rng_state = copy(Random.default_rng())
-    rng_state_json = JSON3.write(rng_state)
+    rng_state_json = state.rng_state_str
+    # rng_state = copy(Random.default_rng())
+    # rng_state_json = JSON3.write(rng_state)
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
@@ -391,7 +392,11 @@ function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
         push!(agents, JSON3.read(row[:agent], Agent))
     end
     state_agentgraph = AgentGraph(graph(model), AgentSet{length(agents)}(agents))
-    state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables, simulation_df[1, :model_id], simulation_df[1, :uuid], simulation_df[1, :random_seed], simulation_df[1, :rng_state])
+
+
+    seed = ismissing(simulation_df[1, :random_seed]) ? nothing : simulation_df[1, :random_seed]
+
+    state = State(model, state_agentgraph, simulation_df[1, :period], Bool(simulation_df[1, :complete]), state_user_variables, simulation_df[1, :model_id], simulation_df[1, :uuid], seed, simulation_df[1, :rng_state])
     
     #restore RNG to previous state
     # reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)

@@ -11,7 +11,7 @@ mutable struct State{V, E, C}
     const prev_simulation_uuid::Union{String, Nothing}
     const random_seed::Union{Int, Nothing}
     
-    const rngstate::Union{String, Nothing}
+    rng_state_str::Union{String, Nothing} #NOTE: change to Xoshiro down the line? Updated before being pushed to db
 
     # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
@@ -36,10 +36,10 @@ mutable struct State{V, E, C}
         # is_stopping_condition_test = simparams(model).stoppingcondition(model)
         return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing, random_seed, nothing)
     end
-    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String, random_seed::Union{Int, Nothing}, rngstate::String) where {V, E, C}
+    function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String, random_seed::Union{Int, Nothing}, rng_state_str::String) where {V, E, C}
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
         all_user_variables = merge(GamesOnNetworks.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
-        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rngstate)
+        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rng_state_str)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return SimModel(game(model), simparams(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
@@ -408,6 +408,19 @@ Get the extra user-defined State variables.
 function set_user_variable!(state::State, variable::Symbol, value::T) where {T}
     @assert user_variables(state)[variable] isa T "Type of user variable must remain constant!"
     user_variables(state)[variable] = value
+end
+
+
+rng_state_str(state::State) = getfield(state, :rng_state_str)
+# rng_state(state::State) = JSON3.read(rng_state_str(state), Random.Xoshiro)
+rng_state!(state::State) = setfield!(state, :rng_state_str, JSON3.write(copy(Random.default_rng())))
+# rng_state_str!(state::State, rng_state_str::String) =  setfield!(state, :rng_state_str, rng_state_str) #NOTE: dont want this method
+
+function restore_rng_state(state::State)
+    if !isnothing(rng_state_str(state))
+        copy!(Random.default_rng(), JSON3.read(rng_state_str(state), Random.Xoshiro))
+    end
+    return nothing
 end
 
 # """
