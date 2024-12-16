@@ -24,7 +24,7 @@ struct ConnectedComponent{V, E}
         V = length(vertices)
         E = length(edges)
         d = E / possible_edge_count(V)
-        matches_per_period = Int(ceil(d * V / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless)
+        matches_per_period = Int(ceil(d * V / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless) #NOTE: fraction of N choose 2
         return new{V, E}(VertexSet{V}(vertices), matches_per_period)
     end
 end
