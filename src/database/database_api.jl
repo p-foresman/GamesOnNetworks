@@ -9,7 +9,7 @@ struct PostgresInfo <: DBInfo
 end
 
 struct SQLiteInfo <: DBInfo
-    name::String
+    name::String #NOTE: make this optional
     filepath::String
 end
 

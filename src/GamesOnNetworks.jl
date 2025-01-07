@@ -134,6 +134,8 @@ export
     db_init,
     db_insert_sim_group,
     db_collect_temp,
+    db_execute,
+    db_query,
 
     #plotting
     transitionTimesBoxPlot,

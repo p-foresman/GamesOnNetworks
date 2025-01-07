@@ -15,6 +15,31 @@ db_commit_transaction(db::SQLiteDB) = SQLite.commit(db)
 db_close(db::SQLiteDB) = SQLite.close(db)
 
 
+"""
+    db_execute(filepath::String, sql::SQL)
+
+Quick method to execute SQL on an sqlite database file specified by filepath.
+"""
+function db_execute(filepath::String, sql::SQL)
+    db = DB(SQLiteInfo("temp", filepath))
+    result = db_execute(db, sql)
+    db_close(db)
+    return result
+end
+
+"""
+    db_query(filepath::String, sql::SQL)
+
+Quick method to query an sqlite database file specified by filepath. Returns a DataFrame containing results.
+"""
+function db_query(filepath::String, sql::SQL)
+    db = DB(SQLiteInfo("temp", filepath))
+    query = DataFrame(db_execute(db, sql))
+    db_close(db)
+    return query
+end
+
+
 function sql_create_games_table(::SQLiteInfo)
     """
     CREATE TABLE IF NOT EXISTS games
