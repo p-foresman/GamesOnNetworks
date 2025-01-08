@@ -1,7 +1,8 @@
 using TOML
 import Pkg
 
-const project_dirpath = dirname(Pkg.project().path)
+const project_dirpath = dirname(Pkg.project().path) #NOTE: this seems to cause issues when trying to use GamesOnNetworks outside of a project
+println(project_dirpath)
 const default_config_path = joinpath(@__DIR__, "default_config.toml")
 const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
 # println("project path: $project_dirpath")
