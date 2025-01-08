@@ -158,26 +158,29 @@ function get_default_config(;overwrite::Bool=false)
 end
 
 
-
 """
     GamesOnNetworks.configure()
 
 Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks package
 """
 function configure()
+    config_path = ""
     if isfile(user_config_path)
         #load the user's settings config
         myid() == 1 && println("configuring GamesOnNetworks using GamesOnNetworks.toml")
-        GamesOnNetworks.SETTINGS = Settings(user_config_path)
-
+        config_path = user_config_path
     else
         #load the default config which come with the package
         myid() == 1 && println("configuring using the default config")
-        GamesOnNetworks.SETTINGS = Settings(default_config_path)
+        config_path = default_config_path
     
         #give the user the default .toml file to customize if desired
         myid() == 1 && get_default_config()
     end
+
+    #create the global SETTINGS variable
+    global SETTINGS = Settings(config_path)
+
 
     if myid() == 1
         if !isnothing(SETTINGS.database)
