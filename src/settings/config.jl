@@ -1,9 +1,8 @@
 using TOML
-import Pkg
 
-const project_dirpath() = dirname(Pkg.project().path) #these must be functions
-const default_config_path() = joinpath(@__DIR__, "default_config.toml")
-const user_config_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
+const project_dirpath() = dirname(Base.active_project()) #these must be functions so they don't store the paths where GamesOnNetworks is precompiled
+const default_toml_path() = joinpath(@__DIR__, "default_config.toml")
+const user_toml_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
 
 
 # abstract type Database end
@@ -111,10 +110,10 @@ function Settings(settings::Dict{String, Any})
     return Settings(settings, use_seed, random_seed, procs, timeout, database, checkpoint, checkpoint_exit_code)
 end
 
-function Settings(config_path::String)
-    @assert last(split(config_path, ".")) == "toml" "config file be .toml"
-    # settings = TOML.parsefile(config_path)
-    return Settings(TOML.parsefile(config_path))
+function Settings(toml_path::String)
+    @assert last(split(toml_path, ".")) == "toml" "config file be .toml"
+    # settings = TOML.parsefile(toml_path)
+    return Settings(TOML.parsefile(toml_path))
 end
 
 function validate_database(databases::Dict, field::String, db_path::String)
@@ -132,7 +131,7 @@ function validate_database(databases::Dict, field::String, db_path::String)
     if db_type == "sqlite"
         @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
         @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-        return SQLiteInfo(db_name, normpath(joinpath(project_dirpath(), db_info["path"])))
+        return SQLiteInfo(db_name, normpath(joinpath(project_dirpath(), db_info["path"]))) #NOTE: could use pwd() here to create database in the current directory (more freedom, more potential bugs)
     elseif db_type == "postgres"
         @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
         @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
@@ -150,8 +149,8 @@ end
 Get the default GamesOnNetworks.toml config file. CAUTION: setting overwrite=true will replace your current GamesOnNetworks.toml file.
 """
 function get_default_config(;overwrite::Bool=false)
-    cp(default_config_path(), user_config_path(), force=overwrite)
-    chmod(user_config_path(), 0o777) #make sure the file is writable
+    cp(default_toml_path(), user_toml_path(), force=overwrite)
+    chmod(user_toml_path(), 0o777) #make sure the file is writable
     println("default config file added to project directory as 'GamesOnNetworks.toml'. Use this file to configure package settings.")
 end
 
@@ -161,27 +160,30 @@ end
 
 Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks package
 """
-function configure()
-    println(project_dirpath())
-    println(default_config_path())
-    println(user_config_path())
-    
-    config_path = ""
-    if isfile(user_config_path())
-        #load the user's settings config
-        myid() == 1 && println("configuring GamesOnNetworks using GamesOnNetworks.toml")
-        config_path = user_config_path()
+function configure(toml_path::String="")
+    # println(project_dirpath())
+    # println(default_toml_path())
+    # println(user_toml_path())
+    if isempty(toml_path) #if no .toml filepath is provided, try to get the GamesOnNetworks.toml in the project directory. If this doesn't exist, use the default_config.toml, which will be generated within the project directory as GamesOnNetworks.toml
+        if isfile(user_toml_path())
+            #load the user's settings config
+            myid() == 1 && println("configuring GamesOnNetworks using GamesOnNetworks.toml")
+            toml_path = user_toml_path()
+        else
+            #load the default config which come with the package
+            myid() == 1 && println("configuring using the default config")
+            toml_path = default_toml_path()
+        
+            #give the user the default .toml file to customize if desired
+            myid() == 1 && get_default_config()
+        end
     else
-        #load the default config which come with the package
-        myid() == 1 && println("configuring using the default config")
-        config_path = default_config_path()
-    
-        #give the user the default .toml file to customize if desired
-        myid() == 1 && get_default_config()
+        @assert (splitext(toml_path)[2] == ".toml") "toml_path provided does not have a .toml extension"
+        toml_path = abspath(toml_path)
     end
 
     #create the global SETTINGS variable
-    global SETTINGS = Settings(config_path)
+    global SETTINGS = Settings(toml_path)
 
 
     if myid() == 1
