@@ -162,6 +162,10 @@ end
 Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks package
 """
 function configure()
+    println(project_dirpath())
+    println(default_config_path())
+    println(user_config_path())
+    
     config_path = ""
     if isfile(user_config_path())
         #load the user's settings config
