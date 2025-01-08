@@ -1,12 +1,9 @@
 using TOML
 import Pkg
 
-const project_dirpath = dirname(Pkg.project().path) #NOTE: this seems to cause issues when trying to use GamesOnNetworks outside of a project
-println(project_dirpath)
-const default_config_path = joinpath(@__DIR__, "default_config.toml")
-const user_config_path = joinpath(project_dirpath, "GamesOnNetworks.toml")
-# println("project path: $project_dirpath")
-# println("user config path: $user_config_path")
+const project_dirpath() = dirname(Pkg.project().path) #these must be functions
+const default_config_path() = joinpath(@__DIR__, "default_config.toml")
+const user_config_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
 
 
 # abstract type Database end
@@ -135,7 +132,7 @@ function validate_database(databases::Dict, field::String, db_path::String)
     if db_type == "sqlite"
         @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
         @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-        return SQLiteInfo(db_name, normpath(joinpath(project_dirpath, db_info["path"])))
+        return SQLiteInfo(db_name, normpath(joinpath(project_dirpath(), db_info["path"])))
     elseif db_type == "postgres"
         @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
         @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
@@ -153,8 +150,8 @@ end
 Get the default GamesOnNetworks.toml config file. CAUTION: setting overwrite=true will replace your current GamesOnNetworks.toml file.
 """
 function get_default_config(;overwrite::Bool=false)
-    cp(default_config_path, user_config_path, force=overwrite)
-    chmod(user_config_path, 0o777) #make sure the file is writable
+    cp(default_config_path(), user_config_path(), force=overwrite)
+    chmod(user_config_path(), 0o777) #make sure the file is writable
     println("default config file added to project directory as 'GamesOnNetworks.toml'. Use this file to configure package settings.")
 end
 
@@ -166,14 +163,14 @@ Load the GamesOnNetworks.toml config file to be used in the GamesOnNetworks pack
 """
 function configure()
     config_path = ""
-    if isfile(user_config_path)
+    if isfile(user_config_path())
         #load the user's settings config
         myid() == 1 && println("configuring GamesOnNetworks using GamesOnNetworks.toml")
-        config_path = user_config_path
+        config_path = user_config_path()
     else
         #load the default config which come with the package
         myid() == 1 && println("configuring using the default config")
-        config_path = default_config_path
+        config_path = default_config_path()
     
         #give the user the default .toml file to customize if desired
         myid() == 1 && get_default_config()
@@ -221,7 +218,7 @@ function configure()
                     # include(joinpath(dirname(@__DIR__), "GamesOnNetworks.jl")) # this method errors on other local projects since the project environment doesn't contain all of the dependencies (Graphs, Plots, etc)
                     # using .GamesOnNetworks
                     import Pkg
-                    Pkg.activate($$project_dirpath; io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
+                    Pkg.activate($$(project_dirpath()); io=devnull) #must activate the local project environment to gain access to the GamesOnNetworks package
                     using GamesOnNetworks #will call __init__() on startup for these processes which will configure all processes internally
                 end)
             end
