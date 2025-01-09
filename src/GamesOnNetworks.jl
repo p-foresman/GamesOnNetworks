@@ -204,7 +204,7 @@ include("state.jl")
 include("settings/structtypes.jl")
 
 #api to sqlite and postgresql functionality
-include("database/database_api.jl")
+include("database_api/database_api.jl")
 
 #simulation functions
 include("simulation_functions.jl")
