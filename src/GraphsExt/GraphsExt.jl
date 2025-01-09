@@ -1,6 +1,9 @@
 """
 Extension of Graphs.jl
 """
+module GraphsExt
+
+using Graphs
 
 const Graph = SimpleGraph{Int}
 # const AdjacencyMatrix = Graphs.SparseMatrixCSC{Int64, Int64}
@@ -93,3 +96,29 @@ function stochastic_block_model_rg(block_sizes::Vector{<:Integer}, λ::Real, in_
     num_edges = edge_count(N, edge_density(N, λ))
     return Graphs.SimpleGraph(N, num_edges, Graphs.StochasticBlockModel(block_sizes, affinity_matrix))
 end
+
+
+function plot_degree_distribution(g)
+    hist = degree_histogram(g)
+    total_vertices = nv(g)
+    normalized_hist = Dict()
+    for (degree, num_vertices) in hist
+    normalized_hist[degree] = num_vertices/total_vertices
+    # append!(x, degree)
+    # append!(y, num_vertices/total_vertices)
+    end
+    return plot(normalized_hist)
+end
+    
+function fit_degree_dist(D, g::SimpleGraph{Int})
+    sample_points = degree(g)
+    return fit(D, sample_points)
+end
+
+function plot_fitted_degree_dist(D, g::SimpleGraph{Int})
+    fit = fit_degree_dist(D, g)
+    nv = Graphs.nv(g)
+    return plot(D, x_lims=[0, nv])
+end
+
+end #GraphsExt

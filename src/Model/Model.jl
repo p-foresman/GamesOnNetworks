@@ -1,9 +1,4 @@
-"""
-    GamesOnNetworks
-
-Package used to simulate games over network interaction structures.
-"""
-module GamesOnNetworks
+module Model
 
 export
     # types
@@ -56,6 +51,8 @@ export
     set_user_variable!,
     @startingcondition,
     @stoppingcondition,
+    starting_condition_fn_str,
+    stopping_condition_fn_str,
 
     # startingcondition,
     type, #rename?
@@ -71,6 +68,8 @@ export
     # period_count,
     # period_count!,
     # increment_period_count!,
+
+    count_strategy,
 
     period,
 
@@ -119,94 +118,24 @@ export
     # constructors
     construct_sim_params_list,
     construct_model_list,
-    select_and_construct_model,
+    select_and_construct_model
 
-    ####################
-
-    #simulation
-    simulate,
-    count_strategy,
-
-    # simulate_distributed,
-    # simulation_iterator,
-
-    # determine_agent_behavior, #NOTE: FIX THIS
-
-    #database api
-    # db_init,
-    # db_insert_sim_group,
-    # db_collect_temp,
-    # db_execute,
-    # db_query,
-
-    #plotting
-    # transitionTimesBoxPlot,
-    # memoryLengthTransitionTimeLinePlot,
-    # numberAgentsTransitionTimeLinePlot,
-    # timeSeriesPlot,
-    # multipleTimeSeriesPlot,
-
-    #utility
-    resetprocs,
-
-    #graph constructors
-    # erdos_renyi_rg,
-    # small_world_rg,
-    # scale_free_rg,
-    # stochastic_block_model_rg,
-
-    # Model, #NOTE: do we want this, or do we want to expose the methods from this in the core of GamesOnNetworks?
-    Database,
-    Analyze
-
-
+import ..GraphsExt
+    
 using
-    # Random,
-    # DataFrames,
-    # SQLite,
-    # LibPQ,
+    StaticArrays,
+    Random,
     Distributed,
-    DataStructures,
-    # Memoize,
-    TimerOutputs, #NOTE: get rid of this
-    Suppressor #NOTE: get rid of this
+    JSON3
 
-    # .GraphsExt,
-    # .Model,
-    # .Database,
-    # .Simulate,
-    # .Analyze
+include("games.jl")
+include("simparams.jl")
+include("interactionmodels.jl")
+include("agents.jl")
+include("agentgraph.jl")
+include("preallocatedarrays.jl")
+include("simmodel.jl")
+include("state.jl")
+include("structtypes.jl")
 
-#basic utility functions
-include("utility.jl")
-
-#extensions of Graphs.jl graph constructors
-include("GraphsExt/GraphsExt.jl")
-
-
-include("Model/Model.jl")
-using .Model
-
-
-#include StructTypes for reconstructing custom structures
-# include("settings/structtypes.jl")
-
-#api to sqlite and postgresql functionality
-include("Database/Database.jl")
-
-#include default config and configure
-include("settings/config.jl")
-
-#simulation functions
-include("Simulate/Simulate.jl")
-import .Simulate: simulate, count_strategy
-
-#Analyze module contains analysis and plotting functions
-include("Analyze/Analyze.jl")
-
-
-function __init__()
-    configure()
-end
-
-end #GamesOnNetworks
+end #Model

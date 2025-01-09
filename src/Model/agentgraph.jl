@@ -1,6 +1,6 @@
 const AgentSet{N} = SVector{N, Agent}
 const VertexSet{V} = SVector{V, Int}
-const Relationship = Graphs.SimpleEdge{Int}
+const Relationship = GraphsExt.Graphs.SimpleEdge{Int}
 const RelationshipSet{E} = SVector{E, Relationship}
 
 #NOTE: STATIC ARRAYS SHOULDNT BE MORE THAN 100 ELEMENTS!
@@ -20,10 +20,10 @@ struct ConnectedComponent{V, E}
     # edges::RelationshipSet{E} #can delete for now to save allocations
     matches_per_period::Int
 
-    function ConnectedComponent(vertices::Vector{Int}, edges::Vector{Graphs.SimpleEdge})
+    function ConnectedComponent(vertices::Vector{Int}, edges::Vector{GraphsExt.Graphs.SimpleEdge})
         V = length(vertices)
         E = length(edges)
-        d = E / possible_edge_count(V)
+        d = E / GraphsExt.possible_edge_count(V)
         matches_per_period = Int(ceil(d * V / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless) #NOTE: fraction of N choose 2
         return new{V, E}(VertexSet{V}(vertices), matches_per_period)
     end
@@ -40,9 +40,9 @@ num_edges(::ConnectedComponent{V, E}) where {V, E} = E
 matches_per_period(component::ConnectedComponent) = getfield(component, :matches_per_period)
 
 
-struct AgentGraph{N, E, C} <: AbstractGraph{Int}
+struct AgentGraph{N, E, C} <: GraphsExt.AbstractGraph{Int}
     # graphmodel::GraphModel #NOTE: should add this here and make the constructor more robust!
-    graph::Graph #NOTE: this is already stored in SimModel, do we need to store it here? probably should still
+    graph::GraphsExt.Graph #NOTE: this is already stored in SimModel, do we need to store it here? probably should still
     agents::AgentSet{N}
     components::ComponentSet{C} #NOTE: different ConnectedComponents will have different V and E static params, meaning that getting a specific component from this set wont be type stable. Doesn't account for a huge change in practice with one component, but could find a way to fix or optimize by not using a component set if there is only one component
 
@@ -50,16 +50,16 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
     # matches_per_period::Int
 
     
-    function AgentGraph(graph::Graph)
-        N = nv(graph)
-        E = ne(graph)
+    function AgentGraph(graph::GraphsExt.Graph)
+        N = GraphsExt.nv(graph)
+        E = GraphsExt.ne(graph)
         agents::AgentSet{N} = [Agent("Agent $agent_number") for agent_number in 1:N]
         for vertex in 1:N #could make graph-type specific multiple dispatch so this only needs to happen for ER and SBM (otherwise num_hermits=0)
-            if iszero(degree(graph, vertex))
+            if iszero(GraphsExt.degree(graph, vertex))
                 ishermit!(agents[vertex], true)
             end
         end
-        vertex_sets, edge_sets, C = connected_component_sets(graph)
+        vertex_sets, edge_sets, C = GraphsExt.connected_component_sets(graph)
         components = []
         for component_number in 1:C
             push!(components, ConnectedComponent(vertex_sets[component_number], edge_sets[component_number]))
@@ -70,10 +70,10 @@ struct AgentGraph{N, E, C} <: AbstractGraph{Int}
 
         return new{N, E, C}(graph, agents, ComponentSet{C}(components))#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
     end
-    function AgentGraph(graph::Graph, agents::AgentSet{A}) where {A}
+    function AgentGraph(graph::GraphsExt.Graph, agents::AgentSet{A}) where {A}
         N = nv(graph)
         @assert N == A "graph vertex count must equal the number of agents supplied"
-        E = ne(graph)
+        E = GraphsExt.ne(graph)
         vertex_sets, edge_sets, C = connected_component_sets(graph)
         components = []
         for component_number in 1:C

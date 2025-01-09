@@ -1,7 +1,23 @@
 ############################### MAIN TRANSITION TIME SIMULATION #######################################
 
 #NOTE: clean this stuff up
+module Simulate
+    export simulate
 
+    import
+        ..Database,
+        ..GamesOnNetworks.SETTINGS
+
+    using
+        ..Model,
+        Random,
+        Distributed
+
+    include("simulation_functions.jl")
+
+function test_simulate()
+    return SETTINGS.database
+end
 
 """
     simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
@@ -77,38 +93,38 @@ function _simulate_model_barrier(model::SimModel, ::Nothing; start_time::Float64
     return _simulate_distributed_barrier(model, start_time=start_time)
 end
 
-function _simulate_model_barrier(model::SimModel, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    model_id = db_insert_model(db_info, model)
+function _simulate_model_barrier(model::SimModel, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    model_id = Database.db_insert_model(db_info, model)
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
-function _simulate_model_barrier(model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+function _simulate_model_barrier(model_id::Int, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-    model = db_reconstruct_model(db_info, model_id) #construct model associated with id
+    model = Database.db_reconstruct_model(db_info, model_id) #construct model associated with id
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
 
-function _simulate_model_barrier(model::SimModel, model_id::Int, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+function _simulate_model_barrier(model::SimModel, model_id::Int, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
     # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-    db_insert_model(db_info, model; model_id=model_id)
+    Database.db_insert_model(db_info, model; model_id=model_id)
     return _simulate_distributed_barrier(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
 end
 
 
-function _simulate_model_barrier(db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    simulation_uuids = db_get_incomplete_simulation_uuids(SETTINGS.database)
+function _simulate_model_barrier(db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    simulation_uuids = Database.db_get_incomplete_simulation_uuids(SETTINGS.database)
     println(simulation_uuids)
     model_state_tuples = Vector{Tuple{SimModel, State}}()
     for simulation_uuid in simulation_uuids
-        push!(model_state_tuples, db_reconstruct_simulation(SETTINGS.database, simulation_uuid))
+        push!(model_state_tuples, Database.db_reconstruct_simulation(SETTINGS.database, simulation_uuid))
     end
 
     return _simulate_distributed_barrier(model_state_tuples, db_info, start_time=start_time, db_group_id=db_group_id)
 end
 
-function _simulate_model_barrier(simulation_uuid::String, db_info::DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    model_state::Tuple{SimModel, State} = db_reconstruct_simulation(SETTINGS.database, simulation_uuid)
+function _simulate_model_barrier(simulation_uuid::String, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    model_state::Tuple{SimModel, State} = Database.db_reconstruct_simulation(SETTINGS.database, simulation_uuid)
 
     return _simulate_distributed_barrier(model_state, db_info, start_time=start_time, db_group_id=db_group_id)
 end
@@ -129,7 +145,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     num_procs = SETTINGS.procs #nworkers()
     seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
 
-    stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
+    stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
     result_channel = RemoteChannel(()->Channel{State}(num_procs))
 
     @distributed for process in 1:num_procs
@@ -150,7 +166,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        if iscomplete(result_state) num_completed += 1 end
+        if Model.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -166,7 +182,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
 end
 
 
-function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+function _simulate_distributed_barrier(model::SimModel, db_info::Database.SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(simparams(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
     # db_info_list = [db_info]
@@ -190,7 +206,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
 
 
-    stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
     num_procs = SETTINGS.procs #nworkers()
     println("num procs: $num_procs")
@@ -214,8 +230,8 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        db_insert_simulation(db_info, result_state, model_id, db_group_id)
-        if iscomplete(result_state) num_completed += 1 end
+        Database.db_insert_simulation(db_info, result_state, model_id, db_group_id)
+        if Model.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -223,11 +239,11 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     #     #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
     #     result_state = take!(result_channel)
     #     if iscomplete(result_state)
-    #         db_insert_simulation(db_info, result_state, model_id, db_group_id)
+    #         Database.db_insert_simulation(db_info, result_state, model_id, db_group_id)
     #         completed += 1
     #     else
     #         if !isnothing(SETTINGS.checkpoint)
-    #             db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
+    #             Database.db_insert_simulation(SETTINGS.checkpoint.database, result_state, model_id, db_group_id)
     #         end
     #     end
     #     push!(result_states, result_state)
@@ -244,12 +260,12 @@ function _simulate_distributed_barrier(model::SimModel, db_info::SQLiteInfo; mod
     return result_states
 end
 
-function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel, State}}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel, State}}, db_info::Database.SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # show(model)
     # flush(stdout) #flush buffer
 
 
-    # stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    # stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
     num_incomplete = length(model_state_tuples)
     @distributed for model_state in model_state_tuples
@@ -258,7 +274,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-        stopping_condition_func = get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+        stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
         _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
@@ -269,8 +285,8 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
     while num_received < num_incomplete
         #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if iscomplete(result_state) num_completed += 1 end
+        Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
+        if Model.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -288,17 +304,17 @@ end
 
 
 #NOTE: this one needs to be cleaned up (this is the case where a single simulation is continued)
-function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_info::SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_info::Database.SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # show(model)
     # flush(stdout) #flush buffer
 
 
-    # stopping_condition_func = get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    # stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-    stopping_condition_func = get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = Model.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
 
     _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     
@@ -309,8 +325,8 @@ function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_i
     while num_received < 1
         #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if iscomplete(result_state) num_completed += 1 end
+        Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
+        if Model.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -330,7 +346,7 @@ end
 function _simulate(model::SimModel, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
 
     #restore the rng state if the simulation is continued
-    restore_rng_state(state)
+    Model.restore_rng_state(state)
 
     timeout = SETTINGS.timeout
     completed = true
@@ -345,8 +361,8 @@ function _simulate(model::SimModel, state::State; stopping_condition_reached::Fu
 
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer
-    completed && complete(state)
-    rng_state!(state) #update state's rng_state
+    completed && Model.complete(state)
+    Model.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
     return nothing
@@ -435,7 +451,7 @@ end
 #     # end
 #     println(" --> periods elapsed: $periods_elapsed")
 #     flush(stdout) #flush buffer
-#     db_status = db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
+#     db_status = Database.db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
 #     return (periods_elapsed, db_status)
 # end
 
@@ -522,7 +538,7 @@ end
 #         periods_elapsed += 1
 #         already_pushed = false
 #         if periods_elapsed % db_store_period == 0 #push incremental results to DB
-#             db_status = db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
+#             db_status = Database.db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
 #             prev_simulation_uuid = db_status.simulation_uuid
 #             already_pushed = true
 #         end
@@ -531,7 +547,7 @@ end
 #     println(" --> periods elapsed: $periods_elapsed")
 #     flush(stdout) #flush buffer
 #     if already_pushed == false #push final results to DB at filepath
-#         db_status = db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
+#         db_status = Database.db_insert_simulation(db_filepath, db_group_id, prev_simulation_uuid, db_id_tuple, agentgraph(model), periods_elapsed, distributed_uuid)
 #     end
 #     return (periods_elapsed, db_status)
 # end
@@ -684,3 +700,5 @@ end
 # #     prev_sim = db_restore_model(db_filepath, db_simulation_id)
 # #     sim_results = simulateTransitionTime(prev_sim.game, prev_sim.simparams, prev_sim.graphmodel, use_seed=prev_sim.use_seed, db_filepath=db_filepath, db_store_period=db_store_period, db_group_id=prev_sim.sim_group_id, prev_simulation_uuid=prev_sim.prev_simulation_uuid)
 # # end
+
+end #Simulate

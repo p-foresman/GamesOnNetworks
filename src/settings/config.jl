@@ -7,7 +7,7 @@ const user_toml_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
 
 # abstract type Database end
 
-# struct PostgresInfo <: Database
+# struct Database.PostgresInfo <: Database
 #     name::String
 #     user::String
 #     host::String
@@ -15,16 +15,16 @@ const user_toml_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
 #     password::String
 # end
 
-# struct SQLiteInfo <: Database
+# struct Database.SQLiteInfo <: Database
 #     name::String
 #     filepath::String
 # end
 
-# db_type(database::SQLiteInfo) = "sqlite"
-# db_type(database::PostgresInfo) = "postgres"
+# db_type(database::Database.SQLiteInfo) = "sqlite"
+# db_type(database::Database.PostgresInfo) = "postgres"
 
 struct Checkpoint
-    database::DBInfo #if SETTINGS.database is nothing, this doesn't matter. otherwise, this is used to set an optional alternative database to checkpoint into
+    database::Database.DBInfo #if SETTINGS.database is nothing, this doesn't matter. otherwise, this is used to set an optional alternative database to checkpoint into
     # timeout::Int
 end
 
@@ -35,7 +35,7 @@ struct Settings
     # use_distributed::Bool
     procs::Int
     timeout::Int
-    database::Union{DBInfo, Nothing} #if nothing, not using database
+    database::Union{Database.DBInfo, Nothing} #if nothing, not using database
     checkpoint::Bool
     checkpoint_exit_code::Int
     # data_script::Union{Nothing, String}
@@ -131,13 +131,13 @@ function validate_database(databases::Dict, field::String, db_path::String)
     if db_type == "sqlite"
         @assert haskey(db_info, "path") "database config table [database.sqlite.$db_name] must contain 'path' variable"
         @assert db_info["path"] isa String "database config table [database.sqlite.$db_name] 'path' variable must be a String"
-        return SQLiteInfo(db_name, normpath(joinpath(project_dirpath(), db_info["path"]))) #NOTE: could use pwd() here to create database in the current directory (more freedom, more potential bugs)
+        return Database.SQLiteInfo(db_name, normpath(joinpath(project_dirpath(), db_info["path"]))) #NOTE: could use pwd() here to create database in the current directory (more freedom, more potential bugs)
     elseif db_type == "postgres"
         @assert haskey(db_info, "user") "database config table [database.postgres.$db_name] must contain 'user' variable"
         @assert haskey(db_info, "host") "database config table [database.postgres.$db_name] must contain 'host' variable"
         @assert haskey(db_info, "port") "database config table [database.postgres.$db_name] must contain 'port' variable"
         @assert haskey(db_info, "password") "database config table [database.postgres.$db_name] must contain 'password' variable"
-        return PostgresInfo(db_name, db_info["user"], db_info["host"], db_info["port"], db_info["password"])
+        return Database.PostgresInfo(db_name, db_info["user"], db_info["host"], db_info["port"], db_info["password"])
     end
 end
 
@@ -189,13 +189,13 @@ function configure(toml_path::String="")
     if myid() == 1
         if !isnothing(SETTINGS.database)
             #initialize the database
-            print("initializing databse [$(db_type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
+            print("initializing databse [$(Database.type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
             # out = stdout
             # redirect_stdout(devnull)
-            db_init(SETTINGS.database) #;data_script=SETTINGS.data_script) #suppress the stdout stream
+            Database.db_init(SETTINGS.database) #;data_script=SETTINGS.data_script) #suppress the stdout stream
             #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
             # include()
-            if SETTINGS.database isa SQLiteInfo
+            if SETTINGS.database isa Database.SQLiteInfo
                 println("SQLite database file initialized at $(SETTINGS.database.filepath)")
             else
                 println("PostgreSQL database initialized")
@@ -206,7 +206,7 @@ function configure(toml_path::String="")
 
             #     db_init(SETTINGS.checkpoint.database)
 
-            #     if SETTINGS.checkpoint.database isa SQLiteInfo
+            #     if SETTINGS.checkpoint.database isa Database.SQLiteInfo
             #         println("SQLite database file initialized at $(SETTINGS.checkpoint.database.filepath)")
             #     else
             #         println("PostgreSQL database initialized")

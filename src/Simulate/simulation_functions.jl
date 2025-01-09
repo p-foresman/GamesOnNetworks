@@ -4,7 +4,7 @@
 
 
 ######################## game algorithm ####################
-
+using .Model
 
 function play_game!(model::SimModel, state::State)
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
@@ -39,16 +39,16 @@ end
 # end
 
 function run_period!(model::SimModel, state::State)
-    for component in components(state) #each connected component plays its own period's worth of matches
+    for component in Model.components(state) #each connected component plays its own period's worth of matches
         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
         # for _ in 1:Int(ceil(mpp))
         for _ in 1:matches_per_period(component)
-            reset_arrays!(state)
-            set_players!(state, component)
+            Model.reset_arrays!(state)
+            Model.set_players!(state, component)
             play_game!(model, state)
         end
     end
-    increment_period!(state)
+    Model.increment_period!(state)
     return nothing
 end
 
@@ -65,18 +65,18 @@ end
 
 function make_choices!(model::SimModel, state::State)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        rational_choice!(players(state, player_number), maximum_strategy(expected_utilities(state, player_number)))
-        choice!(players(state, player_number), rand() <= error_rate(model) ? random_strategy(model, player_number) : rational_choice(players(state, player_number)))
+        Model.rational_choice!(Model.players(state, player_number), maximum_strategy(Model.expected_utilities(state, player_number)))
+        Model.choice!(Model.players(state, player_number), rand() <= Model.error_rate(model) ? Model.random_strategy(model, player_number) : Model.rational_choice(Model.players(state, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(state::State, player_number::Integer)
-    @inbounds for memory in memory(players(state, player_number))
-        increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
+    @inbounds for memory in memory(Model.players(state, player_number))
+        Model.increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    opponent_strategy_probabilities(state, player_number) .= opponent_strategy_recollection(state, player_number) ./ sum(opponent_strategy_recollection(state, player_number))
+    Model.opponent_strategy_probabilities(state, player_number) .= Model.opponent_strategy_recollection(state, player_number) ./ sum(Model.opponent_strategy_recollection(state, player_number))
     return nothing
 end
 
@@ -92,8 +92,8 @@ end
 function calculate_expected_utilities!(model::SimModel, state::State)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies #NOTE: could just do 1:size(model, dim=2) or something. might be a bit faster
         for row in axes(payoff_matrix(model), 1) #row strategies
-            increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * opponent_strategy_probabilities(state, 1, column))
-            increment_expected_utilities!(state, 2, column, payoff_matrix(model)[row, column][2] * opponent_strategy_probabilities(state, 2, row))
+            Model.increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * Model.opponent_strategy_probabilities(state, 1, column))
+            Model.increment_expected_utilities!(state, 2, column, Model.payoff_matrix(model)[row, column][2] * Model.opponent_strategy_probabilities(state, 2, row))
         end
     end
     return nothing
@@ -128,7 +128,7 @@ function maximum_strategy(expected_utilities::Vector{Float32})
 end
 
 
-function push_memory!(agent::Agent, percept::Percept, memory_length::Int)
+function push_memory!(agent::Agent, percept::Model.Percept, memory_length::Int)
     if length(memory(agent)) >= memory_length
         popfirst!(memory(agent))
     end
@@ -137,45 +137,55 @@ function push_memory!(agent::Agent, percept::Percept, memory_length::Int)
 end
 
 function push_memories!(model::SimModel, state::State)
-    push_memory!(players(state, 1), choice(players(state, 2)), memory_length(model))
-    push_memory!(players(state, 2), choice(players(state, 1)), memory_length(model))
+    push_memory!(Model.players(state, 1), Model.choice(Model.players(state, 2)), memory_length(model))
+    push_memory!(Model.players(state, 2), Model.choice(Model.players(state, 1)), memory_length(model))
     return nothing
 end
 
+
+function count_strategy(memory_set::Model.PerceptSequence, desired_strat::Integer)
+    count::Int = 0
+    for memory in memory_set
+        if memory == desired_strat
+            count += 1
+        end
+    end
+    return count
+end
 
 
 
 ######################## STUFF FOR DETERMINING AGENT BEHAVIOR (should combine this with above functions in the future) ###############################
 
-function calculateExpectedOpponentProbs(::Game{S1, S2}, memory_set::PerceptSequence) where {S1, S2}
-    # length = size(game.payoff_matrix, 1) #for symmetric games only
-    opponent_strategy_recollection = zeros(Int, S1)
-    for memory in memory_set
-        opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
-    end
-    opponent_strategy_probs = opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
-    return opponent_strategy_probs
-end
+# function calculateExpectedOpponentProbs(::Game{S1, S2}, memory_set::PerceptSequence) where {S1, S2}
+#     # length = size(game.payoff_matrix, 1) #for symmetric games only
+#     opponent_strategy_recollection = zeros(Int, S1)
+#     for memory in memory_set
+#         opponent_strategy_recollection[memory] += 1 #memory strategy is simply the payoff_matrix index for the given dimension
+#     end
+#     opponent_strategy_probs = opponent_strategy_recollection ./ sum(opponent_strategy_recollection)
+#     return opponent_strategy_probs
+# end
 
 
-function calculateExpectedUtilities(game::Game{S1, S2}, opponent_probs) where {S1, S2} #for symmetric games only!
-    payoff_matrix = payoff_matrix(game)
-    player_expected_utilities = zeros(Float32, S1)
-    @inbounds for column in axes(payoff_matrix(game), 2) #column strategies
-        for row in axes(payoff_matrix(game), 1) #row strategies
-            player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
-        end
-    end
-    return player_expected_utilities
-end
+# function calculateExpectedUtilities(game::Game{S1, S2}, opponent_probs) where {S1, S2} #for symmetric games only!
+#     payoff_matrix = payoff_matrix(game)
+#     player_expected_utilities = zeros(Float32, S1)
+#     @inbounds for column in axes(payoff_matrix(game), 2) #column strategies
+#         for row in axes(payoff_matrix(game), 1) #row strategies
+#             player_expected_utilities[row] += payoff_matrix[row, column][1] * opponent_probs[column]
+#         end
+#     end
+#     return player_expected_utilities
+# end
 
 
-function determine_agent_behavior(game::Game, memory_set::PerceptSequence)
-    opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
-    expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
-    max_strat = maximum_strategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
-    return max_strat
-end
+# function determine_agent_behavior(game::Game, memory_set::PerceptSequence)
+#     opponent_strategy_probs = calculateExpectedOpponentProbs(game, memory_set)
+#     expected_utilities = calculateExpectedUtilities(game, opponent_strategy_probs)
+#     max_strat = maximum_strategy(expected_utilities) #right now, if more than one strategy results in a max expected utility, a random strategy is chosen of the maximum strategies
+#     return max_strat
+# end
 
 ########### tagged memory stuff #####
 # function calculateExpectedOpponentProbs(::Game{S1, S2, L}, memory_set::PerceptSequence) where {S1, S2, L}
@@ -235,17 +245,6 @@ end
 # end
 
 
-
-
-function count_strategy(memory_set::PerceptSequence, desired_strat::Integer)
-    count::Int = 0
-    for memory in memory_set
-        if memory == desired_strat
-            count += 1
-        end
-    end
-    return count
-end
 
 #tagged functionality
 # function countStrats(memory_set::Vector{Tuple{Symbol, Int8}}, desired_strat)
