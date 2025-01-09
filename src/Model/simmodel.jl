@@ -16,21 +16,21 @@ struct SimModel{S1, S2, L}
     graphmodel::GraphModel
     # startingcondition::StartingCondition
     # stoppingcondition::StoppingCondition
-    graph::Graph #the specific graph structure should be specified within a model
+    graph::GraphsExt.Graph #the specific graph structure should be specified within a model
 
     function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel) where {S1, S2, L}
-        graph::Graph = generate_graph(graphmodel, simparams)
+        graph::GraphsExt.Graph = generate_graph(graphmodel, simparams)
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
-    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph::Graph) where {S1, S2, L}
+    function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph::GraphsExt.Graph) where {S1, S2, L}
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
     function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix::Matrix) where {S1, S2, L}
-        graph = Graph(graph_adj_matrix)
+        graph = GraphsExt.Graph(graph_adj_matrix)
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
     function SimModel(game::Game{S1, S2, L}, simparams::SimParams, graphmodel::GraphModel, graph_adj_matrix_str::String) where {S1, S2, L}
-        graph = Graph(graph_adj_matrix_str)
+        graph = GraphsExt.Graph(graph_adj_matrix_str)
         return new{S1, S2, L}(game, simparams, graphmodel, graph)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)
