@@ -1,4 +1,4 @@
-module Model
+module Core
 
 export
     # types
@@ -138,4 +138,4 @@ include("simmodel.jl")
 include("state.jl")
 include("structtypes.jl")
 
-end #Model
+end #Core

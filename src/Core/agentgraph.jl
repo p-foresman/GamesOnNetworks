@@ -168,5 +168,3 @@ components(agentgraph::AgentGraph, component_number::Integer) = getindex(compone
 Get the number of hermits (vertecies with degree=0) in an AgentGraph instance.
 """
 number_hermits(agentgraph::AgentGraph) = number_hermits(graph(agentgraph))
-
-

@@ -239,6 +239,15 @@ function AgentGraph(model::SimModel)
     return agentgraph
 end
 
+
+"""
+    adjacency_matrix_str(model::SimModel)
+
+Get the adjacency matrix in a string for the graph of the given SimModel
+"""
+adjacency_matrix_str(model::SimModel) = GraphsExt.adjacency_matrix_str(graph(model))
+
+
 PreAllocatedArrays(model::SimModel) = PreAllocatedArrays(game(model))
 
 

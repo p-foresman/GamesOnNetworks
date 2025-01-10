@@ -32,13 +32,13 @@ mutable struct State{V, E, C}
         C = num_components(agentgraph)
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
 
-        all_user_variables = merge(Model.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
+        all_user_variables = merge(Core.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         # is_stopping_condition_test = simparams(model).stoppingcondition(model)
         return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing, random_seed, nothing)
     end
     function State(model::SimModel, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String, random_seed::Union{Int, Nothing}, rng_state_str::String) where {V, E, C}
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
-        all_user_variables = merge(Model.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
+        all_user_variables = merge(Core.user_variables(simparams(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rng_state_str)
     end
     # function SimModel(model::SimModel) #used to generate a new model with the same parameters (newly sampled random graph structure)

@@ -171,12 +171,6 @@ using
     TimerOutputs, #NOTE: get rid of this
     Suppressor #NOTE: get rid of this
 
-    # .GraphsExt,
-    # .Model,
-    # .Database,
-    # .Simulate,
-    # .Analyze
-
 #basic utility functions
 include("utility.jl")
 
@@ -184,8 +178,8 @@ include("utility.jl")
 include("GraphsExt/GraphsExt.jl")
 
 
-include("Model/Model.jl")
-using .Model
+include("Core/Core.jl")
+using .Core
 
 
 #include StructTypes for reconstructing custom structures

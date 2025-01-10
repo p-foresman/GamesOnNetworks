@@ -4,6 +4,8 @@ export
     a,
     transitionTimesBoxPlot
 
+import ..Database
+
 using
     Plots,
     GraphPlot,
