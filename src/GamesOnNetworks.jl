@@ -121,6 +121,13 @@ export
     construct_model_list,
     select_and_construct_model,
 
+    #NOTE: make Generators submodule
+    ModelGenerator,
+    ErdosRenyiModelGenerator,
+    SmallWorldModelGenerator,
+    ScaleFreeModelGenerator,
+    StochasticBlockModelGenerator,
+
     ####################
 
     #simulation
@@ -178,12 +185,14 @@ include("utility.jl")
 include("GraphsExt/GraphsExt.jl")
 
 
-include("Core/Core.jl")
-using .Core
+include("GON/GON.jl")
+using .GON
 
 
 #include StructTypes for reconstructing custom structures
 # include("settings/structtypes.jl")
+
+global SETTINGS #NOTE: want to eventually remove this. Was running into issues with SETTINGS not being imported to Database submodule (get rid of modules?)
 
 #api to sqlite and postgresql functionality
 include("Database/Database.jl")

@@ -2,22 +2,20 @@
 
 #NOTE: clean this stuff up
 module Simulate
-    export simulate
 
-    import
-        ..Database,
-        ..GamesOnNetworks.SETTINGS
+export simulate
 
-    using
-        ..Core,
-        Random,
-        Distributed
+import
+    ..Database,
+    ..GamesOnNetworks.SETTINGS
 
-    include("simulation_functions.jl")
+using
+    ..GON,
+    Random,
+    Distributed
 
-function test_simulate()
-    return SETTINGS.database
-end
+include("simulation_functions.jl")
+
 
 """
     simulate(model::SimModel; db_group_id::Union{Nothing, Integer} = nothing)
@@ -145,7 +143,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     num_procs = SETTINGS.procs #nworkers()
     seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
 
-    stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
+    stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
     result_channel = RemoteChannel(()->Channel{State}(num_procs))
 
     @distributed for process in 1:num_procs
@@ -166,7 +164,7 @@ function _simulate_distributed_barrier(model::SimModel; start_time::Float64, kwa
     while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        if Core.iscomplete(result_state) num_completed += 1 end
+        if GON.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -206,7 +204,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::Database.SQLite
     seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
 
 
-    stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
     num_procs = SETTINGS.procs #nworkers()
     println("num procs: $num_procs")
@@ -231,7 +229,7 @@ function _simulate_distributed_barrier(model::SimModel, db_info::Database.SQLite
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         Database.db_insert_simulation(db_info, result_state, model_id, db_group_id)
-        if Core.iscomplete(result_state) num_completed += 1 end
+        if GON.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -265,7 +263,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
     # flush(stdout) #flush buffer
 
 
-    # stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    # stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
     num_incomplete = length(model_state_tuples)
     @distributed for model_state in model_state_tuples
@@ -274,7 +272,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-        stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+        stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
         _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
@@ -286,7 +284,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{SimModel
         #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if Core.iscomplete(result_state) num_completed += 1 end
+        if GON.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -309,12 +307,12 @@ function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_i
     # flush(stdout) #flush buffer
 
 
-    # stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
+    # stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
         # if !preserve_graph
         #     state = State(model) #regenerate state so each process has a different graph
         # end
-    stopping_condition_func = Core.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
+    stopping_condition_func = GON.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
 
     _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     
@@ -326,7 +324,7 @@ function _simulate_distributed_barrier(model_state::Tuple{SimModel, State}, db_i
         #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
         Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if Core.iscomplete(result_state) num_completed += 1 end
+        if GON.iscomplete(result_state) num_completed += 1 end
         push!(result_states, result_state)
         num_received += 1
     end
@@ -346,7 +344,7 @@ end
 function _simulate(model::SimModel, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
 
     #restore the rng state if the simulation is continued
-    Core.restore_rng_state(state)
+    GON.restore_rng_state(state)
 
     timeout = SETTINGS.timeout
     completed = true
@@ -361,8 +359,8 @@ function _simulate(model::SimModel, state::State; stopping_condition_reached::Fu
 
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer
-    completed && Core.complete(state)
-    Core.rng_state!(state) #update state's rng_state
+    completed && GON.complete(state)
+    GON.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
     return nothing

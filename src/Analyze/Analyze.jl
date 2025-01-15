@@ -4,7 +4,10 @@ export
     a,
     transitionTimesBoxPlot
 
-import ..Database
+import
+    ..Database,
+    ..GamesOnNetworks.SETTINGS,
+    ..GraphsExt
 
 using
     Plots,

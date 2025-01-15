@@ -12,7 +12,7 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     # matches_per_period::Function #allow users to define their own matches per period as a function of other parameters?
     starting_condition_fn_str::String
     stopping_condition_fn_str::String
-    user_variables::UserVariables
+    user_variables::UserVariables #NOTE: should starting_condition_variables and stopping_condition_variables be separated? (maybe not, it's on the user to manage these)
     # random_seed::Int #probably don't need a random seed in every SimParams struct?
 
 

@@ -268,7 +268,7 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{N
 
     model_graphmodel = graphmodel(model)
     graphmodel_display = displayname(model_graphmodel)
-    graphmodel_type = Core.type(model_graphmodel)
+    graphmodel_type = GON.type(model_graphmodel)
     graphmodel_str = JSON3.write(model_graphmodel)
     graphmodel_params_str, graphmodel_values_str = sql_dump_graphmodel(model_graphmodel)
 
@@ -283,7 +283,7 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{N
     # stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
     # stoppingcondition_type = type(model_stoppingcondition)
 
-    adj_matrix_str = Core.adjacency_matrix_str(model)
+    adj_matrix_str = GON.adjacency_matrix_str(model)
 
 
     # println(graphmodel_params_str)
@@ -321,7 +321,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
-    for agent in agents(Core.agentgraph(state))
+    for agent in agents(GON.agentgraph(state))
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
@@ -334,7 +334,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     #     db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
     # end
 
-    complete_bool = Int(Core.iscomplete(state))
+    complete_bool = Int(GON.iscomplete(state))
 
     
     state_user_variables = JSON3.write(user_variables(state)) #store these explicitly because their values may be different from defaults if they were updated by a user function

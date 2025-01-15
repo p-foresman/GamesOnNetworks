@@ -1,4 +1,4 @@
-module Core
+module GON
 
 export
     # types
@@ -118,7 +118,14 @@ export
     # constructors
     construct_sim_params_list,
     construct_model_list,
-    select_and_construct_model
+    select_and_construct_model,
+
+    #NOTE: make Generators submodule
+    ModelGenerator,
+    ErdosRenyiModelGenerator,
+    SmallWorldModelGenerator,
+    ScaleFreeModelGenerator,
+    StochasticBlockModelGenerator
 
 import ..GraphsExt
     
@@ -137,5 +144,6 @@ include("preallocatedarrays.jl")
 include("simmodel.jl")
 include("state.jl")
 include("structtypes.jl")
+include("generators.jl")
 
-end #Core
+end #GON

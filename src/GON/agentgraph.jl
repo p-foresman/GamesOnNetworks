@@ -25,7 +25,7 @@ struct ConnectedComponent{V, E}
         E = length(edges)
         d = E / GraphsExt.possible_edge_count(V)
         matches_per_period = Int(ceil(d * V / 2)) #ceil to ensure at least one match (unless d=0, in which case nothing would happen regardless) #NOTE: fraction of N choose 2
-        return new{V, E}(VertexSet{V}(vertices), matches_per_period)
+        return new{V, E}(VertexSet{V}(vertices), matches_per_period) # matches = (periods * d * N) / 2
     end
 end
 

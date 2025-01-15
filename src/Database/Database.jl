@@ -1,7 +1,9 @@
 module Database
 
+import ..GamesOnNetworks.SETTINGS
+
 using
-    ..Core,
+    ..GON,
     DataFrames,
     JSON3,
     UUIDs
@@ -40,7 +42,7 @@ include("./sqlite/database_api.jl")
 
 Create a connection to the configured database.
 """
-DB(;kwargs...) = DB(GamesOnNetworks.SETTINGS.database, kwargs...)
+DB(;kwargs...) = DB(SETTINGS.database, kwargs...)
 
 """
     db_execute(sql::SQL)

@@ -9,6 +9,8 @@ timeout = 3600
 #timeout = 3600
 #database = ""
 
+figure_dirpath = "" #defined which directory figures should be created in (if relative, relative to project root)
+
 # sqlite database is provided by default
 [databases]
 # use = true

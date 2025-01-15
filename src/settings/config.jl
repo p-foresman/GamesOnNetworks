@@ -38,6 +38,7 @@ struct Settings
     database::Union{Database.DBInfo, Nothing} #if nothing, not using database
     checkpoint::Bool
     checkpoint_exit_code::Int
+    figure_dirpath::String
     # data_script::Union{Nothing, String}
 end
 
@@ -63,6 +64,10 @@ function Settings(settings::Dict{String, Any})
     timeout = settings["timeout"]
     @assert timeout isa Int && timeout >= 0 "'timeout' value must be a positive Int (>=1) OR 0 (denoting no timeout)"
 
+    @assert haskey(settings, "figure_dirpath") "config file must have a 'figure_dirpath' variable"
+    figure_dirpath = settings["figure_dirpath"]
+    @assert figure_dirpath isa String "the 'figure_dirpath' variable must be a String (empty string for project root)"
+    figure_dirpath = normpath(joinpath(project_dirpath(), figure_dirpath))
 
     @assert haskey(settings, "databases") "config file must have a [databases] table"
     databases = settings["databases"]
@@ -89,6 +94,7 @@ function Settings(settings::Dict{String, Any})
     #     data_script = nothing
     # end
 
+
     #if selected_db exists, must validate selected database. Otherwise, not using database
     database = nothing #selected database
     # checkpoint = nothing #checkpoint database
@@ -107,7 +113,7 @@ function Settings(settings::Dict{String, Any})
         # end
     end
 
-    return Settings(settings, use_seed, random_seed, procs, timeout, database, checkpoint, checkpoint_exit_code)
+    return Settings(settings, use_seed, random_seed, procs, timeout, database, checkpoint, checkpoint_exit_code, figure_dirpath)
 end
 
 function Settings(toml_path::String)
@@ -241,6 +247,12 @@ function configure(toml_path::String="")
             end
         end
         println("$(SETTINGS.procs) processe(s) initialized")
+
+        if myid() == 1
+            mkpath(SETTINGS.figure_dirpath)
+            println("figure directory initialized at $(SETTINGS.figure_dirpath)")
+        end
+
         println("configuration complete")
     end
 end

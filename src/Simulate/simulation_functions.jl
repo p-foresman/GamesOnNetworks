@@ -4,7 +4,6 @@
 
 
 ######################## game algorithm ####################
-using .Model
 
 function play_game!(model::SimModel, state::State)
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
@@ -39,16 +38,16 @@ end
 # end
 
 function run_period!(model::SimModel, state::State)
-    for component in Core.components(state) #each connected component plays its own period's worth of matches
+    for component in GON.components(state) #each connected component plays its own period's worth of matches
         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
         # for _ in 1:Int(ceil(mpp))
         for _ in 1:matches_per_period(component)
-            Core.reset_arrays!(state)
-            Core.set_players!(state, component)
+            GON.reset_arrays!(state)
+            GON.set_players!(state, component)
             play_game!(model, state)
         end
     end
-    Core.increment_period!(state)
+    GON.increment_period!(state)
     return nothing
 end
 
@@ -65,18 +64,18 @@ end
 
 function make_choices!(model::SimModel, state::State)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        Core.rational_choice!(Core.players(state, player_number), maximum_strategy(Core.expected_utilities(state, player_number)))
-        Core.choice!(Core.players(state, player_number), rand() <= Core.error_rate(model) ? Core.random_strategy(model, player_number) : Core.rational_choice(Core.players(state, player_number)))
+        GON.rational_choice!(GON.players(state, player_number), maximum_strategy(GON.expected_utilities(state, player_number)))
+        GON.choice!(GON.players(state, player_number), rand() <= GON.error_rate(model) ? GON.random_strategy(model, player_number) : GON.rational_choice(GON.players(state, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(state::State, player_number::Integer)
-    @inbounds for memory in memory(Core.players(state, player_number))
-        Core.increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
+    @inbounds for memory in memory(GON.players(state, player_number))
+        GON.increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    Core.opponent_strategy_probabilities(state, player_number) .= Core.opponent_strategy_recollection(state, player_number) ./ sum(Core.opponent_strategy_recollection(state, player_number))
+    GON.opponent_strategy_probabilities(state, player_number) .= GON.opponent_strategy_recollection(state, player_number) ./ sum(GON.opponent_strategy_recollection(state, player_number))
     return nothing
 end
 
@@ -92,8 +91,8 @@ end
 function calculate_expected_utilities!(model::SimModel, state::State)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies #NOTE: could just do 1:size(model, dim=2) or something. might be a bit faster
         for row in axes(payoff_matrix(model), 1) #row strategies
-            Core.increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * Core.opponent_strategy_probabilities(state, 1, column))
-            Core.increment_expected_utilities!(state, 2, column, Core.payoff_matrix(model)[row, column][2] * Core.opponent_strategy_probabilities(state, 2, row))
+            GON.increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * GON.opponent_strategy_probabilities(state, 1, column))
+            GON.increment_expected_utilities!(state, 2, column, GON.payoff_matrix(model)[row, column][2] * GON.opponent_strategy_probabilities(state, 2, row))
         end
     end
     return nothing
@@ -128,7 +127,7 @@ function maximum_strategy(expected_utilities::Vector{Float32})
 end
 
 
-function push_memory!(agent::Agent, percept::Core.Percept, memory_length::Int)
+function push_memory!(agent::Agent, percept::GON.Percept, memory_length::Int)
     if length(memory(agent)) >= memory_length
         popfirst!(memory(agent))
     end
@@ -137,13 +136,13 @@ function push_memory!(agent::Agent, percept::Core.Percept, memory_length::Int)
 end
 
 function push_memories!(model::SimModel, state::State)
-    push_memory!(Core.players(state, 1), Core.choice(Core.players(state, 2)), memory_length(model))
-    push_memory!(Core.players(state, 2), Core.choice(Core.players(state, 1)), memory_length(model))
+    push_memory!(GON.players(state, 1), GON.choice(GON.players(state, 2)), memory_length(model))
+    push_memory!(GON.players(state, 2), GON.choice(GON.players(state, 1)), memory_length(model))
     return nothing
 end
 
 
-function count_strategy(memory_set::Core.PerceptSequence, desired_strat::Integer)
+function count_strategy(memory_set::GON.PerceptSequence, desired_strat::Integer)
     count::Int = 0
     for memory in memory_set
         if memory == desired_strat

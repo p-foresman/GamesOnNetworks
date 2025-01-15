@@ -1494,91 +1494,115 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;group_id::Integer)
 end
 
 
+function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
+                                                            number_agents::Integer,
+                                                            memory_length::Integer,
+                                                            errors_sql::String,
+                                                            starting_condition::String,
+                                                            stopping_condition::String,
+                                                            graphmodel_params_sql::String,
+                                                            sample_size::Integer)
+    """
+    SELECT * FROM (
+        SELECT
+            ROW_NUMBER() OVER ( 
+                PARTITION BY models.graphmodel_id, simparams.error, graphmodels.λ
+                ORDER BY simparams.error, graphmodels.λ
+            ) RowNum,
+            simulations.uuid as simulation_uuid,
+            simparams.error,
+            simulations.period,
+            graphmodels.id as graphmodel_id,
+            graphmodels.display,
+            graphmodels.type as graphmodel_type,
+            graphmodels.graphmodel,
+            graphmodels.λ,
+            graphmodels.β,
+            graphmodels.α,
+            graphmodels.p_in,
+            graphmodels.p_out,
+            games.name
+        FROM simulations
+        INNER JOIN models ON simulations.model_id = models.id
+        INNER JOIN simparams ON models.simparams_id = simparams.id
+        INNER JOIN games ON models.game_id = games.id
+        INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
+        WHERE games.id = $game_id
+        AND simparams.number_agents = $number_agents
+        AND simparams.memory_length = $memory_length
+        AND simparams.starting_condition = '$starting_condition'
+        AND simparams.stopping_condition = '$stopping_condition'
+        $errors_sql
+        $graphmodel_params_sql
+        )
+    WHERE RowNum <= $sample_size;
+    """
+end
 
-
-function query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
+function execute_query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
                                                         game_id::Integer,
-                                                        graph_params::Vector{<:Dict{Symbol, Any}},
+                                                        graphmodel_params::Vector{<:Dict{Symbol, Any}},
                                                         errors::Vector{<:AbstractFloat},
                                                         mean_degrees::Vector{<:AbstractFloat},
                                                         number_agents::Integer,
                                                         memory_length::Integer,
-                                                        starting_condition_id::Integer,
-                                                        stopping_condition_id::Integer,
+                                                        starting_condition::String,
+                                                        stopping_condition::String,
                                                         sample_size::Integer)
     errors_sql = ""
     if errors !== nothing
-        length(errors) == 1 ? errors_sql *= "AND sim_params.error = $(errors[1])" : errors_sql *= "AND sim_params.error IN $(Tuple(errors))"
+        length(errors) == 1 ? errors_sql *= "AND simparams.error = $(errors[1])" : errors_sql *= "AND simparams.error IN $(Tuple(errors))"
     end
     mean_degrees_sql = ""
     if mean_degrees !== nothing
         length(mean_degrees) == 1 ? mean_degrees_sql *= "AND graphmodels.λ = $(mean_degrees[1])" : mean_degrees_sql *= "AND graphmodels.λ IN $(Tuple(mean_degrees))"
     end
-    # graph_params_sql = "AND ("
-    # if graph_params !== nothing
-    #     for graph in graph_params
-    #         graph_params_sql *= "("
+    # graphmodel_params_sql = "AND ("
+    # if graphmodel_params !== nothing
+    #     for graph in graphmodel_params
+    #         graphmodel_params_sql *= "("
     #         for (param, value) in graph
-    #             graph_params_sql *= "graphmodels.$(string(param)) = $(value === nothing ? "null" : value) AND "
+    #             graphmodel_params_sql *= "graphmodels.$(string(param)) = $(value === nothing ? "null" : value) AND "
     #         end
-    #         graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
-    #         graph_params_sql *= ") OR"
+    #         graphmodel_params_sql = rstrip(graphmodel_params_sql, collect(" AND "))
+    #         graphmodel_params_sql *= ") OR"
     #     end
-    #     graph_params_sql = rstrip(graph_params_sql, collect(" OR"))
-    #     graph_params_sql *= ")"
+    #     graphmodel_params_sql = rstrip(graphmodel_params_sql, collect(" OR"))
+    #     graphmodel_params_sql *= ")"
     # end
-    graph_params_sql = "AND ("
-    if graph_params !== nothing
-        for graph in graph_params
-            graph_params_sql *= "("
+    graphmodel_params_sql = "AND ("
+    if graphmodel_params !== nothing
+        for graph in graphmodel_params
+            graphmodel_params_sql *= "("
             for (param, value) in graph
-                graph_params_sql *= "graphmodels.$(string(param)) = '$(value)' AND "
+                graphmodel_params_sql *= "graphmodels.$(string(param)) = '$(value)' AND "
             end
-            graph_params_sql = rstrip(graph_params_sql, collect(" AND "))
-            graph_params_sql *= ") OR"
+            graphmodel_params_sql = rstrip(graphmodel_params_sql, collect(" AND "))
+            graphmodel_params_sql *= ") OR "
         end
-        graph_params_sql = rstrip(graph_params_sql, collect(" OR"))
-        graph_params_sql *= ")"
+        graphmodel_params_sql = rstrip(graphmodel_params_sql, collect(" OR "))
+        graphmodel_params_sql *= ")"
     end
     
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT * FROM (
-                                            SELECT
-                                                ROW_NUMBER() OVER ( 
-                                                    PARTITION BY simulations.graph_id, sim_params.error, graphmodels.λ
-                                                    ORDER BY sim_params.error, graphmodels.λ
-                                                ) RowNum,
-                                                simulations.simulation_id,
-                                                sim_params.error,
-                                                simulations.period,
-                                                graphmodels.graph_id,
-                                                graphmodels.graph,
-                                                graphmodels.graph_type,
-                                                graphmodels.graph_params,
-                                                graphmodels.λ,
-                                                graphmodels.β,
-                                                graphmodels.α,
-                                                graphmodels.p_in,
-                                                graphmodels.p_out,
-                                                games.game_name
-                                            FROM simulations
-                                            INNER JOIN sim_params USING(sim_params_id)
-                                            INNER JOIN games USING(game_id)
-                                            INNER JOIN graphmodels USING(graph_id)
-                                            WHERE simulations.game_id = $game_id
-                                            AND simulations.starting_condition_id = $starting_condition_id
-                                            AND simulations.stopping_condition_id = $stopping_condition_id
-                                            AND sim_params.number_agents = $number_agents
-                                            AND sim_params.memory_length = $memory_length
-                                            $errors_sql
-                                            $graph_params_sql
-                                            )
-                                        WHERE RowNum <= $sample_size;
-                                ")
-    df = DataFrame(query)
-    println(df)
-    return df
+    db = DB(db_info)
+    println(sql_query_simulations_for_noise_structure_heatmap(game_id,
+    number_agents,
+    memory_length,
+    errors_sql,
+    starting_condition,
+    stopping_condition,
+    graphmodel_params_sql,
+    sample_size))
+    query = db_query(db, sql_query_simulations_for_noise_structure_heatmap(game_id,
+                                                                            number_agents,
+                                                                            memory_length,
+                                                                            errors_sql,
+                                                                            starting_condition,
+                                                                            stopping_condition,
+                                                                            graphmodel_params_sql,
+                                                                            sample_size))
+    db_close(db)
+    return query
 
     # #error handling
     # errorsDF() = DataFrame(DBInterface.execute(db, "SELECT error FROM sim_params"))
