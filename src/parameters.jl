@@ -43,39 +43,39 @@ end
 ##########################################
 
 """
-    number_agents(simparams::Parameters)
+    number_agents(params::Parameters)
 
 Get the population size simulation parameter N.
 """
-number_agents(simparams::Parameters) = getfield(simparams, :number_agents)
+number_agents(params::Parameters) = getfield(params, :number_agents)
 
 """
-    memory_length(simparams::Parameters)
+    memory_length(params::Parameters)
 
 Get the memory length simulation parameter m.
 """
-memory_length(simparams::Parameters) = getfield(simparams, :memory_length)
+memory_length(params::Parameters) = getfield(params, :memory_length)
 
 """
-    error_rate(simparams::Parameters)
+    error_rate(params::Parameters)
 
 Get the error rate simulation parameter ϵ.
 """
-error_rate(simparams::Parameters) = getfield(simparams, :error)
+error_rate(params::Parameters) = getfield(params, :error)
 
 # """
-#     matches_per_period(simparams::Parameters)
+#     matches_per_period(params::Parameters)
 
 # Get the number of matches per period for the simulation.
 # """
-# matches_per_period(simparams::Parameters) = getfield(simparams, :matches_per_period)
+# matches_per_period(params::Parameters) = getfield(params, :matches_per_period)
 
 # """
-#     random_seed(simparams::Parameters)
+#     random_seed(params::Parameters)
 
 # Get the random seed for the simulation.
 # """
-# random_seed(simparams::Parameters) = getfield(simparams, :random_seed)
+# random_seed(params::Parameters) = getfield(params, :random_seed)
 
 
 
@@ -94,18 +94,18 @@ macro startingcondition(fn)
 end
 
 """
-    starting_condition_fn_str(simparams::Parameters)
+    starting_condition_fn_str(params::Parameters)
 
 Get the 'starting_condition_fn_str' Parameters field.
 """
-starting_condition_fn_str(simparams::Parameters) = getfield(simparams, :starting_condition_fn_str)
+starting_condition_fn_str(params::Parameters) = getfield(params, :starting_condition_fn_str)
 
 """
-    starting_condition_fn(simparams::Parameters)
+    starting_condition_fn(params::Parameters)
 
 Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' Parameters field.
 """
-starting_condition_fn(simparams::Parameters) = getfield(Main, Symbol(starting_condition_fn_str(simparams)))
+starting_condition_fn(params::Parameters) = getfield(Main, Symbol(starting_condition_fn_str(params)))
 
 
 
@@ -124,18 +124,18 @@ macro stoppingcondition(fn)
 end
 
 """
-    stopping_condition_fn_str(simparams::Parameters)
+    stopping_condition_fn_str(params::Parameters)
 
 Get the 'stopping_condition_fn_str' Parameters field.
 """
-stopping_condition_fn_str(simparams::Parameters) = getfield(simparams, :stopping_condition_fn_str)
+stopping_condition_fn_str(params::Parameters) = getfield(params, :stopping_condition_fn_str)
 
 """
-    stopping_condition_fn(simparams::Parameters)
+    stopping_condition_fn(params::Parameters)
 
 Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' Parameters field.
 """
-stopping_condition_fn(simparams::Parameters) = getfield(Main, Symbol(stopping_condition_fn_str(simparams)))
+stopping_condition_fn(params::Parameters) = getfield(Main, Symbol(stopping_condition_fn_str(params)))
 
 
 function _assert_registries()
@@ -146,23 +146,23 @@ end
 
 
 """
-    user_variables(simparams::Parameters)
+    user_variables(params::Parameters)
 
 Get the extra user-defined SimParam variables. Note: these should denote default values and should only be updated in State!
 """
-user_variables(simparams::Parameters) = getfield(simparams, :user_variables)
+user_variables(params::Parameters) = getfield(params, :user_variables)
 
 # setfield!(::Parameters, :user_variables, ::Any) = raise Exception() #dont want user to be able to change this
 
 
 """
-    displayname(simparams::Parameters)
+    displayname(params::Parameters)
 
 Get the string used for displaying a Parameters instance.
 """
-displayname(simparams::Parameters) = "N=$(number_agents(simparams)) m=$(memory_length(simparams)) e=$(error_rate(simparams)) starting=$(starting_condition_fn_str(simparams)) stopping=$(stopping_condition_fn_str(simparams))"
+displayname(params::Parameters) = "N=$(number_agents(params)) m=$(memory_length(params)) e=$(error_rate(params)) starting=$(starting_condition_fn_str(params)) stopping=$(stopping_condition_fn_str(params))"
 
-Base.show(simparams::Parameters) = println(displayname(simparams))
+Base.show(params::Parameters) = println(displayname(params))
 
 
 
@@ -172,19 +172,19 @@ Base.show(simparams::Parameters) = println(displayname(simparams))
 ##########################################
 
 """
-    construct_simparams_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
+    construct_params_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
 
 Construct a list of Parameters instances with various parameter combinations.
 """
-function construct_simparams_list(;number_agents_list::Vector{Int}, memory_length_list::Vector{Int}, error_list::Vector{Float64}, random_seed::Union{Nothing, Int} = nothing)
-    simparams_list = Vector{Parameters}([])
+function construct_params_list(;number_agents_list::Vector{Int}, memory_length_list::Vector{Int}, error_list::Vector{Float64}, random_seed::Union{Nothing, Int} = nothing)
+    params_list = Vector{Parameters}([])
     for number_agents in number_agents_list
         for memory_length in memory_length_list
             for error in error_list
-                new_simparams_set = Parameters(number_agents, memory_length, error, random_seed=random_seed)
-                push!(simparams_list, new_simparams_set)
+                new_params_set = Parameters(number_agents, memory_length, error, random_seed=random_seed)
+                push!(params_list, new_params_set)
             end
         end
     end
-    return simparams_list
+    return params_list
 end

@@ -14,8 +14,6 @@ struct Model{S1, S2, L}
     game::Game{S1, S2, L}
     parameters::Parameters
     graphmodel::GraphModel
-    # startingcondition::StartingCondition
-    # stoppingcondition::StoppingCondition
     graph::GraphsExt.Graph #the specific graph structure should be specified within a model
 
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel) where {S1, S2, L}
