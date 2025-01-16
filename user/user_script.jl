@@ -23,6 +23,12 @@ const model3 = Model(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50
 const model4 = Model(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
                     Parameters(30, 19, 0.09, "fractious_starting_condition", "equity_psychological"),
                     CompleteModel())
+
+const m = Model(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+                    Parameters(10, 10, 0.1, "fractious_starting_condition", "period_cutoff", user_variables=UserVariables(:period_cutoff=>10000000)),
+                    ErdosRenyiModel(5.0))
+const g = generate_graph(m)
+GamesOnNetworks.graph!(m, g)
                     
 
 println(model)

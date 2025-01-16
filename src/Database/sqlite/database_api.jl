@@ -283,7 +283,7 @@ function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Noth
     # stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
     # stoppingcondition_type = type(model_stoppingcondition)
 
-    adj_matrix_str = GamesOnNetworks.adjacency_matrix_str(model)
+    # adj_matrix_str = GamesOnNetworks.adjacency_matrix_str(model)
 
 
     # println(graphmodel_parameters_str)
@@ -294,8 +294,8 @@ function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Noth
     model_id = execute_insert_model(db_info,
                                     game_name, game_str, game_size,
                                     graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_parameters_str, graphmodel_values_str,
-                                    model_params, parameters_str,
-                                    adj_matrix_str;
+                                    model_params, parameters_str;
+                                    # adj_matrix_str;
                                     model_id=model_id)
     #     catch e
     #         if e isa SQLiteException
@@ -318,6 +318,8 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     rng_state_json = state.rng_state_str
     # rng_state = copy(Random.default_rng())
     # rng_state_json = JSON3.write(rng_state)
+
+    adj_matrix_str = GamesOnNetworks.adjacency_matrix_str(state)
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
@@ -343,7 +345,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, seed, period(state), complete_bool, state_user_variables, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, seed, adj_matrix_str, period(state), complete_bool, state_user_variables, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -369,9 +371,9 @@ function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer)
     payoff_matrix_size = JSON3.read(df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
     graphmodel = JSON3.read(df[1, :graphmodel], GraphModel)
-    regen_graph = Graph(df[1, :graph_adj_matrix])
+    # regen_graph = Graph(df[1, :graph_adj_matrix])
 
-    model = Model(game, params, graphmodel, regen_graph)
+    model = Model(game, params, graphmodel) #, regen_graph)
 
     return model
 end
@@ -386,12 +388,12 @@ function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
     graphmodel = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
     regen_graph = GraphsExt.Graph(simulation_df[1, :graph_adj_matrix])
     state_user_variables = UserVariables(JSON3.read(simulation_df[1, :user_variables]))
-    model = Model(game, params, graphmodel, regen_graph)
+    model = Model(game, params, graphmodel)
     agents = Vector{Agent}()
     for row in eachrow(agents_df)
         push!(agents, JSON3.read(row[:agent], Agent))
     end
-    state_agentgraph = AgentGraph(graph(model), GamesOnNetworks.AgentSet{length(agents)}(agents))
+    state_agentgraph = AgentGraph(regen_graph, GamesOnNetworks.AgentSet{length(agents)}(agents))
 
 
     seed = ismissing(simulation_df[1, :random_seed]) ? nothing : simulation_df[1, :random_seed]

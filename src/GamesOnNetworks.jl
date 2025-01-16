@@ -89,6 +89,8 @@ export
 
     ishermit, #these accessors only implemented for Agent, should they be implemented for Model too?
     memory,
+    generate_graph,
+    generate_graph!,
     # rational_choice,
     # rational_choice!,
     # choice,
@@ -112,6 +114,7 @@ export
     # increment_period,
 
     graph,
+    graph!,
     displayname,
     # reset_model!,
     # regenerate_model,
@@ -154,6 +157,7 @@ export
     # multipleTimeSeriesPlot,
 
     #utility
+    OrNothing,
     resetprocs,
 
     #graph constructors
