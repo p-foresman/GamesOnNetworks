@@ -9,26 +9,27 @@ S2 = column dimension of Game instance
 V = number of agents/vertices
 E = number of relationships/edges
 """
-struct Model{S1, S2, L}
+mutable struct Model{S1, S2, L} #, GM <: GraphModel}
     # id::Union{Nothing, Int}
-    game::Game{S1, S2, L}
-    parameters::Parameters
-    graphmodel::GraphModel
-    graph::GraphsExt.Graph #the specific graph structure should be specified within a model
+    const game::Game{S1, S2, L}
+    const parameters::Parameters
+    const graphmodel::GraphModel #NOTE: make this a concrete type for better performance? (tried and didnt help)
+    graph::GraphsExt.Graph
 
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel) where {S1, S2, L}
-        graph::GraphsExt.Graph = generate_graph(graphmodel, params)
+        graph::GraphsExt.Graph = generate_graph(graphmodel, number_agents(params))
         return new{S1, S2, L}(game, params, graphmodel, graph)
     end
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph::GraphsExt.Graph) where {S1, S2, L}
-        return new{S1, S2, L}(game, params, graphmodel, graph)
+        return new{S1, S2, L}(game, params, graphmodel, graph) #this constructor allows a graph to be fed in
     end
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph_adj_matrix::Matrix) where {S1, S2, L}
-        graph = GraphsExt.Graph(graph_adj_matrix)
+        @assert size(graph_adj_matrix)[1] == size(graph_adj_matrix)[2] "adjecency matrix must be equal lengths in both dimensions"
+        graph = GraphsExt.Graph(graph_adj_matrix) #this constructor allows an adjacency matrix to be fed in for graph generation
         return new{S1, S2, L}(game, params, graphmodel, graph)
     end
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph_adj_matrix_str::String) where {S1, S2, L}
-        graph = GraphsExt.Graph(graph_adj_matrix_str)
+        graph = GraphsExt.Graph(graph_adj_matrix_str) #this constructor allows an adjacency matrix string to be fed in for graph generation
         return new{S1, S2, L}(game, params, graphmodel, graph)
     end
     # function Model(model::Model) #used to generate a new model with the same parameters (newly sampled random graph structure)
@@ -221,29 +222,80 @@ Get the graph associated with a Model instance.
 graph(model::Model) = getfield(model, :graph)
 
 """
-    number_hermits(model::Model)
+    graph!(model::Model, graph::GraphsExt.Graph)
 
-Get the number of hermits (vertecies with degree=0) in the graph of a Model instance.
+Set the model's active graph.
 """
-number_hermits(model::Model) = number_hermits(graph(model))
+graph!(model::Model, graph::GraphsExt.Graph) = setfield!(model, :graph, graph)
+
+"""
+   generate_graph(model::Model)
+   
+Generate a graph from the model.
+"""
+generate_graph(model::Model) = generate_graph(graphmodel(model), number_agents(model))
+
+"""
+   generate_graph!(model::Model)
+   
+Generate a graph from the model and set this graph as the model's active graph
+"""
+function generate_graph!(model::Model)
+    graph::GraphsExt.Graph = generate_graph(graphmodel(model), number_agents(model))
+    graph!(model, graph)
+    return graph
+end
+
+
+# """
+#     number_hermits(model::Model)
+
+# Get the number of hermits (vertecies with degree=0) in the graph of a Model instance.
+# """
+# number_hermits(model::Model) = number_hermits(graph(model))
 
 
 #Model constructor barriers (used to initialize state components from model)
 
+# function AgentGraph(model::Model)
+#     agentgraph::AgentGraph = AgentGraph(graph(model))
+#     # initialize_agent_data!(agentgraph, game(model), parameters(model), startingcondition(model))
+#     starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
+#     return agentgraph
+# end
+
+"""
+    AgentGraph(model::Model)
+
+Initialize an AgentGraph from a model
+"""
 function AgentGraph(model::Model)
     agentgraph::AgentGraph = AgentGraph(graph(model))
-    # initialize_agent_data!(agentgraph, game(model), parameters(model), startingcondition(model))
     starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
     return agentgraph
 end
 
+# """
+#     AgentGraph(model::Model, graph::GraphsExt.Graph)
 
-"""
-    adjacency_matrix_str(model::Model)
+# Initialize an AgentGraph from a model with a pre-provided graph. The model population must equal the number of vertices in the graph provided.
+# """
+# function AgentGraph(model::Model, graph::GraphsExt.Graph)
+#     @assert number_agents(model) == GraphsExt.nv(graph)  "The model population must equal the number of vertices in the graph provided"
+#     #NOTE: could also check if graph could have been generated from the specific graph model, or just leave it up to the user
+#     agentgraph::AgentGraph = AgentGraph(graph)
+#     starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
+#     return agentgraph
+# end
 
-Get the adjacency matrix in a string for the graph of the given Model
-"""
-adjacency_matrix_str(model::Model) = GraphsExt.adjacency_matrix_str(graph(model))
+
+#moved to state
+# """
+#     adjacency_matrix_str(model::Model)
+
+# Get the adjacency matrix in a string for the graph of the given Model
+# """
+# adjacency_matrix_str(model::Model) = GraphsExt.adjacency_matrix_str(graph(model))
 
 
 PreAllocatedArrays(model::Model) = PreAllocatedArrays(game(model))

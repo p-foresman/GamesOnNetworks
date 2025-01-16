@@ -83,8 +83,8 @@ db_insert_sim_group(::Nothing, ::String) = nothing
 db_insert_game(game::Game) = db_insert_game(GamesOnNetworks.SETTINGS.database, game)
 db_insert_game(::Nothing, ::Game) = nothing
 
-db_insert_graph(graphmodel::GraphModel) = db_insert_graph(GamesOnNetworks.SETTINGS.database, graphmodel)
-db_insert_graph(::Nothing, ::GraphModel) = nothing
+db_insert_graphmodel(graphmodel::GraphModel) = db_insert_graphmodel(GamesOnNetworks.SETTINGS.database, graphmodel)
+db_insert_graphmodel(::Nothing, ::GraphModel) = nothing
 
 db_insert_parameters(params::Parameters, use_seed::Bool) = db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, use_seed)
 db_insert_parameters(::Nothing, ::Parameters, ::Bool) = nothing
@@ -106,7 +106,7 @@ db_insert_parameters(::Nothing, ::Parameters, ::Bool) = nothing
 #     db_info = GamesOnNetworks.SETTINGS.database
 #     db_id_tuple::DatabaseIdTuple = (
 #                     game_id = db_insert_game(db_info, game(model)),
-#                     graph_id = db_insert_graphmodel(db_info, graphmodel(model)),
+#                     graph_id = db_insert_graphmodelmodel(db_info, graphmodel(model)),
 #                     parameters_id = db_insert_parameters(db_info, parameters(model), GamesOnNetworks.SETTINGS.use_seed),
 #                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
 #                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
@@ -117,7 +117,7 @@ db_insert_parameters(::Nothing, ::Parameters, ::Bool) = nothing
 # function db_construct_id_tuple(db_info::DBInfo, model::Model, use_seed::Bool)
 #     db_id_tuple::DatabaseIdTuple = (
 #                     game_id = db_insert_game(db_info, game(model)),
-#                     graph_id = db_insert_graphmodel(db_info, graphmodel(model)),
+#                     graph_id = db_insert_graphmodelmodel(db_info, graphmodel(model)),
 #                     parameters_id = db_insert_parameters(db_info, parameters(model), use_seed),
 #                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
 #                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
@@ -149,7 +149,7 @@ end
 #                 for startingcondition in starting_condition_list
 #                     for stoppingcondition in stopping_condition_list
 #                     db_insert_game(GamesOnNetworks.SETTINGS.database, game)
-#                     db_insert_graph(GamesOnNetworks.SETTINGS.database, graphmodel)
+#                     db_insert_graphmodel(GamesOnNetworks.SETTINGS.database, graphmodel)
 #                     db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, GamesOnNetworks.SETTINGS.use_seed)
 #                     db_insert_starting_condition(GamesOnNetworks.SETTINGS.database, startingcondition)
 #                     db_insert_stopping_condition(GamesOnNetworks.SETTINGS.database, stoppingcondition)

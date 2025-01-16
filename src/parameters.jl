@@ -109,7 +109,6 @@ starting_condition_fn(params::Parameters) = getfield(Main, Symbol(starting_condi
 
 
 
-
 const _stopping_condition_registry = Vector{Expr}()
 
 """

@@ -22,11 +22,9 @@ mutable struct State{V, E, C}
     # prev_simulation_uuid
     # distributed_uuid
 
+    #NOTE: clean up these constructors!!
     function State(model::Model; user_variables::UserVariables=UserVariables(), random_seed::Union{Int, Nothing}=nothing) #NOTE: probably dont need user_variables in this constructor
         agentgraph::AgentGraph = AgentGraph(model)
-        # V = nv(graph(agentgraph))
-        # E = ne(graph(agentgraph))
-        # C = length(components())
         V = num_vertices(agentgraph)
         E = num_edges(agentgraph)
         C = num_components(agentgraph)
@@ -45,7 +43,6 @@ mutable struct State{V, E, C}
     #     return Model(game(model), parameters(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
     # end
 end
-
 
 
 
@@ -106,6 +103,13 @@ num_components(state::State) = num_components(agentgraph(state))
 Get the graph (Graphs.SimpleGraph{Int}) in the model.
 """
 graph(state::State) = graph(agentgraph(state))
+
+"""
+    adjacency_matrix_str(state::State)
+
+Get the adjacency matrix in a string for the graph of the given Model
+"""
+adjacency_matrix_str(state::State) = GraphsExt.adjacency_matrix_str(graph(state))
 
 """
     agents(state::State)
