@@ -1,9 +1,11 @@
 module Database
 
-import ..GamesOnNetworks.SETTINGS
+import
+    ..GamesOnNetworks.SETTINGS, #get rid of this and change from SETTINGS -> GamesOnNetworks.SETTINGS to be explicit
+    ..GraphsExt
 
 using
-    ..GON,
+    ..GamesOnNetworks,
     DataFrames,
     JSON3,
     UUIDs
@@ -27,7 +29,7 @@ type(database::SQLiteInfo) = "sqlite"
 type(database::PostgresInfo) = "postgres"
 name(database::DBInfo) = getfield(database, :name)
 
-DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :sim_params_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}
+DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :parameters_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}
 
 
 # include sqlite and postgresql specific APIs
@@ -84,8 +86,8 @@ db_insert_game(::Nothing, ::Game) = nothing
 db_insert_graph(graphmodel::GraphModel) = db_insert_graph(GamesOnNetworks.SETTINGS.database, graphmodel)
 db_insert_graph(::Nothing, ::GraphModel) = nothing
 
-db_insert_sim_params(simparams::SimParams, use_seed::Bool) = db_insert_sim_params(GamesOnNetworks.SETTINGS.database, simparams, use_seed)
-db_insert_sim_params(::Nothing, ::SimParams, ::Bool) = nothing
+db_insert_parameters(params::Parameters, use_seed::Bool) = db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, use_seed)
+db_insert_parameters(::Nothing, ::Parameters, ::Bool) = nothing
 
 # db_insert_starting_condition(startingcondition::StartingCondition) = db_insert_starting_condition(GamesOnNetworks.SETTINGS.database, startingcondition)
 # db_insert_starting_condition(::Nothing, ::StartingCondition) = nothing
@@ -100,23 +102,23 @@ db_insert_sim_params(::Nothing, ::SimParams, ::Bool) = nothing
 
 
 #not sure which method below is better (or if it matters at all). leaning towards second one to keep GamesOnNetworks.SETTINGS calls as high in the call stack as possible in an effort to optimize
-# function db_construct_id_tuple(model::SimModel)
+# function db_construct_id_tuple(model::Model)
 #     db_info = GamesOnNetworks.SETTINGS.database
 #     db_id_tuple::DatabaseIdTuple = (
 #                     game_id = db_insert_game(db_info, game(model)),
 #                     graph_id = db_insert_graphmodel(db_info, graphmodel(model)),
-#                     sim_params_id = db_insert_simparams(db_info, simparams(model), GamesOnNetworks.SETTINGS.use_seed),
+#                     parameters_id = db_insert_parameters(db_info, parameters(model), GamesOnNetworks.SETTINGS.use_seed),
 #                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
 #                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
 #                     )
 #     return db_id_tuple
 # end
 
-# function db_construct_id_tuple(db_info::DBInfo, model::SimModel, use_seed::Bool)
+# function db_construct_id_tuple(db_info::DBInfo, model::Model, use_seed::Bool)
 #     db_id_tuple::DatabaseIdTuple = (
 #                     game_id = db_insert_game(db_info, game(model)),
 #                     graph_id = db_insert_graphmodel(db_info, graphmodel(model)),
-#                     sim_params_id = db_insert_simparams(db_info, simparams(model), use_seed),
+#                     parameters_id = db_insert_parameters(db_info, parameters(model), use_seed),
 #                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
 #                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
 #                     )
@@ -124,7 +126,7 @@ db_insert_sim_params(::Nothing, ::SimParams, ::Bool) = nothing
 # end
 
 
-function db_insert_model(model::SimModel; model_id::Union{Nothing, Integer}=nothing) #NOTE: use_seed needs to be more thought out here. Should it even be included in a model? (probably not, but in a simulation, YES!)
+function db_insert_model(model::Model; model_id::Union{Nothing, Integer}=nothing) #NOTE: use_seed needs to be more thought out here. Should it even be included in a model? (probably not, but in a simulation, YES!)
     return db_insert_model(GamesOnNetworks.SETTINGS.database, model, model_id=model_id)
 end
 
@@ -139,16 +141,16 @@ end
 
 
 
-# function db_insert_model_data(;game_list::Vector{<:Game} , sim_params_list::Vector{SimParams}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition})
+# function db_insert_model_data(;game_list::Vector{<:Game} , parameters_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition})
 #     #add validation here??  
 #     for game in game_list
-#         for simparams in sim_params_list
+#         for params in parameters_list
 #             for graphmodel in graph_model_list
 #                 for startingcondition in starting_condition_list
 #                     for stoppingcondition in stopping_condition_list
 #                     db_insert_game(GamesOnNetworks.SETTINGS.database, game)
 #                     db_insert_graph(GamesOnNetworks.SETTINGS.database, graphmodel)
-#                     db_insert_sim_params(GamesOnNetworks.SETTINGS.database, simparams, GamesOnNetworks.SETTINGS.use_seed)
+#                     db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, GamesOnNetworks.SETTINGS.use_seed)
 #                     db_insert_starting_condition(GamesOnNetworks.SETTINGS.database, startingcondition)
 #                     db_insert_stopping_condition(GamesOnNetworks.SETTINGS.database, stoppingcondition)
 #                     end
@@ -165,8 +167,8 @@ end
 #     simulation_df = execute_query_simulations_for_restore(GamesOnNetworks.SETTINGS.database, simulation_id)
 #     agents_df = execute_query_agents_for_restore(GamesOnNetworks.SETTINGS.database, simulation_id)
 
-#     #reproduce SimParams object
-#     reproduced_sim_params = JSON3.read(simulation_df[1, :simparams], SimParams)
+#     #reproduce Parameters object
+#     reproduced_parameters = JSON3.read(simulation_df[1, :parameters], Parameters)
 
 #     #reproduce Game object
 #     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
@@ -175,7 +177,7 @@ end
 
 #     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
 #     reproduced_graph_model = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
-#     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_sim_params.number_agents, reproduced_sim_params.number_agents, Int})
+#     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_parameters.number_agents, reproduced_parameters.number_agents, Int})
 #     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
 #     reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
 #     for vertex in vertices(reproduced_meta_graph)
@@ -191,7 +193,7 @@ end
 #     else
 #         seed_bool = false
 #     end
-#     return (game=reproduced_game, simparams=reproduced_sim_params, graphmodel=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], group_id=simulation_df[1, :group_id])
+#     return (game=reproduced_game, params=reproduced_parameters, graphmodel=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], group_id=simulation_df[1, :group_id])
 # end
 
 end #Database

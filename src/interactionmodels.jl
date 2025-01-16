@@ -221,38 +221,38 @@ Base.show(graphmodel::GraphModel) = println(displayname(graphmodel))
 
 # Graph Generators (maybe not the best place to put them)
 
-function generate_graph(::CompleteModel, simparams::SimParams)
-    graph::GraphsExt.Graph = GraphsExt.complete_graph(number_agents(simparams))
+function generate_graph(::CompleteModel, params::Parameters)
+    graph::GraphsExt.Graph = GraphsExt.complete_graph(number_agents(params))
     return graph
 end
 
-function generate_graph(graphmodel::ErdosRenyiModel, simparams::SimParams)
-    graph::GraphsExt.Graph = GraphsExt.erdos_renyi_rg(number_agents(simparams), λ(graphmodel))
+function generate_graph(graphmodel::ErdosRenyiModel, params::Parameters)
+    graph::GraphsExt.Graph = GraphsExt.erdos_renyi_rg(number_agents(params), λ(graphmodel))
     if GraphsExt.ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
-        return generate_graph(graphmodel, simparams)
+        return generate_graph(graphmodel, params)
     end
     return graph
 end
 
-function generate_graph(graphmodel::SmallWorldModel, simparams::SimParams)
-    graph::GraphsExt.Graph = GraphsExt.small_world_rg(number_agents(simparams), λ(graphmodel), β(graphmodel))
+function generate_graph(graphmodel::SmallWorldModel, params::Parameters)
+    graph::GraphsExt.Graph = GraphsExt.small_world_rg(number_agents(params), λ(graphmodel), β(graphmodel))
     if GraphsExt.ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
-        return generate_graph(graphmodel, simparams)
+        return generate_graph(graphmodel, params)
     end
     return graph
 end
 
-function generate_graph(graphmodel::ScaleFreeModel, simparams::SimParams)
-    graph::GraphsExt.Graph = GraphsExt.scale_free_rg(number_agents(simparams), λ(graphmodel), α(graphmodel))
+function generate_graph(graphmodel::ScaleFreeModel, params::Parameters)
+    graph::GraphsExt.Graph = GraphsExt.scale_free_rg(number_agents(params), λ(graphmodel), α(graphmodel))
     if GraphsExt.ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
-        return generate_graph(graphmodel, simparams)
+        return generate_graph(graphmodel, params)
     end
     return graph
 end
 
-function generate_graph(graphmodel::StochasticBlockModel, simparams::SimParams)
-    @assert number_agents(simparams) % blocks(graphmodel) == 0 "Number of blocks must divide population evenly"
-    block_size = Int(number_agents(simparams) / blocks(graphmodel))
+function generate_graph(graphmodel::StochasticBlockModel, params::Parameters)
+    @assert number_agents(params) % blocks(graphmodel) == 0 "Number of blocks must divide population evenly"
+    block_size = Int(number_agents(params) / blocks(graphmodel))
     p_in_vector = Vector{Float64}([])
     block_sizes_vector = Vector{Int}([])
     for _ in 1:blocks(graphmodel)
@@ -261,7 +261,7 @@ function generate_graph(graphmodel::StochasticBlockModel, simparams::SimParams)
     end
     graph::GraphsExt.Graph = GraphsExt.stochastic_block_model_rg(block_sizes_vector, λ(graphmodel), p_in_vector, p_out(graphmodel))
     if GraphsExt.ne(graph) == 0 #NOTE: we aren't considering graphs with no edges (obviously). Does it even make sense to consider graphs with more than one component?
-        return generate_graph(graphmodel, simparams)
+        return generate_graph(graphmodel, params)
     end
     return graph
 end

@@ -7,10 +7,10 @@ module GamesOnNetworks
 
 export
     # types
-    SimModel,
-    SimModels,
+    Model,
+    Models,
     Game,
-    SimParams,
+    Parameters,
     Agent,
     GraphModel,
     CompleteModel,
@@ -45,7 +45,7 @@ export
     p_in,
     p_out,
 
-    simparams,
+    parameters,
     number_agents,
     memory_length,
     error_rate,
@@ -87,7 +87,7 @@ export
     # # random_component_edge,
     number_hermits,
 
-    ishermit, #these accessors only implemented for Agent, should they be implemented for SimModel too?
+    ishermit, #these accessors only implemented for Agent, should they be implemented for Model too?
     memory,
     # rational_choice,
     # rational_choice!,
@@ -162,31 +162,50 @@ export
     # scale_free_rg,
     # stochastic_block_model_rg,
 
+    # from Generators
+    ErdosRenyiModelGenerator,
+    SmallWorldModelGenerator,
+    ScaleFreeModelGenerator,
+    StochasticBlockModelGenerator,
+    ModelGenerator,
+    generate_model,
+    get_model_id,
+
     # Model, #NOTE: do we want this, or do we want to expose the methods from this in the core of GamesOnNetworks?
     Database,
     Analyze
 
 
 using
-    # Random,
+    Random,
     # DataFrames,
     # SQLite,
     # LibPQ,
+    StaticArrays,
     Distributed,
     DataStructures,
+    JSON3,
     # Memoize,
     TimerOutputs, #NOTE: get rid of this
-    Suppressor #NOTE: get rid of this
+    Suppressor #NOTE: get rid of this? (used in config i guess)
 
 #basic utility functions
 include("utility.jl")
 
 #extensions of Graphs.jl graph constructors
 include("GraphsExt/GraphsExt.jl")
+import .GraphsExt
 
-
-include("GON/GON.jl")
-using .GON
+#core of GamesOnNetworks
+include("games.jl")
+include("parameters.jl")
+include("interactionmodels.jl")
+include("agents.jl")
+include("agentgraph.jl")
+include("preallocatedarrays.jl")
+include("model.jl")
+include("state.jl")
+include("structtypes.jl")
 
 
 #include StructTypes for reconstructing custom structures
@@ -196,6 +215,10 @@ global SETTINGS #NOTE: want to eventually remove this. Was running into issues w
 
 #api to sqlite and postgresql functionality
 include("Database/Database.jl")
+
+#include Generators
+include("Generators/Generators.jl")
+using .Generators
 
 #include default config and configure
 include("settings/config.jl")

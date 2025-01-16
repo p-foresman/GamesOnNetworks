@@ -174,12 +174,12 @@ function db_insert_graphmodel(db_info::SQLiteInfo, graphmodel::GraphModel)
     #         db_params_dict[param] = getfield(graph_model, param)
     #     end
     # end
-    params_str, values_str = sql_dump_graphmodel(graphmodel)
+    parameters_str, values_str = sql_dump_graphmodel(graphmodel)
 
     graphmodel_id = nothing
     while isnothing(graph_id)
         try
-            graphmodel_id = execute_insert_graphmodel(db_info, display, type, graphmodel_str, params_str, values_str)
+            graphmodel_id = execute_insert_graphmodel(db_info, display, type, graphmodel_str, parameters_str, values_str)
         catch e
             if e isa SQLiteException
                 println("An error has been caught in db_insert_graphmodel():")
@@ -194,16 +194,16 @@ function db_insert_graphmodel(db_info::SQLiteInfo, graphmodel::GraphModel)
     return graphmodel_id
 end
 
-function db_insert_simparams(db_info::SQLiteInfo, simparams::SimParams)
-    simparams_json_str = JSON3.write(simparams)
+function db_insert_parameters(db_info::SQLiteInfo, params::Parameters)
+    params_json_str = JSON3.write(params)
 
-    simparams_id = nothing
-    while isnothing(simparams_id)
+    parameters_id = nothing
+    while isnothing(parameters_id)
         try
-            simparams_id = execute_insert_simparams(db_info, simparams, simparams_json_str)
+            parameters_id = execute_insert_parameters(db_info, params, params_json_str)
         catch e
             if e isa SQLiteException
-                println("An error has been caught in db_insert_simparams():")
+                println("An error has been caught in db_insert_parameters():")
                 showerror(stdout, e)
                 sleep(rand(0.1:0.1:4.0))
             else
@@ -212,7 +212,7 @@ function db_insert_simparams(db_info::SQLiteInfo, simparams::SimParams)
         end
     end
 
-    return simparams_id
+    return parameters_id
 end
 
 # function db_insert_startingcondition(db_info::SQLiteInfo, startingcondition::StartingCondition)
@@ -260,7 +260,7 @@ end
 
 
 
-function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{Nothing, Integer}=nothing)
+function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Nothing, Integer}=nothing)
     model_game = game(model)
     game_name = displayname(model_game)
     game_str = JSON3.write(model_game)
@@ -268,12 +268,12 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{N
 
     model_graphmodel = graphmodel(model)
     graphmodel_display = displayname(model_graphmodel)
-    graphmodel_type = GON.type(model_graphmodel)
+    graphmodel_type = GamesOnNetworks.type(model_graphmodel)
     graphmodel_str = JSON3.write(model_graphmodel)
-    graphmodel_params_str, graphmodel_values_str = sql_dump_graphmodel(model_graphmodel)
+    graphmodel_parameters_str, graphmodel_values_str = sql_dump_graphmodel(model_graphmodel)
 
-    model_simparams = simparams(model)
-    simparams_str = JSON3.write(model_simparams)
+    model_params = parameters(model)
+    parameters_str = JSON3.write(model_params)
 
     # model_startingcondition = startingcondition(model)
     # startingcondition_str = JSON3.write(typeof(model_startingcondition)(model_startingcondition)) #generates a "raw" starting condition object for the database
@@ -283,18 +283,18 @@ function db_insert_model(db_info::SQLiteInfo, model::SimModel; model_id::Union{N
     # stoppingcondition_str = JSON3.write(typeof(model_stoppingcondition)(model_stoppingcondition)) #generates a "raw" stopping condition object for the database
     # stoppingcondition_type = type(model_stoppingcondition)
 
-    adj_matrix_str = GON.adjacency_matrix_str(model)
+    adj_matrix_str = GamesOnNetworks.adjacency_matrix_str(model)
 
 
-    # println(graphmodel_params_str)
+    # println(graphmodel_parameters_str)
     # println(graphmodel_values_str)
     # model_id = nothing
     # while isnothing(model_id)
         # try
     model_id = execute_insert_model(db_info,
                                     game_name, game_str, game_size,
-                                    graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_params_str, graphmodel_values_str,
-                                    model_simparams, simparams_str,
+                                    graphmodel_display, graphmodel_type, graphmodel_str, graphmodel_parameters_str, graphmodel_values_str,
+                                    model_params, parameters_str,
                                     adj_matrix_str;
                                     model_id=model_id)
     #     catch e
@@ -321,7 +321,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
-    for agent in agents(GON.agentgraph(state))
+    for agent in agents(GamesOnNetworks.agentgraph(state))
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
@@ -334,7 +334,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     #     db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
     # end
 
-    complete_bool = Int(GON.iscomplete(state))
+    complete_bool = Int(GamesOnNetworks.iscomplete(state))
 
     
     state_user_variables = JSON3.write(user_variables(state)) #store these explicitly because their values may be different from defaults if they were updated by a user function
@@ -365,13 +365,13 @@ end
 function db_reconstruct_model(db_info::SQLiteInfo, model_id::Integer)
     df = execute_query_models(db_info, model_id)
 
-    simparams = JSON3.read(df[1, :simparams], SimParams)
+    params = JSON3.read(df[1, :parameters], Parameters)
     payoff_matrix_size = JSON3.read(df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
     graphmodel = JSON3.read(df[1, :graphmodel], GraphModel)
     regen_graph = Graph(df[1, :graph_adj_matrix])
 
-    model = SimModel(game, simparams, graphmodel, regen_graph)
+    model = Model(game, params, graphmodel, regen_graph)
 
     return model
 end
@@ -380,18 +380,18 @@ end
 function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
     simulation_df, agents_df = execute_query_simulations_for_restore(db_info, simulation_uuid)
     
-    simparams = JSON3.read(simulation_df[1, :simparams], SimParams)
+    params = JSON3.read(simulation_df[1, :parameters], Parameters)
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
     graphmodel = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
-    regen_graph = Graph(simulation_df[1, :graph_adj_matrix])
+    regen_graph = GraphsExt.Graph(simulation_df[1, :graph_adj_matrix])
     state_user_variables = UserVariables(JSON3.read(simulation_df[1, :user_variables]))
-    model = SimModel(game, simparams, graphmodel, regen_graph)
+    model = Model(game, params, graphmodel, regen_graph)
     agents = Vector{Agent}()
     for row in eachrow(agents_df)
         push!(agents, JSON3.read(row[:agent], Agent))
     end
-    state_agentgraph = AgentGraph(graph(model), AgentSet{length(agents)}(agents))
+    state_agentgraph = AgentGraph(graph(model), GamesOnNetworks.AgentSet{length(agents)}(agents))
 
 
     seed = ismissing(simulation_df[1, :random_seed]) ? nothing : simulation_df[1, :random_seed]

@@ -33,7 +33,7 @@ include("stoppingconditions.jl")
 #                         end
 
 #                         count += 1
-#                         # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(1, 2, 0.01, 0.01)))
+#                         # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, StochasticBlockModel(1, 2, 0.01, 0.01)))
 #                     end
 #                 end
 #             end
@@ -56,41 +56,41 @@ function generate_db()
                         if stop == "partially_reinforced"
                             user_variables = UserVariables(:period_count=>0)
                         end
-                        sim_params = SimParams(N, m, e, "fractious_state", stop, user_variables=user_variables)
+                        sim_params = Parameters(N, m, e, "fractious_state", stop, user_variables=user_variables)
 
 
                         #ER
                         count += 1
-                        # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ErdosRenyiModel(λ)))
+                        # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, ErdosRenyiModel(λ)))
 
 
 
                         #SW
                         for b in 0.0:0.1:1.0
                             count += 1
-                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, SmallWorldModel(λ, b)))
+                            # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, SmallWorldModel(λ, b)))
                         end
                         for b in [0.0001, 0.001, 0.01]
                             count += 1
-                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, SmallWorldModel(λ, b)))
+                            # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, SmallWorldModel(λ, b)))
                         end
 
 
                         #SF
                         for a in 2.0:0.1:5
                             count += 1
-                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, ScaleFreeModel(λ, a)))
+                            # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, ScaleFreeModel(λ, a)))
                         end
 
 
                         #SBM
                         for p in 0.1:0.1:1.0
                             count += 1
-                            # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(λ, 2, p, 0.01)))
+                            # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, StochasticBlockModel(λ, 2, p, 0.01)))
                         end
 
                         count += 1
-                        # GamesOnNetworks.db_insert_model(SimModel(bargaining_game, sim_params, StochasticBlockModel(λ, 2, 0.01, 0.01)))
+                        # GamesOnNetworks.db_insert_model(Model(bargaining_game, sim_params, StochasticBlockModel(λ, 2, 0.01, 0.01)))
                     end
                 end
             end
@@ -113,13 +113,13 @@ function get_model_from_generator(model_id::Integer)
                         if stop == "partially_reinforced"
                             user_variables = UserVariables(:period_count=>0)
                         end
-                        sim_params = SimParams(N, m, e, "fractious_state", stop, user_variables=user_variables)
+                        sim_params = Parameters(N, m, e, "fractious_state", stop, user_variables=user_variables)
 
 
                         #ER
                         count += 1
                         if count == model_id
-                            return SimModel(bargaining_game, sim_params, ErdosRenyiModel(λ))
+                            return Model(bargaining_game, sim_params, ErdosRenyiModel(λ))
                         end
 
 
@@ -127,13 +127,13 @@ function get_model_from_generator(model_id::Integer)
                         for b in 0.0:0.1:1.0
                             count += 1
                             if count == model_id
-                                return SimModel(bargaining_game, sim_params, SmallWorldModel(λ, b))
+                                return Model(bargaining_game, sim_params, SmallWorldModel(λ, b))
                             end
                         end
                         for b in [0.0001, 0.001, 0.01]
                             count += 1
                             if count == model_id
-                                return SimModel(bargaining_game, sim_params, SmallWorldModel(λ, b))
+                                return Model(bargaining_game, sim_params, SmallWorldModel(λ, b))
                             end
                         end
 
@@ -142,7 +142,7 @@ function get_model_from_generator(model_id::Integer)
                         for a in 2.0:0.1:5
                             count += 1
                             if count == model_id
-                                return SimModel(bargaining_game, sim_params, ScaleFreeModel(λ, a))
+                                return Model(bargaining_game, sim_params, ScaleFreeModel(λ, a))
                             end
                         end
 
@@ -151,13 +151,13 @@ function get_model_from_generator(model_id::Integer)
                         for p in 0.1:0.1:1.0
                             count += 1
                             if count == model_id
-                                return SimModel(bargaining_game, sim_params, StochasticBlockModel(λ, 2, p, 0.01))
+                                return Model(bargaining_game, sim_params, StochasticBlockModel(λ, 2, p, 0.01))
                             end
                         end
 
                         count += 1
                         if count == model_id
-                            return SimModel(bargaining_game, sim_params, StochasticBlockModel(λ, 2, 0.01, 0.01))
+                            return Model(bargaining_game, sim_params, StochasticBlockModel(λ, 2, 0.01, 0.01))
                         end
                     end
                 end

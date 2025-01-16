@@ -1,0 +1,333 @@
+"""
+    Model{S1, S2, V, E}
+
+A type which defines the entire model for simulation. Contains Game, Parameters, GraphModel, StartingCondition,
+StoppingCondition, AgentGraph, and PreAllocatedArrays.
+
+S1 = row dimension of Game instance
+S2 = column dimension of Game instance
+V = number of agents/vertices
+E = number of relationships/edges
+"""
+struct Model{S1, S2, L}
+    # id::Union{Nothing, Int}
+    game::Game{S1, S2, L}
+    parameters::Parameters
+    graphmodel::GraphModel
+    # startingcondition::StartingCondition
+    # stoppingcondition::StoppingCondition
+    graph::GraphsExt.Graph #the specific graph structure should be specified within a model
+
+    function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel) where {S1, S2, L}
+        graph::GraphsExt.Graph = generate_graph(graphmodel, params)
+        return new{S1, S2, L}(game, params, graphmodel, graph)
+    end
+    function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph::GraphsExt.Graph) where {S1, S2, L}
+        return new{S1, S2, L}(game, params, graphmodel, graph)
+    end
+    function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph_adj_matrix::Matrix) where {S1, S2, L}
+        graph = GraphsExt.Graph(graph_adj_matrix)
+        return new{S1, S2, L}(game, params, graphmodel, graph)
+    end
+    function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph_adj_matrix_str::String) where {S1, S2, L}
+        graph = GraphsExt.Graph(graph_adj_matrix_str)
+        return new{S1, S2, L}(game, params, graphmodel, graph)
+    end
+    # function Model(model::Model) #used to generate a new model with the same parameters (newly sampled random graph structure)
+    #     return Model(game(model), parameters(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
+    # end
+end
+
+function Models(game::Game, params::Parameters, graphmodel::GraphModel; count::Int) #NOTE: dont know what this is used for, can probably delete
+    return fill(Model(game, params, graphmodel), count)
+end
+
+
+##########################################
+# PreAllocatedArrays Accessors
+##########################################
+
+# """
+#     id(model::Model)
+
+# Get the id of a Model instance (primarily for distributed computing purposes).
+# """
+# id(model::Model) = getfield(model, :id)
+
+#Game
+"""
+    game(model::Model)
+
+Get the Game instance in the model.
+"""
+game(model::Model) = getfield(model, :game)
+
+"""
+    payoff_matrix(game::Model)
+
+Get the payoff matrix for the model.
+"""
+payoff_matrix(model::Model) = payoff_matrix(game(model))
+
+"""
+    strategies(game::Model)
+
+Get the possible strategies that can be played in the model.
+"""
+strategies(model::Model) = strategies(game(model))
+
+"""
+    strategies(game::Model, player_number::Int)
+
+Get the possible strategies that can be played by the given player number in the model.
+"""
+strategies(model::Model, player_number::Int) = strategies(game(model), player_number)
+
+"""
+    random_strategy(game::Model)
+
+Get a random strategy from the possible strategies that can be played in the model.
+"""
+random_strategy(model::Model, player_number::Int) = random_strategy(game(model), player_number)
+
+
+# Parameters
+"""
+    parameters(model::Model)
+
+Get the Parameters instance in the model.
+"""
+parameters(model::Model) = getfield(model, :parameters)
+
+"""
+    number_agents(model::Model)
+
+Get the population size simulation parameter of the model.
+"""
+number_agents(model::Model) = number_agents(parameters(model)) #NOTE: do this change for all?
+# number_agents(model::Model{S1, S2, V, E}) where {S1, S2, V, E} = V #number_agents(parameters(model)) #NOTE: do this change for all?
+
+"""
+    memory_length(model::Model)
+
+Get the memory length simulation parameter m of the model.
+"""
+memory_length(model::Model) = memory_length(parameters(model))
+
+"""
+    error_rate(params::Model)
+
+Get the error rate simulation parameter ϵ of the model.
+"""
+error_rate(model::Model) = error_rate(parameters(model))
+
+# """
+#     matches_per_period(params::Model)
+
+# Get the number of matches per period for the model.
+# """
+# matches_per_period(model::Model) = matches_per_period(parameters(model))
+
+"""
+    random_seed(params::Model)
+
+Get the random seed for the model.
+"""
+random_seed(model::Model) = random_seed(parameters(model))
+
+
+"""
+    starting_condition_fn_str(model::Model)
+
+Get the 'starting_condition_fn_str' Parameters field.
+"""
+starting_condition_fn_str(model::Model) = starting_condition_fn_str(parameters(model))
+
+"""
+    starting_condition_fn(model::Model)
+
+Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' Parameters field.
+"""
+starting_condition_fn(model::Model) = starting_condition_fn(parameters(model))
+
+"""
+    starting_condition_fn_call(model::Model, agentgraph::AgentGraph)
+
+Call the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' Parameters field.
+"""
+starting_condition_fn_call(model::Model, agentgraph::AgentGraph) = starting_condition_fn(model)(model, agentgraph)
+
+
+"""
+    stopping_condition_fn_str(model::Model)
+
+Get the 'stopping_condition_fn_str' Parameters field.
+"""
+stopping_condition_fn_str(model::Model) = stopping_condition_fn_str(parameters(model))
+
+"""
+    stopping_condition_fn(model::Model)
+
+Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' Parameters field.
+"""
+stopping_condition_fn(model::Model) = stopping_condition_fn(parameters(model))
+
+"""
+    get_enclosed_stopping_condition_fn(model::Model)
+
+Call the user-defined stopping condition function which correlates to the String stored in the 'starting_condition_fn_str' Parameters field to get the enclosed function.
+"""
+get_enclosed_stopping_condition_fn(model::Model) = stopping_condition_fn(model)(model) #NOTE: this closure method can probably be eliminated
+
+
+
+# GraphModel
+"""
+    graphmodel(model::Model)
+
+Get the GraphModel instance in the model.
+"""
+graphmodel(model::Model) = getfield(model, :graphmodel)
+
+# """
+#     graph_type(graphmodel::Model)
+
+# Get the graph type of the model
+# """
+# graph_type(model::Model) = graph_type(graphmodel(model))
+# ###add more
+
+
+#StartingCondition
+# """
+#     startingcondition(model::Model)
+
+# Get the StartingCondition instance in the model.
+# """
+# startingcondition(model::Model) = getfield(model, :startingcondition)
+
+
+# #StoppingCondition
+# """
+#     stoppingcondition(model::Model)
+
+# Get the StoppingCondition instance in the model.
+# """
+# stoppingcondition(model::Model) = getfield(model, :stoppingcondition)
+
+"""
+    graph(model::Model)
+
+Get the graph associated with a Model instance.
+"""
+graph(model::Model) = getfield(model, :graph)
+
+"""
+    number_hermits(model::Model)
+
+Get the number of hermits (vertecies with degree=0) in the graph of a Model instance.
+"""
+number_hermits(model::Model) = number_hermits(graph(model))
+
+
+#Model constructor barriers (used to initialize state components from model)
+
+function AgentGraph(model::Model)
+    agentgraph::AgentGraph = AgentGraph(graph(model))
+    # initialize_agent_data!(agentgraph, game(model), parameters(model), startingcondition(model))
+    starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
+    return agentgraph
+end
+
+
+"""
+    adjacency_matrix_str(model::Model)
+
+Get the adjacency matrix in a string for the graph of the given Model
+"""
+adjacency_matrix_str(model::Model) = GraphsExt.adjacency_matrix_str(graph(model))
+
+
+PreAllocatedArrays(model::Model) = PreAllocatedArrays(game(model))
+
+
+
+
+
+
+
+
+
+
+
+function Base.show(model::Model)
+    println("\n")
+    print("Game: ")
+    show(game(model))
+    print("Graph Model: ")
+    show(graphmodel(model))
+    print("Sim Params: ")
+    show(parameters(model))
+    # print("Start: ")
+    # show(parameters(model).startingcondition)
+    # println()
+    # print("Stop: ")
+    # show(parameters(model).stoppingcondition)
+    # println()
+end
+
+
+
+
+
+
+
+
+
+
+"""
+    construct_model_list(;game_list::Vector{Game} , sim_params_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, slurm_task_id::Integer=nothing)
+
+Construct a list of models from the combinatorial set of component lists. Used for simulation_iterator() function.
+"""
+function construct_model_list(;game_list::Vector{<:Game} , sim_params_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, slurm_task_id::Union{Integer, Nothing}=nothing)
+    model_list = Vector{Model}([])
+    model_number::Int = 1
+    for game in game_list
+        for params in sim_params_list
+            for graphmodel in graph_model_list
+                if slurm_task_id === nothing || model_number == slurm_task_id #if slurm_task_id is present, 
+                    push!(model_list, Model(game, params, graphmodel, model_number))
+                end
+                model_number += 1
+            end
+        end
+    end
+    return model_list
+end
+
+"""
+    select_and_construct_model(;game_list::Vector{<:Game} , sim_params_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition}, model_number::Integer)
+
+From lists of component parts, select the model indexed by model_number and construct the model. Used for distributed computing on a workload manager like SLURM.
+"""
+function select_and_construct_model(;game_list::Vector{<:Game} , params_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, model_number::Integer, print_model::Bool=false)
+   #add validation here??  
+    current_model_number::Int = 1
+    for game in game_list
+        for params in params_list
+            for graphmodel in graph_model_list
+                if current_model_number == model_number
+                    if print_model
+                        show(game)
+                        show(params)
+                        show(graphmodel)
+                        flush(stdout)
+                    end
+                    return Model(game, params, graphmodel, model_number)
+                end
+                current_model_number += 1
+            end
+        end
+    end
+end

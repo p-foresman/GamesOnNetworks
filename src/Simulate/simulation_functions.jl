@@ -5,7 +5,7 @@
 
 ######################## game algorithm ####################
 
-function play_game!(model::SimModel, state::State)
+function play_game!(model::Model, state::State)
     #if a player has no memories and/or no memories of the opponents 'tag' type, their opponent_strategy_recollections entry will be a Tuple of zeros.
     #this will cause their opponent_strategy_probs to also be a Tuple of zeros, giving the player no "insight" while playing the game.
     #since the player's expected utility list will then all be equal (zeros), the player makes a random choice.
@@ -19,14 +19,14 @@ end
 # matches_per_period(N::Integer) = Int(floor(N / 2)) #NOTE: hard coded for now (put this in the ConnectedComponent struct)
 
 
-# function run_period!(model::SimModel)
-#     run_period!(model, graph_params(model)) #multiple dispatch
+# function run_period!(model::Model)
+#     run_period!(model, graph_parameters(model)) #multiple dispatch
 #     return nothing
 # end
 
 
-# function run_period!(model::SimModel, state::State)
-#         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
+# function run_period!(model::Model, state::State)
+#         # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_parameters(model))) #NOTE: CHANGE THIS BACK
 #         # for _ in 1:Int(ceil(mpp))
 #     for _ in 1:agentgraph(state).matches_per_period
 #         reset_arrays!(state)
@@ -37,21 +37,21 @@ end
 #     return nothing
 # end
 
-function run_period!(model::SimModel, state::State)
-    for component in GON.components(state) #each connected component plays its own period's worth of matches
-        # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_params(model))) #NOTE: CHANGE THIS BACK
+function run_period!(model::Model, state::State)
+    for component in GamesOnNetworks.components(state) #each connected component plays its own period's worth of matches
+        # mpp = matches_per_period(num_vertices(component)) * edge_density(num_vertices(component), λ(graph_parameters(model))) #NOTE: CHANGE THIS BACK
         # for _ in 1:Int(ceil(mpp))
         for _ in 1:matches_per_period(component)
-            GON.reset_arrays!(state)
-            GON.set_players!(state, component)
+            GamesOnNetworks.reset_arrays!(state)
+            GamesOnNetworks.set_players!(state, component)
             play_game!(model, state)
         end
     end
-    GON.increment_period!(state)
+    GamesOnNetworks.increment_period!(state)
     return nothing
 end
 
-# function run_period!(model::SimModel, ::CompleteParams) #no chance of multiple components, can optimize
+# function run_period!(model::Model, ::CompleteParams) #no chance of multiple components, can optimize
 #     for _ in 1:matches_per_period(model) #cached (should cache for each component!!)
 #         reset_arrays!(model)
 #         # set_players!(model, components(model, 1)) #only one component
@@ -62,20 +62,20 @@ end
 # end
 
 
-function make_choices!(model::SimModel, state::State)
+function make_choices!(model::Model, state::State)
     for player_number in 1:2 #eachindex(model.pre_allocated_arrays.players)
-        GON.rational_choice!(GON.players(state, player_number), maximum_strategy(GON.expected_utilities(state, player_number)))
-        GON.choice!(GON.players(state, player_number), rand() <= GON.error_rate(model) ? GON.random_strategy(model, player_number) : GON.rational_choice(GON.players(state, player_number)))
+        GamesOnNetworks.rational_choice!(GamesOnNetworks.players(state, player_number), maximum_strategy(GamesOnNetworks.expected_utilities(state, player_number)))
+        GamesOnNetworks.choice!(GamesOnNetworks.players(state, player_number), rand() <= GamesOnNetworks.error_rate(model) ? GamesOnNetworks.random_strategy(model, player_number) : GamesOnNetworks.rational_choice(GamesOnNetworks.players(state, player_number)))
     end
 end
 
 
 #other player isn't even needed without tags. this could be simplified
 function calculate_opponent_strategy_probabilities!(state::State, player_number::Integer)
-    @inbounds for memory in memory(GON.players(state, player_number))
-        GON.increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
+    @inbounds for memory in memory(GamesOnNetworks.players(state, player_number))
+        GamesOnNetworks.increment_opponent_strategy_recollection!(state, player_number, memory) #memory strategy is simply the payoff_matrix index for the given dimension
     end
-    GON.opponent_strategy_probabilities(state, player_number) .= GON.opponent_strategy_recollection(state, player_number) ./ sum(GON.opponent_strategy_recollection(state, player_number))
+    GamesOnNetworks.opponent_strategy_probabilities(state, player_number) .= GamesOnNetworks.opponent_strategy_recollection(state, player_number) ./ sum(GamesOnNetworks.opponent_strategy_recollection(state, player_number))
     return nothing
 end
 
@@ -88,11 +88,11 @@ end
 
 
 
-function calculate_expected_utilities!(model::SimModel, state::State)
+function calculate_expected_utilities!(model::Model, state::State)
     @inbounds for column in axes(payoff_matrix(model), 2) #column strategies #NOTE: could just do 1:size(model, dim=2) or something. might be a bit faster
         for row in axes(payoff_matrix(model), 1) #row strategies
-            GON.increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * GON.opponent_strategy_probabilities(state, 1, column))
-            GON.increment_expected_utilities!(state, 2, column, GON.payoff_matrix(model)[row, column][2] * GON.opponent_strategy_probabilities(state, 2, row))
+            GamesOnNetworks.increment_expected_utilities!(state, 1, row, payoff_matrix(model)[row, column][1] * GamesOnNetworks.opponent_strategy_probabilities(state, 1, column))
+            GamesOnNetworks.increment_expected_utilities!(state, 2, column, GamesOnNetworks.payoff_matrix(model)[row, column][2] * GamesOnNetworks.opponent_strategy_probabilities(state, 2, row))
         end
     end
     return nothing
@@ -127,7 +127,7 @@ function maximum_strategy(expected_utilities::Vector{Float32})
 end
 
 
-function push_memory!(agent::Agent, percept::GON.Percept, memory_length::Int)
+function push_memory!(agent::Agent, percept::GamesOnNetworks.Percept, memory_length::Int)
     if length(memory(agent)) >= memory_length
         popfirst!(memory(agent))
     end
@@ -135,14 +135,14 @@ function push_memory!(agent::Agent, percept::GON.Percept, memory_length::Int)
     return nothing
 end
 
-function push_memories!(model::SimModel, state::State)
-    push_memory!(GON.players(state, 1), GON.choice(GON.players(state, 2)), memory_length(model))
-    push_memory!(GON.players(state, 2), GON.choice(GON.players(state, 1)), memory_length(model))
+function push_memories!(model::Model, state::State)
+    push_memory!(GamesOnNetworks.players(state, 1), GamesOnNetworks.choice(GamesOnNetworks.players(state, 2)), memory_length(model))
+    push_memory!(GamesOnNetworks.players(state, 2), GamesOnNetworks.choice(GamesOnNetworks.players(state, 1)), memory_length(model))
     return nothing
 end
 
 
-function count_strategy(memory_set::GON.PerceptSequence, desired_strat::Integer)
+function count_strategy(memory_set::GamesOnNetworks.PerceptSequence, desired_strat::Integer)
     count::Int = 0
     for memory in memory_set
         if memory == desired_strat

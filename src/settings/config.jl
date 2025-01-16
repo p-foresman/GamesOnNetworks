@@ -246,7 +246,7 @@ function configure(toml_path::String="")
                 @everywhere eval($fn)
             end
         end
-        println("$(SETTINGS.procs) processe(s) initialized")
+        println("$(SETTINGS.procs) $(SETTINGS.procs > 1 ? "processes" : "process") initialized")
 
         if myid() == 1
             mkpath(SETTINGS.figure_dirpath)

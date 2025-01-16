@@ -42,7 +42,7 @@ matches_per_period(component::ConnectedComponent) = getfield(component, :matches
 
 struct AgentGraph{N, E, C} <: GraphsExt.AbstractGraph{Int}
     # graphmodel::GraphModel #NOTE: should add this here and make the constructor more robust!
-    graph::GraphsExt.Graph #NOTE: this is already stored in SimModel, do we need to store it here? probably should still
+    graph::GraphsExt.Graph #NOTE: this is already stored in Model, do we need to store it here? probably should still
     agents::AgentSet{N}
     components::ComponentSet{C} #NOTE: different ConnectedComponents will have different V and E static params, meaning that getting a specific component from this set wont be type stable. Doesn't account for a huge change in practice with one component, but could find a way to fix or optimize by not using a component set if there is only one component
 
@@ -71,10 +71,10 @@ struct AgentGraph{N, E, C} <: GraphsExt.AbstractGraph{Int}
         return new{N, E, C}(graph, agents, ComponentSet{C}(components))#, VertexSet{N}(Graphs.vertices(graph)), matches_per_period)
     end
     function AgentGraph(graph::GraphsExt.Graph, agents::AgentSet{A}) where {A}
-        N = nv(graph)
+        N = GraphsExt.nv(graph)
         @assert N == A "graph vertex count must equal the number of agents supplied"
         E = GraphsExt.ne(graph)
-        vertex_sets, edge_sets, C = connected_component_sets(graph)
+        vertex_sets, edge_sets, C = GraphsExt.connected_component_sets(graph)
         components = []
         for component_number in 1:C
             push!(components, ConnectedComponent(vertex_sets[component_number], edge_sets[component_number]))

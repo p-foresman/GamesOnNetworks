@@ -1,11 +1,11 @@
 const UserVariables = Dict{Symbol, Any}
 
 """
-    SimParams
+    Parameters
 
 Type to define and store simulation parameters.
 """
-struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
+struct Parameters #NOTE: allow user to define the matches_per_period (default 1?)
     number_agents::Int #switch to 'population'
     memory_length::Int
     error::Float64
@@ -13,10 +13,10 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
     starting_condition_fn_str::String
     stopping_condition_fn_str::String
     user_variables::UserVariables #NOTE: should starting_condition_variables and stopping_condition_variables be separated? (maybe not, it's on the user to manage these)
-    # random_seed::Int #probably don't need a random seed in every SimParams struct?
+    # random_seed::Int #probably don't need a random seed in every Parameters struct?
 
 
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String; user_variables::UserVariables=UserVariables())
+    function Parameters(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String; user_variables::UserVariables=UserVariables())
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
@@ -24,10 +24,10 @@ struct SimParams #NOTE: allow user to define the matches_per_period (default 1?)
         @assert isdefined(Main, Symbol(stopping_condition_fn_str)) "the stopping_condition_fn_str provided does not correlate to a defined function"
         return new(number_agents, memory_length, error, starting_condition_fn_str, stopping_condition_fn_str, user_variables)
     end
-    function SimParams()
+    function Parameters()
         return new()
     end
-    function SimParams(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String, user_variables::UserVariables)
+    function Parameters(number_agents::Int, memory_length::Int, error::Float64, starting_condition_fn_str::String, stopping_condition_fn_str::String, user_variables::UserVariables)
         @assert number_agents >= 2 "'population' must be >= 2"
         @assert memory_length >= 1 "'memory_length' must be positive"
         @assert 0.0 <= error <= 1.0 "'error' must be between 0.0 and 1.0"
@@ -39,43 +39,43 @@ end
 
 
 ##########################################
-# SimParams Accessors
+# Parameters Accessors
 ##########################################
 
 """
-    number_agents(simparams::SimParams)
+    number_agents(simparams::Parameters)
 
 Get the population size simulation parameter N.
 """
-number_agents(simparams::SimParams) = getfield(simparams, :number_agents)
+number_agents(simparams::Parameters) = getfield(simparams, :number_agents)
 
 """
-    memory_length(simparams::SimParams)
+    memory_length(simparams::Parameters)
 
 Get the memory length simulation parameter m.
 """
-memory_length(simparams::SimParams) = getfield(simparams, :memory_length)
+memory_length(simparams::Parameters) = getfield(simparams, :memory_length)
 
 """
-    error_rate(simparams::SimParams)
+    error_rate(simparams::Parameters)
 
 Get the error rate simulation parameter ϵ.
 """
-error_rate(simparams::SimParams) = getfield(simparams, :error)
+error_rate(simparams::Parameters) = getfield(simparams, :error)
 
 # """
-#     matches_per_period(simparams::SimParams)
+#     matches_per_period(simparams::Parameters)
 
 # Get the number of matches per period for the simulation.
 # """
-# matches_per_period(simparams::SimParams) = getfield(simparams, :matches_per_period)
+# matches_per_period(simparams::Parameters) = getfield(simparams, :matches_per_period)
 
 # """
-#     random_seed(simparams::SimParams)
+#     random_seed(simparams::Parameters)
 
 # Get the random seed for the simulation.
 # """
-# random_seed(simparams::SimParams) = getfield(simparams, :random_seed)
+# random_seed(simparams::Parameters) = getfield(simparams, :random_seed)
 
 
 
@@ -94,18 +94,18 @@ macro startingcondition(fn)
 end
 
 """
-    starting_condition_fn_str(simparams::SimParams)
+    starting_condition_fn_str(simparams::Parameters)
 
-Get the 'starting_condition_fn_str' SimParams field.
+Get the 'starting_condition_fn_str' Parameters field.
 """
-starting_condition_fn_str(simparams::SimParams) = getfield(simparams, :starting_condition_fn_str)
+starting_condition_fn_str(simparams::Parameters) = getfield(simparams, :starting_condition_fn_str)
 
 """
-    starting_condition_fn(simparams::SimParams)
+    starting_condition_fn(simparams::Parameters)
 
-Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' SimParams field.
+Get the user-defined starting condition function which correlates to the String stored in the 'starting_condition_fn_str' Parameters field.
 """
-starting_condition_fn(simparams::SimParams) = getfield(Main, Symbol(starting_condition_fn_str(simparams)))
+starting_condition_fn(simparams::Parameters) = getfield(Main, Symbol(starting_condition_fn_str(simparams)))
 
 
 
@@ -124,18 +124,18 @@ macro stoppingcondition(fn)
 end
 
 """
-    stopping_condition_fn_str(simparams::SimParams)
+    stopping_condition_fn_str(simparams::Parameters)
 
-Get the 'stopping_condition_fn_str' SimParams field.
+Get the 'stopping_condition_fn_str' Parameters field.
 """
-stopping_condition_fn_str(simparams::SimParams) = getfield(simparams, :stopping_condition_fn_str)
+stopping_condition_fn_str(simparams::Parameters) = getfield(simparams, :stopping_condition_fn_str)
 
 """
-    stopping_condition_fn(simparams::SimParams)
+    stopping_condition_fn(simparams::Parameters)
 
-Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' SimParams field.
+Get the user-defined stopping condition function which correlates to the String stored in the 'stopping_condition_fn' Parameters field.
 """
-stopping_condition_fn(simparams::SimParams) = getfield(Main, Symbol(stopping_condition_fn_str(simparams)))
+stopping_condition_fn(simparams::Parameters) = getfield(Main, Symbol(stopping_condition_fn_str(simparams)))
 
 
 function _assert_registries()
@@ -146,42 +146,42 @@ end
 
 
 """
-    user_variables(simparams::SimParams)
+    user_variables(simparams::Parameters)
 
 Get the extra user-defined SimParam variables. Note: these should denote default values and should only be updated in State!
 """
-user_variables(simparams::SimParams) = getfield(simparams, :user_variables)
+user_variables(simparams::Parameters) = getfield(simparams, :user_variables)
 
-# setfield!(::SimParams, :user_variables, ::Any) = raise Exception() #dont want user to be able to change this
+# setfield!(::Parameters, :user_variables, ::Any) = raise Exception() #dont want user to be able to change this
 
 
 """
-    displayname(simparams::SimParams)
+    displayname(simparams::Parameters)
 
-Get the string used for displaying a SimParams instance.
+Get the string used for displaying a Parameters instance.
 """
-displayname(simparams::SimParams) = "N=$(number_agents(simparams)) m=$(memory_length(simparams)) e=$(error_rate(simparams)) starting=$(starting_condition_fn_str(simparams)) stopping=$(stopping_condition_fn_str(simparams))"
+displayname(simparams::Parameters) = "N=$(number_agents(simparams)) m=$(memory_length(simparams)) e=$(error_rate(simparams)) starting=$(starting_condition_fn_str(simparams)) stopping=$(stopping_condition_fn_str(simparams))"
 
-Base.show(simparams::SimParams) = println(displayname(simparams))
+Base.show(simparams::Parameters) = println(displayname(simparams))
 
 
 
 
 ##########################################
-# SimParams Extra Constructors
+# Parameters Extra Constructors
 ##########################################
 
 """
     construct_simparams_list(;number_agents_list::Vector{<:Integer}, memory_length_list::Vector{<:Integer}, error_list::Vector{Float64}, tags::Union{Nothing, NamedTuple{(:tag1, :tag2, :tag1_proportion), Tuple{Symbol, Symbol, Float64}}} = nothing, random_seed::Union{Nothing, Int} = nothing)
 
-Construct a list of SimParams instances with various parameter combinations.
+Construct a list of Parameters instances with various parameter combinations.
 """
 function construct_simparams_list(;number_agents_list::Vector{Int}, memory_length_list::Vector{Int}, error_list::Vector{Float64}, random_seed::Union{Nothing, Int} = nothing)
-    simparams_list = Vector{SimParams}([])
+    simparams_list = Vector{Parameters}([])
     for number_agents in number_agents_list
         for memory_length in memory_length_list
             for error in error_list
-                new_simparams_set = SimParams(number_agents, memory_length, error, random_seed=random_seed)
+                new_simparams_set = Parameters(number_agents, memory_length, error, random_seed=random_seed)
                 push!(simparams_list, new_simparams_set)
             end
         end
