@@ -23,8 +23,6 @@ include("simulation_functions.jl")
 Run a simulation using the model provided.
 """
 function simulate(model::Model; db_group_id::Union{Nothing, Integer} = nothing)
-
-
     # if !isnothing(SETTINGS.checkpoint) SETTINGS.checkpoint.start_time = time() end #fine for now
     return _simulate_model_barrier(model, SETTINGS.database, start_time=time())
     # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)

@@ -42,7 +42,6 @@ function generate_model(generator::ModelGenerator, index::Integer; use_seed::Boo
                             for graphmodel in graphmodel_generator
                                 count += 1
                                 if count == index
-                                    Random.seed!(count)
                                     return Model(generator.game, params, graphmodel)
                                 end
                             end
@@ -65,7 +64,6 @@ function generate_database(generator::ModelGenerator)
                         params = Parameters(population, memory_length, error_rate, starting_condition[1], stopping_condition[1], user_variables=merge(starting_condition[2], stopping_condition[2]))
                         for graphmodel_generator in generator.graphmodels
                             for graphmodel in graphmodel_generator
-                                Random.seed!(count)
                                 Database.db_insert_model(Model(generator.game, params, graphmodel))
                             end
                         end
