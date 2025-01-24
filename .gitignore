@@ -2,6 +2,8 @@ Manifest.toml
 GamesOnNetworks.toml
 GamesOnNetworks.sqlite
 checkpoint.sqlite
-sqlite/
 
-N100_m10/
+/sqlite/
+/config/
+plots/
+

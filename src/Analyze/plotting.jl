@@ -435,7 +435,7 @@ If no positional argument given, configured database is used.
 function noise_vs_structure_heatmap(db_info::Database.DBInfo=SETTINGS.database;
                                     game_id::Integer,
                                     graphmodel_extra::Vector{<:Dict{Symbol, Any}},
-                                    errors::Vector{<:AbstractFloat},
+                                    error_rates::Vector{<:AbstractFloat},
                                     mean_degrees::Vector{<:AbstractFloat},
                                     number_agents::Integer,
                                     memory_length::Integer,
@@ -450,14 +450,14 @@ function noise_vs_structure_heatmap(db_info::Database.DBInfo=SETTINGS.database;
                                     filename::String="")
 
 # sort!(graph_ids)
-# sort!(errors)
+# sort!(error_rates)
 # sort!(mean_degrees)
 
 
 x = string.(mean_degrees)
-y = string.(errors)
+y = string.(error_rates)
 # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
-# y_axis = fill(string.(errors), (length(graph_ids), 1))
+# y_axis = fill(string.(error_rates), (length(graph_ids), 1))
 
 # graphmodel_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
 # for graph in graphmodel
@@ -478,15 +478,15 @@ graphmodel = Vector{Dict{Symbol, Any}}()
     end
     println(graphmodel)
 
-    # z_data = fill(zeros(length(mean_degrees), length(errors)), (1, length(graphmodel_extra)))
-    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graphmodel_extra)]
-    z_data = zeros(length(errors), length(mean_degrees), length(graphmodel_extra))
+    # z_data = fill(zeros(length(mean_degrees), length(error_rates)), (1, length(graphmodel_extra)))
+    # z_data = [zeros(length(mean_degrees), length(error_rates)) for _ in 1:length(graphmodel_extra)]
+    z_data = zeros(length(error_rates), length(mean_degrees), length(graphmodel_extra))
 
     println(z_data)
     df = Database.execute_query_simulations_for_noise_structure_heatmap(db_info,
                                                                 game_id=game_id,
                                                                 graphmodel_params=graphmodel,
-                                                                errors=errors,
+                                                                error_rates=error_rates,
                                                                 mean_degrees=mean_degrees,
                                                                 number_agents=number_agents,
                                                                 memory_length=memory_length,
@@ -508,7 +508,7 @@ graphmodel = Vector{Dict{Symbol, Any}}()
         filtered_df = filter([:graphmodel_type, :β, :α, :p_in, :p_out] => graph_filter, df) #NOTE: this is filtering by graph graphmodel_type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
         # println(filtered_df)
         for (col, mean_degree) in enumerate(mean_degrees)
-            for (row, error) in enumerate(errors)
+            for (row, error) in enumerate(error_rates)
             more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
             println(more_filtered)
             # scaled_period = more_filtered.period ./ GraphsExt.edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS]
@@ -529,11 +529,11 @@ graphmodel = Vector{Dict{Symbol, Any}}()
     end
 
     #this stuff needs to be removed!
-    # z_data = [zeros(length(mean_degrees), length(errors)) for _ in 1:length(graphmodel_extra)]
-    # z_data = zeros(length(mean_degrees), length(errors), length(graphmodel_extra))
+    # z_data = [zeros(length(mean_degrees), length(error_rates)) for _ in 1:length(graphmodel_extra)]
+    # z_data = zeros(length(mean_degrees), length(error_rates), length(graphmodel_extra))
     # for i in eachindex(graphmodel_extra)
     #     for x in eachindex(mean_degrees)
-    #         for y in eachindex(errors)
+    #         for y in eachindex(error_rates)
     #             z_data[i, x, y] = i + x + y
     #         end
     #     end
@@ -578,7 +578,7 @@ function transition_times_vs_memory_sweep(db_filepath::String;
                 game_id::Integer,
                 memory_length_list::Union{Vector{<:Integer}, Nothing} = nothing,
                 number_agents::Integer,
-                errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                error_rates::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
                 graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
                 startingcondition_id::Integer,
                 stoppingcondition_id::Integer,
@@ -593,7 +593,7 @@ function transition_times_vs_memory_sweep(db_filepath::String;
                 sim_plot::Union{Plots.Plot, Nothing}=nothing)
 
 memory_length_list !== nothing ? memory_length_list = sort(memory_length_list) : nothing
-errors !== nothing ? errors = sort(errors) : nothing
+error_rates !== nothing ? error_rates = sort(error_rates) : nothing
 graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
 
 
@@ -613,7 +613,7 @@ colors_map[graph_id] = colors[index]
 end
 
 # error_styles_map = Dict()
-# for (index, error) in enumerate(errors)
+# for (index, error) in enumerate(error_rates)
 #     error_styles_map[error] = error_styles[index]
 # end
 if sim_plot === nothing
@@ -638,14 +638,14 @@ df = query_simulations_for_transition_time_vs_memory_sweep(db_filepath,
                                         game_id=game_id,
                                         memory_length_list=memory_length_list,
                                         number_agents=number_agents,
-                                        errors=errors,
+                                        error_rates=error_rates,
                                         graph_ids=graph_ids,
                                         startingcondition_id=startingcondition_id,
                                         stoppingcondition_id=stoppingcondition_id,
                                         sample_size=sample_size)
 plot_line_number = 1 #this will make the lines unordered***
 for graph_id in graph_ids
-for error in errors
+for error in error_rates
 filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
 # println(filtered_df)
 average_transition_time = Vector{Float64}([])
@@ -680,14 +680,14 @@ end
 
 
 #NOTE: add a param for log scale or not
-function transition_times_vs_population_sweep(db_filepath::String;
+function transition_times_vs_population_sweep(db_info::Database.DBInfo=SETTINGS.database;
                     game_id::Integer,
                     number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
                     memory_length::Integer,
-                    errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
-                    graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                    startingcondition_id::Integer,
-                    stoppingcondition_id::Integer,
+                    error_rates::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                    graphmodel_ids::Union{Vector{<:Integer}, Nothing} = nothing,
+                    starting_condition::String,
+                    stopping_condition::String,
                     sample_size::Integer,
                     conf_intervals::Bool = false,
                     conf_level::AbstractFloat = 0.95,
@@ -698,95 +698,214 @@ function transition_times_vs_population_sweep(db_filepath::String;
                     plot_title::String="", 
                     sim_plot::Union{Plots.Plot, Nothing}=nothing)
 
-number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
-errors !== nothing ? errors = sort(errors) : nothing
-graph_ids !== nothing ? graph_ids = sort(graph_ids) : nothing
+    number_agents_list !== nothing ? number_agents_list = sort(number_agents_list) : nothing
+    error_rates !== nothing ? error_rates = sort(error_rates) : nothing
+    graphmodel_ids !== nothing ? graphmodel_ids = sort(graphmodel_ids) : nothing
 
 
-#initialize plot
-x_label = "Population"
-x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
-x_ticks = minimum(number_agents_list) - 10:100:maximum(number_agents_list) + 10
+    #initialize plot
+    x_label = "Population"
+    x_lims = (minimum(number_agents_list) - 10, maximum(number_agents_list) + 10)
+    x_ticks = minimum(number_agents_list) - 10:10:maximum(number_agents_list)# + 10
 
-legend_labels_map = Dict()
-for (index, graph_id) in enumerate(graph_ids)
-legend_labels_map[graph_id] = legend_labels[index]
+    legend_labels_map = Dict()
+    for (index, graphmodel_id) in enumerate(graphmodel_ids)
+        legend_labels_map[graphmodel_id] = legend_labels[index]
+    end
+
+    colors_map = Dict()
+    for (index, graphmodel_id) in enumerate(graphmodel_ids)
+        colors_map[graphmodel_id] = colors[index]
+    end
+
+    # error_styles_map = Dict()
+    # for (index, error) in enumerate(error_rates)
+    #     error_styles_map[error] = error_styles[index]
+    # end
+    if sim_plot === nothing
+        sim_plot = plot(xlabel = x_label,
+                        xlims = x_lims,
+                        xticks = x_ticks,
+                        ylabel = "Transition Time",
+                        yscale = :log10,
+                        legend_position = :topleft,
+                        size=(1300, 700),
+                        left_margin=10Plots.mm,
+                        bottom_margin=10Plots.mm,
+                        right_margin=10Plots.mm,
+                        title=plot_title,
+                        thickness_scaling=1.2
+        )
+    end
+
+
+    #wrangle data
+    df = Database.query_simulations_for_transition_time_vs_population_sweep(db_info,
+                                            game_id=game_id,
+                                            number_agents_list=number_agents_list,
+                                            memory_length=memory_length,
+                                            error_rates=error_rates,
+                                            graphmodel_ids=graphmodel_ids,
+                                            starting_condition=starting_condition,
+                                            stopping_condition=stopping_condition,
+                                            sample_size=sample_size)
+    return df
+    plot_line_number = 1 #this will make the lines unordered***
+    for graphmodel_id in graphmodel_ids
+        for error in error_rates
+            filtered_df = filter([:error, :graphmodel_id, :starting_condition, :stopping_condition] => (err, graph, start, stop) -> err == error && graph == graphmodel_id && start == starting_condition && stop == stopping_condition, df)
+            # println(filtered_df)
+            average_transition_time = Vector{Float64}([])
+
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            for (index, number_agents) in enumerate(number_agents_list)
+                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
+                # println(filtered_df_per_num)
+                mean_degree = filtered_df_per_num.λ[1] #all should be the same. NOTE: remove this
+                scaled_periods_elapsed = filtered_df_per_num.period #NOTE: remove this
+                if !ismissing(mean_degree) #NOTE: remove this
+                    scaled_periods_elapsed = scaled_periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
+                end
+                confidence_interval = confint(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+
+                push!(average_transition_time, confidence_interval[1]) #first element is the mean
+                if conf_intervals
+                    push!(confidence_interval_lower, confidence_interval[2])
+                    push!(confidence_interval_upper, confidence_interval[3])
+                end
+            end
+
+            legend_label = "$(legend_labels_map[graphmodel_id])" #, error=$error"
+
+            plot!(number_agents_list, average_transition_time, markershape=:circle, linewidth=2, label=legend_label, markercolor=colors_map[graphmodel_id], linecolor=colors_map[graphmodel_id])#, linestyle=error_styles_map[error][1])
+
+            if conf_intervals
+                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[graphmodel_id])#, fillstyle=error_styles_map[error][2])
+            end
+
+            plot_line_number += 1
+        end
+    end
+    return sim_plot
 end
 
-colors_map = Dict()
-for (index, graph_id) in enumerate(graph_ids)
-colors_map[graph_id] = colors[index]
-end
-
-# error_styles_map = Dict()
-# for (index, error) in enumerate(errors)
-#     error_styles_map[error] = error_styles[index]
-# end
-if sim_plot === nothing
-sim_plot = plot(xlabel = x_label,
-xlims = x_lims,
-xticks = x_ticks,
-ylabel = "Transition Time",
-# yscale = :log10,
-legend_position = :topleft,
-size=(1300, 700),
-left_margin=10Plots.mm,
-bottom_margin=10Plots.mm,
-right_margin=10Plots.mm,
-title=plot_title,
-thickness_scaling=1.2)
-end
 
 
-#wrangle data
-df = query_simulations_for_transition_time_vs_population_sweep(db_filepath,
-                                        game_id=game_id,
-                                        number_agents_list=number_agents_list,
-                                        memory_length=memory_length,
-                                        errors=errors,
-                                        graph_ids=graph_ids,
-                                        startingcondition_id=startingcondition_id,
-                                        stoppingcondition_id=stoppingcondition_id,
-                                        sample_size=sample_size)
-plot_line_number = 1 #this will make the lines unordered***
-for graph_id in graph_ids
-for error in errors
-filtered_df = filter([:error, :graph_id, :startingcondition_id, :stoppingcondition_id] => (err, graph, start, stop) -> err == error && graph == graph_id && start == startingcondition_id && stop == stoppingcondition_id, df)
-# println(filtered_df)
-average_transition_time = Vector{Float64}([])
 
-conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
-conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
-for (index, number_agents) in enumerate(number_agents_list)
-filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
-# println(filtered_df_per_num)
-mean_degree = filtered_df_per_num.λ[1] #all should be the same. NOTE: remove this
-scaled_periods_elapsed = filtered_df_per_num.periods_elapsed #NOTE: remove this
-if !ismissing(mean_degree) #NOTE: remove this
-scaled_periods_elapsed = scaled_periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
-end
-confidence_interval = confint(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
 
-push!(average_transition_time, confidence_interval[1]) #first element is the mean
-if conf_intervals
-push!(confidence_interval_lower, confidence_interval[2])
-push!(confidence_interval_upper, confidence_interval[3])
-end
+
+
+
+
+
+
+function transition_times_vs_population_sweep_new(qp::Database.Query_simulations, db_info::Database.DBInfo=SETTINGS.database;
+                                                conf_intervals::Bool = false,
+                                                conf_level::AbstractFloat = 0.95,
+                                                bootstrap_samples::Integer = 1000,
+                                                legend_labels::Vector = [],
+                                                colors::Vector = [],
+                                                error_styles::Vector = [],
+                                                plot_title::String="", 
+                                                sim_plot::Union{Plots.Plot, Nothing}=nothing
+    )
+
+    #NOTE: ADD Query_simulations VALIDATION HERE! 
+
+
+    #initialize plot
+    x_label = "Population"
+    x_lims = (minimum(qp.model.parameters.number_agents) - 10, maximum(qp.model.parameters.number_agents) + 10)
+    x_ticks = minimum(qp.model.parameters.number_agents) - 10:10:maximum(qp.model.parameters.number_agents)# + 10
+
+    legend_labels_map = Dict()
+    for (index, graphmodel_id) in enumerate(1:1)#enumerate(graphmodel_ids)
+        legend_labels_map[graphmodel_id] = legend_labels[index]
+    end
+
+    colors_map = Dict()
+    for (index, graphmodel_id) in enumerate(1:1)#enumerate(graphmodel_ids) #NOTE: fix!
+        colors_map[graphmodel_id] = colors[index]
+    end
+
+    # error_styles_map = Dict()
+    # for (index, error) in enumerate(error_rates)
+    #     error_styles_map[error] = error_styles[index]
+    # end
+    if sim_plot === nothing
+        sim_plot = plot(xlabel = x_label,
+                        xlims = x_lims,
+                        xticks = x_ticks,
+                        ylabel = "Transition Time",
+                        yscale = :log10,
+                        legend_position = :topleft,
+                        size=(1300, 700),
+                        left_margin=10Plots.mm,
+                        bottom_margin=10Plots.mm,
+                        right_margin=10Plots.mm,
+                        title=plot_title,
+                        thickness_scaling=1.2
+        )
+    end
+
+
+    #wrangle data
+    df = Database.query_population_sweep(db_info, qp)
+    # return df
+    plot_line_number = 1 #this will make the lines unordered***
+    for graphmodel in qp.graphmodels #graphmodel_ids
+        for error in error_rates
+            filtered_df = filter([:error, :graphmodel_id, :starting_condition, :stopping_condition] => (err, graph, start, stop) -> err == error && graph == graphmodel_id && start == starting_condition && stop == stopping_condition, df)
+            # println(filtered_df)
+            average_transition_time = Vector{Float64}([])
+
+            conf_intervals ? confidence_interval_lower = Vector{Float64}([]) : nothing
+            conf_intervals ? confidence_interval_upper = Vector{Float64}([]) : nothing
+            for (index, number_agents) in enumerate(number_agents_list)
+                filtered_df_per_num = filter(:number_agents => num -> num == number_agents, filtered_df)
+                # println(filtered_df_per_num)
+                mean_degree = filtered_df_per_num.λ[1] #all should be the same. NOTE: remove this
+                scaled_periods_elapsed = filtered_df_per_num.period #NOTE: remove this
+                if !ismissing(mean_degree) #NOTE: remove this
+                    scaled_periods_elapsed = scaled_periods_elapsed ./ edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS
+                end
+                confidence_interval = confint(bootstrap(mean, scaled_periods_elapsed, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+
+                push!(average_transition_time, confidence_interval[1]) #first element is the mean
+                if conf_intervals
+                    push!(confidence_interval_lower, confidence_interval[2])
+                    push!(confidence_interval_upper, confidence_interval[3])
+                end
+            end
+
+            legend_label = "$(legend_labels_map[graphmodel_id])" #, error=$error"
+
+            plot!(number_agents_list, average_transition_time, markershape=:circle, linewidth=2, label=legend_label, markercolor=colors_map[graphmodel_id], linecolor=colors_map[graphmodel_id])#, linestyle=error_styles_map[error][1])
+
+            if conf_intervals
+                plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[graphmodel_id])#, fillstyle=error_styles_map[error][2])
+            end
+
+            plot_line_number += 1
+        end
+    end
+    return sim_plot
 end
 
-legend_label = "$(legend_labels_map[graph_id])" #, error=$error"
 
-plot!(number_agents_list, average_transition_time, markershape=:circle, linewidth=2, label=legend_label, markercolor=colors_map[graph_id], linecolor=colors_map[graph_id])#, linestyle=error_styles_map[error][1])
 
-if conf_intervals
-plot!(number_agents_list, confidence_interval_lower, fillrange=confidence_interval_upper, linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors_map[graph_id])#, fillstyle=error_styles_map[error][2])
-end
 
-plot_line_number += 1
-end
-end
-return sim_plot
-end
+
+
+
+
+
+
+
+
+
+
 
 
 function transition_times_vs_population_stopping_conditions(db_filepath::String;

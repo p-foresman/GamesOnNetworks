@@ -53,6 +53,7 @@ function sql_create_games_table(::SQLiteInfo)
     """
 end
 
+#NOTE: graphmodels are a sub-model, so treat it the same way models are treated? (individual graph type parameters shouldnt be stored in this table)
 function sql_create_graphmodels_table(::SQLiteInfo)
     """
     CREATE TABLE IF NOT EXISTS graphmodels
@@ -1156,98 +1157,133 @@ end
 
 
 
+#HERE
+function sql_query_simulations_for_transition_time_vs_population_sweep(game_id::Integer,
+                                                                        starting_condition::String, 
+                                                                        stopping_condition::String,
+                                                                        memory_length::Integer,
+                                                                        number_agents_sql::String,
+                                                                        error_rates_sql::String,
+                                                                        graph_ids_sql::String,
+                                                                        sample_size::Integer
+    )
+    #parameters.number_agents, parameters.error, parameters.starting_condition, parameters.stopping_condition, models.graphmodel_id
+    """
+    SELECT * FROM (
+        SELECT
+            ROW_NUMBER() OVER ( 
+                PARTITION BY models.id
+                ORDER BY RANDOM()
+            ) RowNum,
+            models.id as model_id,
+            simulations.uuid,
+            parameters.parameters,
+            parameters.number_agents,
+            parameters.memory_length,
+            parameters.error,
+            parameters.starting_condition,
+            parameters.stopping_condition,
+            simulations.period,
+            models.graphmodel_id,
+            graphmodels.type,
+            graphmodels.graphmodel,
+            graphmodels.λ,
+            games.name
+        FROM models
+        INNER JOIN simulations ON models.id = simulations.model_id
+        INNER JOIN parameters ON models.parameters_id = parameters.id
+        INNER JOIN games ON models.game_id = games.id
+        INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
+        WHERE simulations.complete = 1 
+        AND models.game_id = $game_id
+        AND parameters.starting_condition = '$starting_condition'
+        AND parameters.stopping_condition = '$stopping_condition'
+        AND parameters.memory_length = $memory_length
+        $number_agents_sql
+        $error_rates_sql
+        $graph_ids_sql
+        )
+    WHERE RowNum <= $sample_size;
+    """
+end
+
+
+
 function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLiteInfo;
                                                                     game_id::Integer,
                                                                     number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
                                                                     memory_length::Integer,
-                                                                    errors::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
-                                                                    graph_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                                    starting_condition_id::Integer,
-                                                                    stopping_condition_id::Integer,
+                                                                    error_rates::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+                                                                    graphmodel_ids::Union{Vector{<:Integer}, Nothing} = nothing,
+                                                                    starting_condition::String,
+                                                                    stopping_condition::String,
                                                                     sample_size::Integer)    
                                                                                 
     number_agents_sql = ""
     if number_agents_list !== nothing
         length(number_agents_list) == 1 ? number_agents_sql *= "AND parameters.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND parameters.number_agents IN $(Tuple(number_agents_list))"
     end
-    errors_sql = ""
-    if errors !== nothing
-        length(errors) == 1 ? errors_sql *= "AND parameters.error = $(errors[1])" : errors_sql *= "AND parameters.error IN $(Tuple(errors))"
+    error_rates_sql = ""
+    if error_rates !== nothing
+        length(error_rates) == 1 ? error_rates_sql *= "AND parameters.error = $(error_rates[1])" : error_rates_sql *= "AND parameters.error IN $(Tuple(error_rates))"
     end
-    graph_ids_sql = ""
-    if graph_ids !== nothing
-        length(graph_ids) == 1 ? graph_ids_sql *= "AND simulations.graph_id = $(graph_ids[1])" : graph_ids_sql *= "AND simulations.graph_id IN $(Tuple(graph_ids))"
+    graphmodel_ids_sql = ""
+    if graphmodel_ids !== nothing
+        length(graphmodel_ids) == 1 ? graphmodel_ids_sql *= "AND models.graphmodel_id = $(graphmodel_ids[1])" : graphmodel_ids_sql *= "AND models.graphmodel_id IN $(Tuple(graphmodel_ids))"
     end
 
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT * FROM (
-                                            SELECT
-                                                ROW_NUMBER() OVER ( 
-                                                    PARTITION BY parameters.number_agents, parameters.error, simulations.graph_id, simulations.starting_condition_id, simulations.stopping_condition_id
-                                                    ORDER BY parameters.number_agents
-                                                ) RowNum,
-                                                simulations.simulation_id,
-                                                parameters.parameters,
-                                                parameters.number_agents,
-                                                parameters.memory_length,
-                                                parameters.error,
-                                                simulations.period,
-                                                graphmodels.graph_id,
-                                                graphmodels.graph,
-                                                graphmodels.graph_params,
-                                                graphmodels.λ,
-                                                games.game_name,
-                                                simulations.starting_condition_id,
-                                                simulations.stopping_condition_id
-                                            FROM simulations
-                                            INNER JOIN parameters USING(parameters_id)
-                                            INNER JOIN games USING(game_id)
-                                            INNER JOIN graphmodels USING(graph_id)
-                                            WHERE simulations.game_id = $game_id
-                                            AND simulations.starting_condition_id = $starting_condition_id
-                                            AND simulations.stopping_condition_id = $stopping_condition_id
-                                            AND parameters.memory_length = $memory_length
-                                            $number_agents_sql
-                                            $errors_sql
-                                            $graph_ids_sql
-                                            )
-                                        WHERE RowNum <= $sample_size;
-                                ")
-    df = DataFrame(query)
+    db = DB(db_info)
+    query = db_query(db, sql_query_simulations_for_transition_time_vs_population_sweep(game_id,
+                                                                                                starting_condition, 
+                                                                                                stopping_condition,
+                                                                                                memory_length,
+                                                                                                number_agents_sql,
+                                                                                                error_rates_sql,
+                                                                                                graphmodel_ids_sql,
+                                                                                                sample_size)
+    )
+    close(db)
 
-    return df
-    #error handling
-    function numberAgentsDF() DataFrame(DBInterface.execute(db, "SELECT number_agents FROM parameters")) end
-    function errorsDF() DataFrame(DBInterface.execute(db, "SELECT error FROM parameters")) end
-    function graphmodelsDF() DataFrame(DBInterface.execute(db, "SELECT graph_id, graph FROM graphmodels")) end
+    #check to ensure all samples are present
+    model_counts_df = combine(groupby(query, :model_id), nrow=>:count)
+    insufficient_samples_str = ""
+    for row in eachrow(model_counts_df)
+        if row[:count] < sample_size
+            insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
+        end
+    end
+    !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
     
-    error_set = []
-    number_agents_list === nothing ? number_agents_list = Set([number_agents for number_agens in numberAgentsDF()[:, :number_agents]]) : nothing
-    errors === nothing ? errors = Set([error for error in errorsDF()[:, :error]]) : nothing
-    graph_ids === nothing ? graph_ids = Set([graph_id for graph_id in graphmodelsDF()[:, :graph_id]]) : nothing
-
-    db_close(db)
-
-    for number_agents in number_agents_list
-        for error in errors
-            for graph_id in graph_ids
-                filtered_df = filter([:number_agents, :error, :graph_id] => (num, err, id) -> num == number_agents && err == error && id == graph_id, df)
-                if nrow(filtered_df) < sample_size
-                    push!(error_set, "Only $(nrow(filtered_df)) samples for [Number Agents: $number_agents, Memory Length: $memory_length, Error: $error, Graph: $graph_id]\n")
-                end
-            end
-        end
+    #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
+    if nrow(model_counts_df) < GamesOnNetworks.volume(number_agents_list, error_rates, graphmodel_ids)
+        throw(ErrorException("At least one model selected has no simulations"))
     end
-    if !isempty(error_set)
-        errors_formatted = ""
-        for err in error_set
-            errors_formatted *= err
-        end
-        throw(ErrorException("Not enough samples for the following simulations:\n$errors_formatted"))
-    else
-        return df
-    end
+
+    return query
+end
+
+
+function query_population_sweep(db_info::SQLiteInfo, qp::Query_simulations)                                                                     
+    db = DB(db_info)
+    query = db_query(db, sql(qp))
+    close(db)
+
+    # #check to ensure all samples are present
+    # model_counts_df = combine(groupby(query, :model_id), nrow=>:count)
+    # insufficient_samples_str = ""
+    # for row in eachrow(model_counts_df)
+    #     if row[:count] < sample_size
+    #         insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
+    #     end
+    # end
+    # !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
+    
+    # #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
+    # if nrow(model_counts_df) < GamesOnNetworks.volume(number_agents_list, error_rates, graphmodel_ids)
+    #     throw(ErrorException("At least one model selected has no simulations"))
+    # end
+
+    return query
 end
 
 
@@ -1510,13 +1546,15 @@ function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
                                                             starting_condition::String,
                                                             stopping_condition::String,
                                                             graphmodel_params_sql::String,
-                                                            sample_size::Integer)
+                                                            sample_size::Integer
+    )
+    #ORDER BY parameters.error, graphmodels.λ
     """
     SELECT * FROM (
         SELECT
             ROW_NUMBER() OVER ( 
                 PARTITION BY models.graphmodel_id, parameters.error, graphmodels.λ
-                ORDER BY parameters.error, graphmodels.λ
+                ORDER BY RANDOM()
             ) RowNum,
             simulations.uuid as simulation_uuid,
             parameters.error,
@@ -1536,7 +1574,8 @@ function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
         INNER JOIN parameters ON models.parameters_id = parameters.id
         INNER JOIN games ON models.game_id = games.id
         INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
-        WHERE games.id = $game_id
+        WHERE simulations.complete = 1
+        AND games.id = $game_id
         AND parameters.number_agents = $number_agents
         AND parameters.memory_length = $memory_length
         AND parameters.starting_condition = '$starting_condition'

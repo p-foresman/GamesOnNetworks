@@ -16,7 +16,8 @@ using
     Cairo,
     Fontconfig,
     Statistics,
-    Bootstrap
+    Bootstrap,
+    ColorSchemes
 
 include("plotting.jl")
 include("analysis.jl")

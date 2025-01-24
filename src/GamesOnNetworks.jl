@@ -167,11 +167,13 @@ export
     # stochastic_block_model_rg,
 
     # from Generators
+    CompleteModelGenerator,
     ErdosRenyiModelGenerator,
     SmallWorldModelGenerator,
     ScaleFreeModelGenerator,
     StochasticBlockModelGenerator,
     ModelGenerator,
+    ModelGeneratorSet,
     generate_model,
     get_model_id,
 

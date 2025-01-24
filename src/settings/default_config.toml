@@ -9,7 +9,7 @@ timeout = 3600
 #timeout = 3600
 #database = ""
 
-figure_dirpath = "" #defined which directory figures should be created in (if relative, relative to project root)
+figure_dirpath = "" #defined which directory figures should be created in (if relative, relative to project root) #NOTE: could have one of these per database?
 
 # sqlite database is provided by default
 [databases]

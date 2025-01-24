@@ -31,11 +31,13 @@ name(database::DBInfo) = getfield(database, :name)
 
 DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :parameters_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}
 
+#include QueryParams types for SQL query generation
+include("queryparams.jl")
 
 # include sqlite and postgresql specific APIs
 include("./sqlite/database_api.jl")
+include("./sqlite/sql_reorg.jl") #NOTE: this ALL needs to be reorganized
 # include("./postgres/database_api.jl")
-
 
 # function barriers to interface with sqlite/postgres-specific functions using configured database in environment variable 'GamesOnNetworks.SETTINGS'
 
@@ -47,9 +49,17 @@ Create a connection to the configured database.
 DB(;kwargs...) = DB(SETTINGS.database, kwargs...)
 
 """
+    sql(qp::QueryParams)
+
+Generate a SQL query for a QueryParams instance (based on configured database type).
+"""
+sql(qp::QueryParams) = sql(GamesOnNetworks.SETTINGS.database, qp)
+
+
+"""
     db_execute(sql::SQL)
 
-Quick method to execute SQL on the configured database.
+Execute SQL (String) on the configured database.
 """
 function db_execute(sql::SQL)
     db = DB()
@@ -61,7 +71,7 @@ end
 """
     db_query(sql::SQL)
 
-Quick method to make a query on the configured database. Returns a DataFrame containing results.
+Query the configured database using the SQL (String) provided. Returns a DataFrame containing results.
 """
 function db_query(sql::SQL)
     db = DB()
@@ -69,6 +79,14 @@ function db_query(sql::SQL)
     db_close(db)
     return query
 end
+
+"""
+    db_query(qp::QueryParams)
+
+Query the configured database using the QueryParams provided. Returns a DataFrame containing results.
+"""
+db_query(qp::QueryParams) = db_query(sql(qp))
+
 # db_begin_transaction() = db_begin_transaction(GamesOnNetworks.SETTINGS.database)
 # db_close(db::SQLiteDB) = SQLite.close(db)
 # db_commit_transaction(db::SQLiteDB) = SQLite.commit(db)
