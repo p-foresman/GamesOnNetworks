@@ -36,7 +36,7 @@ include("queryparams.jl")
 
 # include sqlite and postgresql specific APIs
 include("./sqlite/database_api.jl")
-include("./sqlite/sql_reorg.jl") #NOTE: this ALL needs to be reorganized
+include("./sqlite/sql_queryparams.jl") #NOTE: this ALL needs to be reorganized
 # include("./postgres/database_api.jl")
 
 # function barriers to interface with sqlite/postgres-specific functions using configured database in environment variable 'GamesOnNetworks.SETTINGS'
@@ -61,24 +61,15 @@ sql(qp::QueryParams) = sql(GamesOnNetworks.SETTINGS.database, qp)
 
 Execute SQL (String) on the configured database.
 """
-function db_execute(sql::SQL)
-    db = DB()
-    result = db_execute(db, sql)
-    db_close(db)
-    return result
-end
+db_execute(sql::SQL) = db_execute(GamesOnNetworks.SETTINGS.database, sql)
+
 
 """
     db_query(sql::SQL)
 
 Query the configured database using the SQL (String) provided. Returns a DataFrame containing results.
 """
-function db_query(sql::SQL)
-    db = DB()
-    query = DataFrame(db_execute(db, sql))
-    db_close(db)
-    return query
-end
+db_query(sql::SQL) = db_query(GamesOnNetworks.SETTINGS.database, sql)
 
 """
     db_query(qp::QueryParams)
@@ -86,6 +77,8 @@ end
 Query the configured database using the QueryParams provided. Returns a DataFrame containing results.
 """
 db_query(qp::QueryParams) = db_query(sql(qp))
+
+db_query(qp::Query_simulations; ensure_samples::Bool=true) = db_query(GamesOnNetworks.SETTINGS.database, qp, ensure_samples=ensure_samples)
 
 # db_begin_transaction() = db_begin_transaction(GamesOnNetworks.SETTINGS.database)
 # db_close(db::SQLiteDB) = SQLite.close(db)
@@ -107,42 +100,6 @@ db_insert_graphmodel(::Nothing, ::GraphModel) = nothing
 db_insert_parameters(params::Parameters, use_seed::Bool) = db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, use_seed)
 db_insert_parameters(::Nothing, ::Parameters, ::Bool) = nothing
 
-# db_insert_starting_condition(startingcondition::StartingCondition) = db_insert_starting_condition(GamesOnNetworks.SETTINGS.database, startingcondition)
-# db_insert_starting_condition(::Nothing, ::StartingCondition) = nothing
-
-# db_insert_stopping_condition(stoppingcondition::StoppingCondition) = db_insert_stopping_condition(GamesOnNetworks.SETTINGS.database, stoppingcondition)
-# db_insert_stopping_condition(::Nothing, ::StoppingCondition) = nothing
-
-# function db_insert_simulation(group_id::Union{Integer, Nothing}, prev_simulation_uuid::Union{String, Nothing}, db_id_tuple::DatabaseIdTuple, agentgraph::AgentGraph, period::Integer, distributed_uuid::Union{String, Nothing} = nothing)
-#     db_insert_simulation(GamesOnNetworks.SETTINGS.database, GamesOnNetworks.SETTINGS.use_seed, group_id, prev_simulation_uuid, db_id_tuple, agentgraph, period, distributed_uuid)
-# end
-# db_insert_simulation(::Nothing, ::Union{Integer, Nothing}, ::Union{String, Nothing}, ::DatabaseIdTuple, ::AgentGraph, ::Integer, ::Union{String, Nothing}) = nothing
-
-
-#not sure which method below is better (or if it matters at all). leaning towards second one to keep GamesOnNetworks.SETTINGS calls as high in the call stack as possible in an effort to optimize
-# function db_construct_id_tuple(model::Model)
-#     db_info = GamesOnNetworks.SETTINGS.database
-#     db_id_tuple::DatabaseIdTuple = (
-#                     game_id = db_insert_game(db_info, game(model)),
-#                     graph_id = db_insert_graphmodelmodel(db_info, graphmodel(model)),
-#                     parameters_id = db_insert_parameters(db_info, parameters(model), GamesOnNetworks.SETTINGS.use_seed),
-#                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
-#                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
-#                     )
-#     return db_id_tuple
-# end
-
-# function db_construct_id_tuple(db_info::DBInfo, model::Model, use_seed::Bool)
-#     db_id_tuple::DatabaseIdTuple = (
-#                     game_id = db_insert_game(db_info, game(model)),
-#                     graph_id = db_insert_graphmodelmodel(db_info, graphmodel(model)),
-#                     parameters_id = db_insert_parameters(db_info, parameters(model), use_seed),
-#                     starting_condition_id = db_insert_startingcondition(db_info, startingcondition(model)),
-#                     stopping_condition_id = db_insert_stoppingcondition(db_info, stoppingcondition(model))
-#                     )
-#     return db_id_tuple
-# end
-
 
 function db_insert_model(model::Model; model_id::Union{Nothing, Integer}=nothing) #NOTE: use_seed needs to be more thought out here. Should it even be included in a model? (probably not, but in a simulation, YES!)
     return db_insert_model(GamesOnNetworks.SETTINGS.database, model, model_id=model_id)
@@ -157,61 +114,22 @@ function db_collect_temp(directory_path::String; cleanup_directory::Bool = false
     return nothing
 end
 
+function _ensure_samples(df::DataFrame, qp::Query_simulations)
+    #check to ensure all samples are present
+    model_counts_df = combine(groupby(df, :model_id), nrow=>:count)
+    insufficient_samples_str = ""
+    for row in eachrow(model_counts_df)
+        if row[:count] < qp.sample_size
+            insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
+        end
+    end
+    !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
 
-
-# function db_insert_model_data(;game_list::Vector{<:Game} , parameters_list::Vector{Parameters}, graph_model_list::Vector{<:GraphModel}, starting_condition_list::Vector{<:StartingCondition}, stopping_condition_list::Vector{<:StoppingCondition})
-#     #add validation here??  
-#     for game in game_list
-#         for params in parameters_list
-#             for graphmodel in graph_model_list
-#                 for startingcondition in starting_condition_list
-#                     for stoppingcondition in stopping_condition_list
-#                     db_insert_game(GamesOnNetworks.SETTINGS.database, game)
-#                     db_insert_graphmodel(GamesOnNetworks.SETTINGS.database, graphmodel)
-#                     db_insert_parameters(GamesOnNetworks.SETTINGS.database, params, GamesOnNetworks.SETTINGS.use_seed)
-#                     db_insert_starting_condition(GamesOnNetworks.SETTINGS.database, startingcondition)
-#                     db_insert_stopping_condition(GamesOnNetworks.SETTINGS.database, stoppingcondition)
-#                     end
-#                 end
-#             end
-#         end
-#     end
-# end
-
-
-
-# #NOTE: FIX
-# function db_restore_model(simulation_id::Integer) #MUST FIX TO USE UUID
-#     simulation_df = execute_query_simulations_for_restore(GamesOnNetworks.SETTINGS.database, simulation_id)
-#     agents_df = execute_query_agents_for_restore(GamesOnNetworks.SETTINGS.database, simulation_id)
-
-#     #reproduce Parameters object
-#     reproduced_parameters = JSON3.read(simulation_df[1, :parameters], Parameters)
-
-#     #reproduce Game object
-#     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
-#     payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
-#     reproduced_game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
-
-#     #reproduced Graph     ###!! dont need to reproduce graph unless the simulation is a pure continuation of 1 long simulation !!###
-#     reproduced_graph_model = JSON3.read(simulation_df[1, :graphmodel], GraphModel)
-#     reproduced_adj_matrix = JSON3.read(simulation_df[1, :graph_adj_matrix], MMatrix{reproduced_parameters.number_agents, reproduced_parameters.number_agents, Int})
-#     reproduced_graph = SimpleGraph(reproduced_adj_matrix)
-#     reproduced_meta_graph = MetaGraph(reproduced_graph) #*** MUST CHANGE TO AGENT GRAPH
-#     for vertex in vertices(reproduced_meta_graph)
-#         agent = JSON3.read(agents_df[vertex, :agent], Agent)
-#         set_prop!(reproduced_meta_graph, vertex, :agent, agent)
-#     end
-
-#     #restore RNG to previous state
-#     if simulation_df[1, :use_seed] == 1
-#         seed_bool = true
-#         reproduced_rng_state = JSON3.read(simulation_df[1, :rng_state], Random.Xoshiro)
-#         copy!(Random.default_rng(), reproduced_rng_state)
-#     else
-#         seed_bool = false
-#     end
-#     return (game=reproduced_game, params=reproduced_parameters, graphmodel=reproduced_graph_model, meta_graph=reproduced_meta_graph, use_seed=seed_bool, period=simulation_df[1, :period], group_id=simulation_df[1, :group_id])
-# end
+    #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
+    if nrow(model_counts_df) < Database.size(qp)
+        throw(ErrorException("At least one model selected has no simulations"))
+    end
+    return nothing
+end
 
 end #Database

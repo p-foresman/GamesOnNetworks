@@ -18,7 +18,7 @@ db_close(db::SQLiteDB) = SQLite.close(db)
 """
     db_execute(filepath::String, sql::SQL)
 
-Quick method to execute SQL on an sqlite database file specified by filepath.
+Execute SQL on an sqlite database file specified by filepath.
 """
 function db_execute(filepath::String, sql::SQL)
     db = DB(SQLiteInfo("temp", filepath))
@@ -28,14 +28,64 @@ function db_execute(filepath::String, sql::SQL)
 end
 
 """
+    db_execute(db_info::SQLiteInfo, sql::SQL)
+
+Execute SQL on an sqlite database provided in an SQLiteInfo instance.
+"""
+function db_execute(db_info::SQLiteInfo, sql::SQL)                                                                    
+    db = DB(db_info)
+    query = db_execute(db, sql)
+    db_close(db)
+    return query
+end
+
+
+"""
     db_query(filepath::String, sql::SQL)
 
 Quick method to query an sqlite database file specified by filepath. Returns a DataFrame containing results.
 """
 function db_query(filepath::String, sql::SQL)
     db = DB(SQLiteInfo("temp", filepath))
-    query = DataFrame(db_execute(db, sql))
+    query = db_query(db, sql)
     db_close(db)
+    return query
+end
+
+"""
+    db_query(db_info::SQLiteInfo, sql::SQL)
+
+Query the sqlite database provided in an SQLiteInfo instance with the sql (String) provided. Returns a DataFrame containing results.
+"""
+function db_query(db_info::SQLiteInfo, sql::SQL)                                                                    
+    db = DB(db_info)
+    query = db_query(db, sql)
+    db_close(db)
+    return query
+end
+
+"""
+    db_query(db_info::SQLiteInfo, qp::QueryParams)
+
+Query the sqlite database provided in an SQLiteInfo instance with the <:QueryParams instance provided. Returns a DataFrame containing results.
+"""
+function db_query(db_info::SQLiteInfo, qp::QueryParams)                                                                    
+    db = DB(db_info)
+    query = db_query(db, sql(qp))
+    db_close(db)
+    return query
+end
+
+"""
+    db_query(db_info::SQLiteInfo, qp::Query_simulations)
+
+Query the sqlite database provided in an SQLiteInfo instance with the Query_simulations instance provided. Will throw an error if the database contains insufficient samples for any requested models. Returns a DataFrame containing results.
+"""
+function db_query(db_info::SQLiteInfo, qp::Query_simulations; ensure_samples::Bool=true)                                                                    
+    db = DB(db_info)
+    query = db_query(db, sql(qp))
+    db_close(db)
+    ensure_samples && _ensure_samples(query, qp)
     return query
 end
 
@@ -556,7 +606,7 @@ function execute_insert_simulation(db_info::SQLiteInfo,
 end
 
 
-function execute_query_games(db_info::SQLiteInfo, game_id::Integer)
+function executedb_query_games(db_info::SQLiteInfo, game_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -568,7 +618,7 @@ function execute_query_games(db_info::SQLiteInfo, game_id::Integer)
     return df
 end
 
-function execute_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
+function executedb_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -580,7 +630,7 @@ function execute_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
     return df
 end
 
-function execute_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
+function executedb_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -592,7 +642,7 @@ function execute_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
     return df
 end
 
-# function execute_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
+# function executedb_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT *
@@ -604,7 +654,7 @@ end
 #     return df
 # end
 
-# function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
+# function executedb_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT *
@@ -616,7 +666,7 @@ end
 #     return df
 # end
 
-function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
+function executedb_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -628,7 +678,7 @@ function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     return df
 end
 
-function execute_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
+function executedb_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -640,7 +690,7 @@ function execute_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
     return df
 end
 
-function execute_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
+function executedb_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -653,7 +703,7 @@ function execute_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
     return df
 end
 
-function sql_query_models(model_id::Integer)
+function sqldb_query_models(model_id::Integer)
     """
     SELECT
         models.id,
@@ -669,7 +719,7 @@ function sql_query_models(model_id::Integer)
     """
 end
 
-function sql_query_simulations(simulation_uuid::String)
+function sqldb_query_simulations(simulation_uuid::String)
     """
     SELECT
         simulations.uuid,
@@ -695,7 +745,7 @@ function sql_query_simulations(simulation_uuid::String)
     """
 end
 
-function sql_query_agents(simulation_uuid::String)
+function sqldb_query_agents(simulation_uuid::String)
     """
     SELECT agent
     FROM agents
@@ -704,24 +754,24 @@ function sql_query_agents(simulation_uuid::String)
     """
 end
 
-function execute_query_models(db_info::SQLiteInfo, model_id::Integer)
+function executedb_query_models(db_info::SQLiteInfo, model_id::Integer)
     db = DB(db_info)
-    query = db_query(db, sql_query_models(model_id))
+    query = db_query(db, sqldb_query_models(model_id))
     db_close(db)
     return query
 end
 
-function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+function executedb_query_simulations_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
     db = DB(db_info)
     db_begin_transaction(db)
-    simulation_query = db_query(db, sql_query_simulations(simulation_uuid))
-    agents_query = db_query(db, sql_query_agents(simulation_uuid))
+    simulationdb_query = db_query(db, sqldb_query_simulations(simulation_uuid))
+    agentsdb_query = db_query(db, sqldb_query_agents(simulation_uuid))
     db_commit_transaction(db)
     db_close(db)
-    return (simulation_query, agents_query)
+    return (simulationdb_query, agentsdb_query)
 end
 
-function sql_query_incomplete_simulations()
+function sqldb_query_incomplete_simulations()
     """
     SELECT uuid
     FROM simulations tabA
@@ -734,14 +784,14 @@ function sql_query_incomplete_simulations()
     """
 end
 
-function execute_query_incomplete_simulations(db_info::SQLiteInfo)
+function executedb_query_incomplete_simulations(db_info::SQLiteInfo)
     db = DB(db_info)
-    query = db_query(db, sql_query_incomplete_simulations())
+    query = db_query(db, sqldb_query_incomplete_simulations())
     db_close(db)
     return query
 end
 
-# function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+# function executedb_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT agent
@@ -1157,134 +1207,121 @@ end
 
 
 
-#HERE
-function sql_query_simulations_for_transition_time_vs_population_sweep(game_id::Integer,
-                                                                        starting_condition::String, 
-                                                                        stopping_condition::String,
-                                                                        memory_length::Integer,
-                                                                        number_agents_sql::String,
-                                                                        error_rates_sql::String,
-                                                                        graph_ids_sql::String,
-                                                                        sample_size::Integer
-    )
-    #parameters.number_agents, parameters.error, parameters.starting_condition, parameters.stopping_condition, models.graphmodel_id
-    """
-    SELECT * FROM (
-        SELECT
-            ROW_NUMBER() OVER ( 
-                PARTITION BY models.id
-                ORDER BY RANDOM()
-            ) RowNum,
-            models.id as model_id,
-            simulations.uuid,
-            parameters.parameters,
-            parameters.number_agents,
-            parameters.memory_length,
-            parameters.error,
-            parameters.starting_condition,
-            parameters.stopping_condition,
-            simulations.period,
-            models.graphmodel_id,
-            graphmodels.type,
-            graphmodels.graphmodel,
-            graphmodels.λ,
-            games.name
-        FROM models
-        INNER JOIN simulations ON models.id = simulations.model_id
-        INNER JOIN parameters ON models.parameters_id = parameters.id
-        INNER JOIN games ON models.game_id = games.id
-        INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
-        WHERE simulations.complete = 1 
-        AND models.game_id = $game_id
-        AND parameters.starting_condition = '$starting_condition'
-        AND parameters.stopping_condition = '$stopping_condition'
-        AND parameters.memory_length = $memory_length
-        $number_agents_sql
-        $error_rates_sql
-        $graph_ids_sql
-        )
-    WHERE RowNum <= $sample_size;
-    """
-end
+
+# function sqldb_query_simulations_for_transition_time_vs_population_sweep(game_id::Integer,
+#                                                                         starting_condition::String, 
+#                                                                         stopping_condition::String,
+#                                                                         memory_length::Integer,
+#                                                                         number_agents_sql::String,
+#                                                                         error_rates_sql::String,
+#                                                                         graph_ids_sql::String,
+#                                                                         sample_size::Integer
+#     )
+#     #parameters.number_agents, parameters.error, parameters.starting_condition, parameters.stopping_condition, models.graphmodel_id
+#     """
+#     SELECT * FROM (
+#         SELECT
+#             ROW_NUMBER() OVER ( 
+#                 PARTITION BY models.id
+#                 ORDER BY RANDOM()
+#             ) RowNum,
+#             models.id as model_id,
+#             simulations.uuid,
+#             parameters.parameters,
+#             parameters.number_agents,
+#             parameters.memory_length,
+#             parameters.error,
+#             parameters.starting_condition,
+#             parameters.stopping_condition,
+#             simulations.period,
+#             models.graphmodel_id,
+#             graphmodels.type,
+#             graphmodels.graphmodel,
+#             graphmodels.λ,
+#             games.name
+#         FROM models
+#         INNER JOIN simulations ON models.id = simulations.model_id
+#         INNER JOIN parameters ON models.parameters_id = parameters.id
+#         INNER JOIN games ON models.game_id = games.id
+#         INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
+#         WHERE simulations.complete = 1 
+#         AND models.game_id = $game_id
+#         AND parameters.starting_condition = '$starting_condition'
+#         AND parameters.stopping_condition = '$stopping_condition'
+#         AND parameters.memory_length = $memory_length
+#         $number_agents_sql
+#         $error_rates_sql
+#         $graph_ids_sql
+#         )
+#     WHERE RowNum <= $sample_size;
+#     """
+# end
 
 
 
-function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLiteInfo;
-                                                                    game_id::Integer,
-                                                                    number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                                    memory_length::Integer,
-                                                                    error_rates::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
-                                                                    graphmodel_ids::Union{Vector{<:Integer}, Nothing} = nothing,
-                                                                    starting_condition::String,
-                                                                    stopping_condition::String,
-                                                                    sample_size::Integer)    
+# function query_simulations_for_transition_time_vs_population_sweep(db_info::SQLiteInfo;
+#                                                                     game_id::Integer,
+#                                                                     number_agents_list::Union{Vector{<:Integer}, Nothing} = nothing,
+#                                                                     memory_length::Integer,
+#                                                                     error_rates::Union{Vector{<:AbstractFloat}, Nothing} = nothing,
+#                                                                     graphmodel_ids::Union{Vector{<:Integer}, Nothing} = nothing,
+#                                                                     starting_condition::String,
+#                                                                     stopping_condition::String,
+#                                                                     sample_size::Integer)    
                                                                                 
-    number_agents_sql = ""
-    if number_agents_list !== nothing
-        length(number_agents_list) == 1 ? number_agents_sql *= "AND parameters.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND parameters.number_agents IN $(Tuple(number_agents_list))"
-    end
-    error_rates_sql = ""
-    if error_rates !== nothing
-        length(error_rates) == 1 ? error_rates_sql *= "AND parameters.error = $(error_rates[1])" : error_rates_sql *= "AND parameters.error IN $(Tuple(error_rates))"
-    end
-    graphmodel_ids_sql = ""
-    if graphmodel_ids !== nothing
-        length(graphmodel_ids) == 1 ? graphmodel_ids_sql *= "AND models.graphmodel_id = $(graphmodel_ids[1])" : graphmodel_ids_sql *= "AND models.graphmodel_id IN $(Tuple(graphmodel_ids))"
-    end
+#     number_agents_sql = ""
+#     if number_agents_list !== nothing
+#         length(number_agents_list) == 1 ? number_agents_sql *= "AND parameters.number_agents = $(number_agents_list[1])" : number_agents_sql *= "AND parameters.number_agents IN $(Tuple(number_agents_list))"
+#     end
+#     error_rates_sql = ""
+#     if error_rates !== nothing
+#         length(error_rates) == 1 ? error_rates_sql *= "AND parameters.error = $(error_rates[1])" : error_rates_sql *= "AND parameters.error IN $(Tuple(error_rates))"
+#     end
+#     graphmodel_ids_sql = ""
+#     if graphmodel_ids !== nothing
+#         length(graphmodel_ids) == 1 ? graphmodel_ids_sql *= "AND models.graphmodel_id = $(graphmodel_ids[1])" : graphmodel_ids_sql *= "AND models.graphmodel_id IN $(Tuple(graphmodel_ids))"
+#     end
 
-    db = DB(db_info)
-    query = db_query(db, sql_query_simulations_for_transition_time_vs_population_sweep(game_id,
-                                                                                                starting_condition, 
-                                                                                                stopping_condition,
-                                                                                                memory_length,
-                                                                                                number_agents_sql,
-                                                                                                error_rates_sql,
-                                                                                                graphmodel_ids_sql,
-                                                                                                sample_size)
-    )
-    close(db)
+#     db = DB(db_info)
+#     query = db_query(db, sqldb_query_simulations_for_transition_time_vs_population_sweep(game_id,
+#                                                                                                 starting_condition, 
+#                                                                                                 stopping_condition,
+#                                                                                                 memory_length,
+#                                                                                                 number_agents_sql,
+#                                                                                                 error_rates_sql,
+#                                                                                                 graphmodel_ids_sql,
+#                                                                                                 sample_size)
+#     )
+#     close(db)
 
-    #check to ensure all samples are present
-    model_counts_df = combine(groupby(query, :model_id), nrow=>:count)
-    insufficient_samples_str = ""
-    for row in eachrow(model_counts_df)
-        if row[:count] < sample_size
-            insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
-        end
-    end
-    !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
+#     #check to ensure all samples are present
+#     model_counts_df = combine(groupby(query, :model_id), nrow=>:count)
+#     insufficient_samples_str = ""
+#     for row in eachrow(model_counts_df)
+#         if row[:count] < sample_size
+#             insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
+#         end
+#     end
+#     !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
     
-    #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
-    if nrow(model_counts_df) < GamesOnNetworks.volume(number_agents_list, error_rates, graphmodel_ids)
-        throw(ErrorException("At least one model selected has no simulations"))
-    end
+#     #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
+#     if nrow(model_counts_df) < GamesOnNetworks.volume(number_agents_list, error_rates, graphmodel_ids)
+#         throw(ErrorException("At least one model selected has no simulations"))
+#     end
 
-    return query
-end
+#     return query
+# end
 
 
-function query_population_sweep(db_info::SQLiteInfo, qp::Query_simulations)                                                                     
-    db = DB(db_info)
-    query = db_query(db, sql(qp))
-    close(db)
+# function query_population_sweep(db_info::SQLiteInfo, qp::Query_simulations)                                                                 
+#     db = DB(db_info)
+#     query = db_query(db, sql(qp))
+#     close(db)
 
-    # #check to ensure all samples are present
-    # model_counts_df = combine(groupby(query, :model_id), nrow=>:count)
-    # insufficient_samples_str = ""
-    # for row in eachrow(model_counts_df)
-    #     if row[:count] < sample_size
-    #         insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
-    #     end
-    # end
-    # !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
-    
-    # #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
-    # if nrow(model_counts_df) < GamesOnNetworks.volume(number_agents_list, error_rates, graphmodel_ids)
-    #     throw(ErrorException("At least one model selected has no simulations"))
-    # end
+#     _ensure_samples(query, qp)
 
-    return query
-end
+#     return query
+# end
 
 
 function query_simulations_for_transition_time_vs_population_stopping_condition(db_info::SQLiteInfo;
@@ -1539,7 +1576,7 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;group_id::Integer)
 end
 
 
-function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
+function sqldb_query_simulations_for_noise_structure_heatmap(game_id::Integer,
                                                             number_agents::Integer,
                                                             memory_length::Integer,
                                                             errors_sql::String,
@@ -1587,7 +1624,7 @@ function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
     """
 end
 
-function execute_query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
+function executedb_query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
                                                         game_id::Integer,
                                                         graphmodel_params::Vector{<:Dict{Symbol, Any}},
                                                         errors::Vector{<:AbstractFloat},
@@ -1633,7 +1670,7 @@ function execute_query_simulations_for_noise_structure_heatmap(db_info::SQLiteIn
     end
     
     db = DB(db_info)
-    println(sql_query_simulations_for_noise_structure_heatmap(game_id,
+    println(sqldb_query_simulations_for_noise_structure_heatmap(game_id,
     number_agents,
     memory_length,
     errors_sql,
@@ -1641,7 +1678,7 @@ function execute_query_simulations_for_noise_structure_heatmap(db_info::SQLiteIn
     stopping_condition,
     graphmodel_params_sql,
     sample_size))
-    query = db_query(db, sql_query_simulations_for_noise_structure_heatmap(game_id,
+    query = db_query(db, sqldb_query_simulations_for_noise_structure_heatmap(game_id,
                                                                             number_agents,
                                                                             memory_length,
                                                                             errors_sql,

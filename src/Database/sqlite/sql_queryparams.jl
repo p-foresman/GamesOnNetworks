@@ -58,28 +58,58 @@ function sql_filter(::SQLiteInfo, qp::Query_parameters)
     return filter_str
 end
 
+function sql_filter(::SQLiteInfo, qp::Query_GraphModel)
+    filter_str = "$(table(qp)).type = '$(type(qp))' AND "
+    for field in fieldnames(typeof(qp))
+        vals = getfield(qp, field)
+        if isempty(vals)
+            continue
+        elseif length(vals) == 1
+            filter_str *= "$(table(qp)).$(string(field)) = '$(vals[1])' AND "
+        else
+            filter_str *= "$(table(qp)).$(string(field)) IN $(Tuple(vals)) AND "
+        end
+    end
+    if !isempty(filter_str)
+        filter_str = "(" * chop(filter_str, tail=5) * ")"
+    end
+    return filter_str
+end
 
-function sql_filter(::SQLiteInfo, qp::Query_graphmodels)
+function sql_filter(db_info::SQLiteInfo, qp::Query_graphmodels)
     filter_str = ""
     for graphmodel in qp.graphmodels
-        temp_str = "$(table(qp)).type = '$(type(graphmodel))' AND "
-        for field in fieldnames(typeof(graphmodel))
-            vals = getfield(graphmodel, field)
-            if isempty(vals)
-                continue
-            elseif length(vals) == 1
-                temp_str *= "$(table(qp)).$(string(field)) = '$(vals[1])' AND "
-            else
-                temp_str *= "$(table(qp)).$(string(field)) IN $(Tuple(vals)) AND "
-            end
-        end
+        temp_str = sql_filter(db_info, graphmodel)
         if !isempty(temp_str)
-            temp_str = "(" * chop(temp_str, tail=5) * ") OR "
+            temp_str *= " OR "
         end
         filter_str *= temp_str
     end
     return chop(filter_str, tail=4)
 end
+
+
+# function sql_filter(::SQLiteInfo, qp::Query_graphmodels)
+#     filter_str = ""
+#     for graphmodel in qp.graphmodels
+#         temp_str = "$(table(qp)).type = '$(type(graphmodel))' AND "
+#         for field in fieldnames(typeof(graphmodel))
+#             vals = getfield(graphmodel, field)
+#             if isempty(vals)
+#                 continue
+#             elseif length(vals) == 1
+#                 temp_str *= "$(table(qp)).$(string(field)) = '$(vals[1])' AND "
+#             else
+#                 temp_str *= "$(table(qp)).$(string(field)) IN $(Tuple(vals)) AND "
+#             end
+#         end
+#         if !isempty(temp_str)
+#             temp_str = "(" * chop(temp_str, tail=5) * ") OR "
+#         end
+#         filter_str *= temp_str
+#     end
+#     return chop(filter_str, tail=4)
+# end
 
 
 function sql_filter(db_info::SQLiteInfo, qp::Query_models) #NOTE: refactor
@@ -152,6 +182,11 @@ function sql(::SQLiteInfo, qp::Query_simulations)
             CTE_models.game_id,
             CTE_models.parameters_id,
             CTE_models.graphmodel_id,
+            CTE_models.number_agents,
+            CTE_models.memory_length,
+            CTE_models.error,
+            CTE_models.starting_condition,
+            CTE_models.stopping_condition,
             simulations.uuid as simulation_uuid,
             simulations.period,
             simulations.complete

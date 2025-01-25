@@ -11,6 +11,7 @@ import
 
 using
     Plots,
+    DataFrames,
     GraphPlot,
     StatsPlots,
     Cairo,
@@ -19,8 +20,8 @@ using
     Bootstrap,
     ColorSchemes
 
+include("plotting_old.jl") #NOTE: delete eventually
 include("plotting.jl")
 include("analysis.jl")
-a = "hiiiii"
 
 end #Analyze
