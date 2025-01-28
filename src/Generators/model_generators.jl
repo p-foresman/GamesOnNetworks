@@ -55,7 +55,6 @@ function generate_model(generator::ModelGenerator, index::Integer) #NOTE: could 
 end
 
 function generate_database(generator::ModelGenerator)
-    count = 0
     for population in generator.populations
         for memory_length in generator.memory_lengths
             for error_rate in generator.error_rates
@@ -64,7 +63,8 @@ function generate_database(generator::ModelGenerator)
                         params = Parameters(population, memory_length, error_rate, starting_condition[1], stopping_condition[1], user_variables=merge(starting_condition[2], stopping_condition[2]))
                         for graphmodel_generator in generator.graphmodels
                             for graphmodel in graphmodel_generator
-                                Database.db_insert_model(Model(generator.game, params, graphmodel))
+                                model = Model(generator.game, params, graphmodel)
+                                Database.db_insert_model(model)
                             end
                         end
                     end

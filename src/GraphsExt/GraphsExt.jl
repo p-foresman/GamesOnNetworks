@@ -73,9 +73,13 @@ Constructor that uses the Graphs.watts_strogatz() method where λ = κ.
 """
 function small_world_rg(N::Integer, λ::Real, β::Real; kwargs...)
     @assert λ <= N - 1 "λ must be <= N - 1"
+    # @assert λ >= 1.5 "λ must be >= 1.5 due to the watts_strogatz graph generator algorithm"
     if λ == N - 1
         return complete_graph(N)
     else
+        if λ < 1.5 #NOTE: TEMPORARY FOR DB GENERATION, REMOVE!
+            λ = 2
+        end
         return watts_strogatz(N, Int(round(λ)), β; kwargs...)
     end
 end

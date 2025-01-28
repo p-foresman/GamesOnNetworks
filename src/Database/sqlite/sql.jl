@@ -368,9 +368,9 @@ function sql_insert_parameters(params::Parameters, parameters_str::String) #NOTE
     )
     VALUES
     (
-        $(number_agents(params)),
-        $(memory_length(params)),
-        $(error_rate(params)),
+        $(GamesOnNetworks.number_agents(params)),
+        $(GamesOnNetworks.memory_length(params)),
+        $(GamesOnNetworks.error_rate(params)),
         '$(GamesOnNetworks.starting_condition_fn_str(params))',
         '$(GamesOnNetworks.stopping_condition_fn_str(params))',
         '$parameters_str'
@@ -1576,7 +1576,7 @@ function querySimulationsForTimeSeries(db_info::SQLiteInfo;group_id::Integer)
 end
 
 
-function sqldb_query_simulations_for_noise_structure_heatmap(game_id::Integer,
+function sql_query_simulations_for_noise_structure_heatmap(game_id::Integer,
                                                             number_agents::Integer,
                                                             memory_length::Integer,
                                                             errors_sql::String,
@@ -1624,7 +1624,7 @@ function sqldb_query_simulations_for_noise_structure_heatmap(game_id::Integer,
     """
 end
 
-function executedb_query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
+function execute_query_simulations_for_noise_structure_heatmap(db_info::SQLiteInfo;
                                                         game_id::Integer,
                                                         graphmodel_params::Vector{<:Dict{Symbol, Any}},
                                                         errors::Vector{<:AbstractFloat},
@@ -1670,7 +1670,7 @@ function executedb_query_simulations_for_noise_structure_heatmap(db_info::SQLite
     end
     
     db = DB(db_info)
-    println(sqldb_query_simulations_for_noise_structure_heatmap(game_id,
+    println(sql_query_simulations_for_noise_structure_heatmap(game_id,
     number_agents,
     memory_length,
     errors_sql,
@@ -1678,7 +1678,7 @@ function executedb_query_simulations_for_noise_structure_heatmap(db_info::SQLite
     stopping_condition,
     graphmodel_params_sql,
     sample_size))
-    query = db_query(db, sqldb_query_simulations_for_noise_structure_heatmap(game_id,
+    query = db_query(db, sql_query_simulations_for_noise_structure_heatmap(game_id,
                                                                             number_agents,
                                                                             memory_length,
                                                                             errors_sql,

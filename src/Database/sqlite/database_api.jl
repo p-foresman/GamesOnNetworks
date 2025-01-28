@@ -264,7 +264,7 @@ function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Noth
     model_game = game(model)
     game_name = displayname(model_game)
     game_str = JSON3.write(model_game)
-    game_size = JSON3.write(size(model_game)) #NOTE: why JSON3.write instead of string()
+    game_size = JSON3.write(GamesOnNetworks.size(model_game)) #NOTE: why JSON3.write instead of string()
 
     model_graphmodel = graphmodel(model)
     graphmodel_display = displayname(model_graphmodel)

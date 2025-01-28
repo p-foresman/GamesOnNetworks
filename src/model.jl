@@ -14,7 +14,7 @@ mutable struct Model{S1, S2, L} #, GM <: GraphModel}
     const game::Game{S1, S2, L}
     const parameters::Parameters
     const graphmodel::GraphModel #NOTE: make this a concrete type for better performance? (tried and didnt help)
-    graph::GraphsExt.Graph
+    graph::GraphsExt.Graph #generate or pass graph in here to be passed to state (could have generated in state but needed a way to pass in a specific graph)
 
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel) where {S1, S2, L}
         graph::GraphsExt.Graph = generate_graph(graphmodel, number_agents(params))
