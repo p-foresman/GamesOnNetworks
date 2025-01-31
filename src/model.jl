@@ -14,11 +14,11 @@ mutable struct Model{S1, S2, L} #, GM <: GraphModel}
     const game::Game{S1, S2, L}
     const parameters::Parameters
     const graphmodel::GraphModel #NOTE: make this a concrete type for better performance? (tried and didnt help)
-    graph::GraphsExt.Graph #generate or pass graph in here to be passed to state (could have generated in state but needed a way to pass in a specific graph)
+    graph::Union{Nothing, GraphsExt.Graph} #pass graph in here to be passed to state. if no graph is passed, it's generated when state is initialized
 
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel) where {S1, S2, L}
-        graph::GraphsExt.Graph = generate_graph(graphmodel, number_agents(params))
-        return new{S1, S2, L}(game, params, graphmodel, graph)
+        # graph::GraphsExt.Graph = generate_graph(graphmodel, number_agents(params)) #if no graph is passed, it's generated when state is made!
+        return new{S1, S2, L}(game, params, graphmodel, nothing)
     end
     function Model(game::Game{S1, S2, L}, params::Parameters, graphmodel::GraphModel, graph::GraphsExt.Graph) where {S1, S2, L}
         return new{S1, S2, L}(game, params, graphmodel, graph) #this constructor allows a graph to be fed in
@@ -270,9 +270,13 @@ number_hermits(model::Model) = GraphsExt.number_hermits(graph(model))
 Initialize an AgentGraph from a model
 """
 function AgentGraph(model::Model)
-    agentgraph::AgentGraph = AgentGraph(graph(model))
-    starting_condition_fn_call(model, agentgraph) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
-    return agentgraph
+    if !isnothing(graph(model))
+        ag = AgentGraph(graph(model))
+    else
+        ag = AgentGraph(generate_graph(graphmodel(model), number_agents(model)))
+    end
+    starting_condition_fn_call(model, ag) #get the user-defined starting condition function and use it to initialize the AgentGraph instance
+    return ag
 end
 
 # """
