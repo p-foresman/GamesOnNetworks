@@ -606,7 +606,7 @@ function execute_insert_simulation(db_info::SQLiteInfo,
 end
 
 
-function executedb_query_games(db_info::SQLiteInfo, game_id::Integer)
+function execute_query_games(db_info::SQLiteInfo, game_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -618,7 +618,7 @@ function executedb_query_games(db_info::SQLiteInfo, game_id::Integer)
     return df
 end
 
-function executedb_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
+function execute_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -630,7 +630,7 @@ function executedb_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
     return df
 end
 
-function executedb_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
+function execute_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -642,7 +642,7 @@ function executedb_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
     return df
 end
 
-# function executedb_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
+# function execute_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT *
@@ -654,7 +654,7 @@ end
 #     return df
 # end
 
-# function executedb_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
+# function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT *
@@ -666,7 +666,7 @@ end
 #     return df
 # end
 
-function executedb_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
+function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -678,7 +678,7 @@ function executedb_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
     return df
 end
 
-function executedb_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
+function execute_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -690,7 +690,7 @@ function executedb_query_simulations(db_info::SQLiteInfo, simulation_id::Integer
     return df
 end
 
-function executedb_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
+function execute_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
     db = DB(db_info; busy_timeout=3000)
     query = DBInterface.execute(db, "
                                         SELECT *
@@ -703,7 +703,7 @@ function executedb_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
     return df
 end
 
-function sqldb_query_models(model_id::Integer)
+function sql_query_models(model_id::Integer)
     """
     SELECT
         models.id,
@@ -719,7 +719,7 @@ function sqldb_query_models(model_id::Integer)
     """
 end
 
-function sqldb_query_simulations(simulation_uuid::String)
+function sql_query_simulations(simulation_uuid::String)
     """
     SELECT
         simulations.uuid,
@@ -745,7 +745,7 @@ function sqldb_query_simulations(simulation_uuid::String)
     """
 end
 
-function sqldb_query_agents(simulation_uuid::String)
+function sql_query_agents(simulation_uuid::String)
     """
     SELECT agent
     FROM agents
@@ -754,24 +754,24 @@ function sqldb_query_agents(simulation_uuid::String)
     """
 end
 
-function executedb_query_models(db_info::SQLiteInfo, model_id::Integer)
+function execute_query_models(db_info::SQLiteInfo, model_id::Integer)
     db = DB(db_info)
-    query = db_query(db, sqldb_query_models(model_id))
+    query = db_query(db, sql_query_models(model_id))
     db_close(db)
     return query
 end
 
-function executedb_query_simulations_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+function execute_query_simulations_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
     db = DB(db_info)
     db_begin_transaction(db)
-    simulationdb_query = db_query(db, sqldb_query_simulations(simulation_uuid))
-    agentsdb_query = db_query(db, sqldb_query_agents(simulation_uuid))
+    simulation_query = db_query(db, sql_query_simulations(simulation_uuid))
+    agents_query = db_query(db, sql_query_agents(simulation_uuid))
     db_commit_transaction(db)
     db_close(db)
-    return (simulationdb_query, agentsdb_query)
+    return (simulation_query, agents_query)
 end
 
-function sqldb_query_incomplete_simulations()
+function sql_query_incomplete_simulations()
     """
     SELECT uuid
     FROM simulations tabA
@@ -784,14 +784,14 @@ function sqldb_query_incomplete_simulations()
     """
 end
 
-function executedb_query_incomplete_simulations(db_info::SQLiteInfo)
+function execute_query_incomplete_simulations(db_info::SQLiteInfo)
     db = DB(db_info)
-    query = db_query(db, sqldb_query_incomplete_simulations())
+    query = db_query(db, sql_query_incomplete_simulations())
     db_close(db)
     return query
 end
 
-# function executedb_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
+# function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
 #     db = DB(db_info; busy_timeout=3000)
 #     query = DBInterface.execute(db, "
 #                                         SELECT agent
@@ -1208,7 +1208,7 @@ end
 
 
 
-# function sqldb_query_simulations_for_transition_time_vs_population_sweep(game_id::Integer,
+# function sql_query_simulations_for_transition_time_vs_population_sweep(game_id::Integer,
 #                                                                         starting_condition::String, 
 #                                                                         stopping_condition::String,
 #                                                                         memory_length::Integer,
@@ -1283,7 +1283,7 @@ end
 #     end
 
 #     db = DB(db_info)
-#     query = db_query(db, sqldb_query_simulations_for_transition_time_vs_population_sweep(game_id,
+#     query = db_query(db, sql_query_simulations_for_transition_time_vs_population_sweep(game_id,
 #                                                                                                 starting_condition, 
 #                                                                                                 stopping_condition,
 #                                                                                                 memory_length,
