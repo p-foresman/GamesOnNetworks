@@ -1,3 +1,5 @@
+make_label(val) = join(uppercasefirst.(split(string(val), "_")), " ")
+
 
 """
     single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_simulations...;
@@ -28,7 +30,7 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
 
     #validation
     @assert sweep_parameter in (:number_agents, :memory_length, :error) "sweep_parameter must be :number_agents, :memory_length, :error"
-    all_params = [:graphmodel_id, :number_agents, :memory_length, :error, :starting_condition, :stopping_condition]
+    all_params = [:graphmodel_id, :number_agents, :memory_length, :error, :starting_condition, :stopping_condition] #NOTE: might need to be :graphmodel_type here instead?
 
     !isempty(legend_labels) && @assert length(legend_labels) == length(qps) "legend_labels must have one entry for each QueryParams instance" #NOTE: vague
     if !isempty(colors)
@@ -40,7 +42,7 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
 
     #create plot
     if isnothing(sim_plot)
-        sim_plot = plot(;xlabel=join(uppercasefirst.(split(string(sweep_parameter), "_")), " "),
+        sim_plot = plot(;xlabel=make_label(sweep_parameter),
                         ylabel="Transition Time",
                         plot_kwargs...
         )
@@ -79,7 +81,7 @@ end
 
 
 """
-    function noise_vs_structure_heatmap(db_info::Database.DBInfo=SETTINGS.database;
+    function two_parameter_sweep_heatmap(db_info::Database.DBInfo=SETTINGS.database;
             game_id::Integer,
             graphmodel_extra::Vector{<:Dict{Symbol, Any}},
             errors::Vector{<:AbstractFloat},
@@ -97,138 +99,67 @@ end
 
 If no positional argument given, configured database is used.
 """
-function noise_structure_heatmap(qp::Database.Query_simulations;
+function multiple_two_parameter_sweep_heatmap(plot_grouping::Union{Symbol, Vector{Symbol}}, x_sweep_parameter::Symbol, y_sweep_parameter::Symbol, qp::Database.Query_simulations;
                                 db_info::Database.DBInfo=SETTINGS.database,
-                                sample_size::Integer,
-                                legend_labels::Vector = [],
+                                statistic::Symbol=:mean,
+                                x_sweep_parameter_label::String=make_label(x_sweep_parameter),
+                                y_sweep_parameter_label::String=make_label(y_sweep_parameter),
+                                subplot_titles::Vector = [],
                                 colors::Vector = [],
                                 error_styles::Vector = [],
-                                plot_title::String="", 
+                                # plot_title::String="", 
                                 bootstrap_samples::Integer=1000,
-                                filename::String="")
+                                filename::String="",
+                                plot_kwargs...
+)
 
-    # sort!(graph_ids)
-    # sort!(error_rates)
-    # sort!(mean_degrees)
+    sweep_options = (:error, :λ)
+    @assert x_sweep_parameter in sweep_options
+    @assert y_sweep_parameter in sweep_options
+    @assert x_sweep_parameter != y_sweep_parameter
+
+    @assert statistic in (:mean, :median) "statistic must be either :mean or :median"
+
+    # sort!(subplot_titles) #NOTE: not sure if i should do this
 
 
-    x = string.(mean_degrees)
-    y = string.(error_rates)
-    # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
-    # y_axis = fill(string.(error_rates), (length(graph_ids), 1))
+    query::DataFrame = Database.db_query(db_info, qp)
+    # return query
 
-    # graphmodel_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
-    # for graph in graphmodel
-    #     for param in graphmodel_list
-    #         if !(param in collect(keys(graph)))
-    #             graph[param] = nothing
-    #         end
-    #     end
-    # end
-    graphmodel = Vector{Dict{Symbol, Any}}()
-    for λ in mean_degrees
-        for graph in graphmodel_extra
-            g = deepcopy(graph)
-            g[:λ] = λ
-            delete!(g, :title)
-            push!(graphmodel, g)
+    x = string.(sort(getfield(Database, x_sweep_parameter)(qp)))
+    y = string.(sort(getfield(Database, y_sweep_parameter)(qp)))
+    z_data = []
+    for plot_group in groupby(query, plot_grouping, sort=true) #NOTE: alphabetical order (we probably want graphs to show up in the order that they're entered in Query_simulations, but whatever for now)
+    # for gm in Database.graphmodels(qp)
+        # plot_group = filter(:graphmodel_type => t -> t == Database.type(gm), query) #this method allows for ordering by graphmodel type defined in Query_graphmodels
+        average_transition_times = Vector{Float64}()
+        for sweep_group in groupby(plot_group, [x_sweep_parameter, y_sweep_parameter], sort=true) #y_sweep_parameter rises first in the sort
+            # push!(average_transition_times, mean(straps(bootstrap(mean, sweep_group.period, BasicSampling(bootstrap_samples)), 1))) #Gives the mean of the bootstrapped samples #NOTE: do we want median or mean???
+            push!(average_transition_times, getfield(Statistics, statistic)(sweep_group.period))
         end
-    end
-    println(graphmodel)
-
-    # z_data = fill(zeros(length(mean_degrees), length(error_rates)), (1, length(graphmodel_extra)))
-    # z_data = [zeros(length(mean_degrees), length(error_rates)) for _ in 1:length(graphmodel_extra)]
-    z_data = zeros(length(error_rates), length(mean_degrees), length(graphmodel_extra))
-
-    println(z_data)
-    df = Database.execute_query_simulations_for_noise_structure_heatmap(db_info,
-                                                                game_id=game_id,
-                                                                graphmodel_params=graphmodel,
-                                                                error_rates=error_rates,
-                                                                mean_degrees=mean_degrees,
-                                                                number_agents=number_agents,
-                                                                memory_length=memory_length,
-                                                                starting_condition=starting_condition,
-                                                                stopping_condition=stopping_condition,
-                                                                sample_size=sample_size)
-
-
-    # query::DataFrame = Database.db_query(db_info, qp)
-    # return df
-    for (graph_index, graph) in enumerate(graphmodel_extra)
-
-        function graph_filter(graphmodel_type, β, α, p_in, p_out)
-            graphmodel_type_match = graphmodel_type == graph[:type]
-            β_match = haskey(graph, :β) ? β == graph[:β] : ismissing(β)
-            α_match = haskey(graph, :α) ? α == graph[:α] : ismissing(α)
-            p_in_match = haskey(graph, :p_in) ? p_in == graph[:p_in] : ismissing(p_in)
-            p_out_match = haskey(graph, :p_out) ? p_out == graph[:p_out] : ismissing(p_out)
-            return graphmodel_type_match && β_match && α_match && p_in_match && p_out_match
-        end
-
-        filtered_df = filter([:graphmodel_type, :β, :α, :p_in, :p_out] => graph_filter, df) #NOTE: this is filtering by graph graphmodel_type only, which is okay if there's only one of each graph type. Otherwise, need to change!!!
-        # println(filtered_df)
-        for (col, mean_degree) in enumerate(mean_degrees)
-            for (row, error) in enumerate(error_rates)
-            more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
-            println(more_filtered)
-            # scaled_period = more_filtered.period ./ GraphsExt.edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS]
-            # scaled_period = more_filtered.period
-            scaled_period = (more_filtered.period .* GraphsExt.edge_density(number_agents, mean_degree) .* number_agents) / 2
-            average_transition_time = mean(straps(bootstrap(mean, scaled_period, BasicSampling(bootstrap_samples)), 1)) #Gives the mean of the bootstrapped samples
-            # average_transition_time = mean(more_filtered.period)
-            println(average_transition_time)
-            println("($row, $col, $graph_index)")
-            z_data[row, col, graph_index] = average_transition_time
-            println(log10(average_transition_time))
-            end
-        end
+        push!(z_data, reshape(average_transition_times, length(y), length(x))) #y rows, x columns
     end
 
-    for i in eachindex(graphmodel_extra)
-        println(z_data[:, :, i])
-    end
 
-    #this stuff needs to be removed!
-    # z_data = [zeros(length(mean_degrees), length(error_rates)) for _ in 1:length(graphmodel_extra)]
-    # z_data = zeros(length(mean_degrees), length(error_rates), length(graphmodel_extra))
-    # for i in eachindex(graphmodel_extra)
-    #     for x in eachindex(mean_degrees)
-    #         for y in eachindex(error_rates)
-    #             z_data[i, x, y] = i + x + y
-    #         end
-    #     end
-    # end
-    # println(z_data)
-    # return z_data
-    clims_colorbar = extrema(z_data) #first get the extrema of the original data for the colorbar scale
-    z_data = log10.(z_data) #then take the log of the data
-    clims = extrema(z_data) #then get the extrema of the log of data for the heatmap colors
-    # clims = (log10(10), log10(100000))
-    println(clims)
+    !isempty(subplot_titles) && @assert length(subplot_titles) == length(z_data) "subplot_titles must have one entry for each plot group specified" #NOTE: vague
+
+
+    #NOTE: could probably make this more efficient
+    clims_colorbar = extrema(reduce(hcat, z_data)) #first get the extrema of the original data for the colorbar scale
+    z_data = map(z->log10.(z), z_data) #then take the log of the data
+    clims = extrema(reduce(hcat, z_data)) #then get the extrema of the log of data for the heatmap colors
 
     plots = []
-    # for z in z_data
-    #     println(z)
-    #     push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
-    # end
-    for graph_index in eachindex(graphmodel_extra)
-        println(z_data[:, :, graph_index])
-        title = "\n" * graphmodel_extra[graph_index][:title]
-        # x_ticks = graph_index == length(graphmodel_extra)
-        # x_label = x_ticks ? "Mean Degree" : ""
-        x_ticks = true
-        x_label = graph_index == length(graphmodel_extra) ? "Mean Degree" : ""
-        push!(plots, heatmap(x, y, z_data[:, :, graph_index], clims=clims, c=:viridis, colorbar=false, title=title, xlabel=x_label, ylabel="Error", xticks=x_ticks))
+    for (i, z) in enumerate(z_data)
+        push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false, title=(!isempty(subplot_titles) ? subplot_titles[i] : ""), xlabel=(i == lastindex(z_data) ? x_sweep_parameter_label : ""), ylabel=y_sweep_parameter_label, xticks=true))
     end
 
-    push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims_colorbar,
-    xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_scale=:log10, colorbar_title="Periods Elapsed", grid=false))
+    l = @layout [Plots.grid(length(plots), 1) a{0.01w}]
 
-    # l = @layout [Plots.grid(length(z_data), 1) a{0.01w}]
-    l = @layout [Plots.grid(length(graphmodel_extra), 1) a{0.01w}]
-    full_plot = plot(plots..., layout=l, link=:all, size=(1000, 1000), left_margin=10Plots.mm, right_margin=10Plots.mm)
-    # savefig(p_all, "shared_colorbar_julia.png")
+    push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims_colorbar, xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_scale=:log10, colorbar_title="Periods Elapsed", grid=false))
+
+    full_plot = plot(plots..., layout=l, link=:all; plot_kwargs...)
+
     !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
     return full_plot
 end

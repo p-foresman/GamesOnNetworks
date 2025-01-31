@@ -449,25 +449,25 @@ function noise_vs_structure_heatmap(db_info::Database.DBInfo=SETTINGS.database;
                                     bootstrap_samples::Integer=1000,
                                     filename::String="")
 
-# sort!(graph_ids)
-# sort!(error_rates)
-# sort!(mean_degrees)
+    # sort!(graph_ids)
+    # sort!(error_rates)
+    # sort!(mean_degrees)
 
 
-x = string.(mean_degrees)
-y = string.(error_rates)
-# x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
-# y_axis = fill(string.(error_rates), (length(graph_ids), 1))
+    x = string.(mean_degrees)
+    y = string.(error_rates)
+    # x_axis = fill(string.(mean_degrees), (length(graph_ids), 1))
+    # y_axis = fill(string.(error_rates), (length(graph_ids), 1))
 
-# graphmodel_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
-# for graph in graphmodel
-#     for param in graphmodel_list
-#         if !(param in collect(keys(graph)))
-#             graph[param] = nothing
-#         end
-#     end
-# end
-graphmodel = Vector{Dict{Symbol, Any}}()
+    # graphmodel_list = [:λ, :β, :α, :blocks, :p_in, :p_out]
+    # for graph in graphmodel
+    #     for param in graphmodel_list
+    #         if !(param in collect(keys(graph)))
+    #             graph[param] = nothing
+    #         end
+    #     end
+    # end
+    graphmodel = Vector{Dict{Symbol, Any}}()
     for λ in mean_degrees
         for graph in graphmodel_extra
             g = deepcopy(graph)
@@ -486,7 +486,7 @@ graphmodel = Vector{Dict{Symbol, Any}}()
     df = Database.execute_query_simulations_for_noise_structure_heatmap(db_info,
                                                                 game_id=game_id,
                                                                 graphmodel_params=graphmodel,
-                                                                error_rates=error_rates,
+                                                                errors=error_rates,
                                                                 mean_degrees=mean_degrees,
                                                                 number_agents=number_agents,
                                                                 memory_length=memory_length,
@@ -510,23 +510,23 @@ graphmodel = Vector{Dict{Symbol, Any}}()
         for (col, mean_degree) in enumerate(mean_degrees)
             for (row, error) in enumerate(error_rates)
             more_filtered = filter([:error, :λ] => (err, λ) -> err == error && λ == mean_degree, filtered_df)
-            println(more_filtered)
+            # println(more_filtered)
             # scaled_period = more_filtered.period ./ GraphsExt.edge_density(number_agents, mean_degree) #NOTE: REMOVE THIS]
             # scaled_period = more_filtered.period
-            scaled_period = (more_filtered.period .* GraphsExt.edge_density(number_agents, mean_degree) .* number_agents) / 2
-            average_transition_time = mean(straps(bootstrap(mean, scaled_period, BasicSampling(bootstrap_samples)), 1)) #Gives the mean of the bootstrapped samples
+            # scaled_period = (more_filtered.period .* GraphsExt.edge_density(number_agents, mean_degree) .* number_agents) / 2
+            average_transition_time = mean(straps(bootstrap(mean, more_filtered.period, BasicSampling(bootstrap_samples)), 1)) #Gives the mean of the bootstrapped samples
             # average_transition_time = mean(more_filtered.period)
-            println(average_transition_time)
-            println("($row, $col, $graph_index)")
+            # println(average_transition_time)
+            # println("($row, $col, $graph_index)")
             z_data[row, col, graph_index] = average_transition_time
-            println(log10(average_transition_time))
+            # println(log10(average_transition_time))
             end
         end
     end
 
-    for i in eachindex(graphmodel_extra)
-        println(z_data[:, :, i])
-    end
+    # for i in eachindex(graphmodel_extra)
+    #     println(z_data[:, :, i])
+    # end
 
     #this stuff needs to be removed!
     # z_data = [zeros(length(mean_degrees), length(error_rates)) for _ in 1:length(graphmodel_extra)]
@@ -544,7 +544,7 @@ graphmodel = Vector{Dict{Symbol, Any}}()
     z_data = log10.(z_data) #then take the log of the data
     clims = extrema(z_data) #then get the extrema of the log of data for the heatmap colors
     # clims = (log10(10), log10(100000))
-    println(clims)
+    # println(clims)
 
     plots = []
     # for z in z_data
@@ -552,7 +552,7 @@ graphmodel = Vector{Dict{Symbol, Any}}()
     #     push!(plots, heatmap(x, y, z, clims=clims, c=:viridis, colorbar=false))
     # end
     for graph_index in eachindex(graphmodel_extra)
-        println(z_data[:, :, graph_index])
+        # println(z_data[:, :, graph_index])
         title = "\n" * graphmodel_extra[graph_index][:title]
         # x_ticks = graph_index == length(graphmodel_extra)
         # x_label = x_ticks ? "Mean Degree" : ""

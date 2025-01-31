@@ -85,7 +85,7 @@ function sql_filter(db_info::SQLiteInfo, qp::Query_graphmodels)
         end
         filter_str *= temp_str
     end
-    return chop(filter_str, tail=4)
+    return "(" * chop(filter_str, tail=4) * ")"
 end
 
 
@@ -150,7 +150,8 @@ function sql(db_info::SQLiteInfo, qp::Query_models)
         parameters.starting_condition,
         parameters.stopping_condition,
         parameters.parameters,
-        graphmodels.type,
+        graphmodels.type as graphmodel_type,
+        graphmodels.display as graphmodel_display,
         graphmodels.graphmodel,
         graphmodels.λ,
         graphmodels.β,
@@ -187,6 +188,14 @@ function sql(::SQLiteInfo, qp::Query_simulations)
             CTE_models.error,
             CTE_models.starting_condition,
             CTE_models.stopping_condition,
+            CTE_models.graphmodel_type,
+            CTE_models.graphmodel_display,
+            CTE_models.λ,
+            CTE_models.β,
+            CTE_models.α,
+            CTE_models.blocks,
+            CTE_models.p_in,
+            CTE_models.p_out,
             simulations.uuid as simulation_uuid,
             simulations.period,
             simulations.complete

@@ -40,31 +40,31 @@ function db_init_distributed(distributed_uuid::String) #creates a sparate sqlite
 end
 
 
-#NOTE: probably don't actually need this function (can be handled by the following function)
-function db_collect_distributed(db_filepath::String, distributed_uuid::String) #collects distributed db files into the db_filepath 
-    # temp_dirpath = tempdirpath(db_filepath)
-    temp_dirpath = distributed_uuid * "/"
-    for worker in workers()
-        temp_filepath = temp_dirpath * "$worker.sqlite"
-        success = false
-        while !success #should i create a database lock before iterating through workers?
-            try
-                execute_merge_temp(db_filepath, temp_filepath)
-                # rm(temp_filepath)
-                success = true
-            catch e
-                if e isa SQLiteException
-                    println("An error has been caught in db_collect_distributed():")
-                    showerror(stdout, e)
-                    sleep(rand(0.1:0.1:4.0))
-                else
-                    throw(e)
-                end
-            end
-        end
-    end
-    rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty") due to hidden nsf lock files
-end
+# #NOTE: probably don't actually need this function (can be handled by the following function)
+# function db_collect_distributed(db_filepath::String, distributed_uuid::String) #collects distributed db files into the db_filepath 
+#     # temp_dirpath = tempdirpath(db_filepath)
+#     temp_dirpath = distributed_uuid * "/"
+#     for worker in workers()
+#         temp_filepath = temp_dirpath * "$worker.sqlite"
+#         success = false
+#         while !success #should i create a database lock before iterating through workers?
+#             try
+#                 execute_merge_temp(db_filepath, temp_filepath)
+#                 # rm(temp_filepath)
+#                 success = true
+#             catch e
+#                 if e isa SQLiteException
+#                     println("An error has been caught in db_collect_distributed():")
+#                     showerror(stdout, e)
+#                     sleep(rand(0.1:0.1:4.0))
+#                 else
+#                     throw(e)
+#                 end
+#             end
+#         end
+#     end
+#     rm(temp_dirpath, recursive=true) #this is throwing errors on linux server ("directory not empty") due to hidden nsf lock files
+# end
 
 
 function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cleanup_directory::Bool = false)

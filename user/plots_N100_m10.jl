@@ -22,22 +22,22 @@ function add_graph_type(db_filepath)
     end
 end
 
-colors = [palette(:default)[11] palette(:default)[2] palette(:default)[2] palette(:default)[12] palette(:default)[9] palette(:default)[9] palette(:default)[9] palette(:default)[14]]
+colors = [Analyze.palette(:default)[11] Analyze.palette(:default)[2] Analyze.palette(:default)[2] Analyze.palette(:default)[12] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[14]]
 
 # main heatmap
 main_heatmap_plot = Analyze.noise_vs_structure_heatmap(;
                                     game_id=1,
                                     graphmodel_extra=[Dict{Symbol, Any}(:title=>"Erdos-Renyi", :type=>"ErdosRenyiModel"),
-                                                        Dict{Symbol, Any}(:title=>"Small-World (β=0.01)", :type=>"SmallWorldModel", :β=>0.01),
-                                                        Dict{Symbol, Any}(:title=>"Scale-Free (α=2)", :type=>"ScaleFreeModel", :α=>2)],
-                                                        # Dict{Symbol, Any}(:title=>"Stochastic Block Model (p_in=1.0, p_out=0.01)", :type=>"StochasticBlockModel", :p_in=>1.0, :p_out=>0.01)],
-                                    errors=[0.05, 0.06, 0.07, 0.08, 0.09, 0.1],
-                                    mean_degrees=[3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0],
+                                                        Dict{Symbol, Any}(:title=>"Small-World (β=0.01)", :type=>"SmallWorldModel", :β=>0.001),
+                                                        Dict{Symbol, Any}(:title=>"Scale-Free (α=2)", :type=>"ScaleFreeModel", :α=>2),
+                                                        Dict{Symbol, Any}(:title=>"Stochastic Block Model (p_in=1.0, p_out=0.01)", :type=>"StochasticBlockModel", :p_in=>1.0, :p_out=>0.01)],
+                                    error_rates=[0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1],
+                                    mean_degrees=[5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0],
                                     number_agents=100,
                                     memory_length=10,
                                     starting_condition="fractious_starting_condition",
-                                    stopping_condition="equity_behavioral",
-                                    sample_size=20,
+                                    stopping_condition="partially_reinforced_equity_stopping_condition",
+                                    sample_size=10,
                                     filename="main_heatmap_plot"
 )
 

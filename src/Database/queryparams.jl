@@ -104,6 +104,7 @@ struct Query_models <: QueryParams
 end
 
 size(qp::Query_models) = *(size(qp.games), size(qp.parameters), size(qp.graphmodels))
+graphmodels(qp::Query_models) = qp.graphmodels.graphmodels #need twice for actual list of graphmodels
 
 struct Query_simulations <: QueryParams #NOTE: this might be overly complicated
     model::Query_models
@@ -124,7 +125,11 @@ table(::T) where {T<:QueryParams} = split(string(T), "_")[2]
 number_agents(qp::Query_simulations) = qp.model.parameters.number_agents
 memory_length(qp::Query_simulations) = qp.model.parameters.memory_length
 error(qp::Query_simulations) = qp.model.parameters.error
-
+graphmodels(qp::Query_simulations) = graphmodels(qp.model)
+function λ(qp::Query_simulations) #this is probably not good, but required for plotting (for now)
+    @assert all(gm -> sort(gm.λ) == graphmodels(qp)[1].λ, graphmodels(qp)) "cannot use this function unless all λ vectors in the query contain the same values"
+    return graphmodels(qp)[1].λ
+end
 # function size(qp::QueryParams) #generic size() works for all but Query_graphmodels
 #     sz = 1
 #     for field in fieldnames(typeof(qp))
