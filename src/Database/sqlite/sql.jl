@@ -41,18 +41,6 @@ end
 
 
 """
-    db_query(filepath::String, sql::SQL)
-
-Quick method to query an sqlite database file specified by filepath. Returns a DataFrame containing results.
-"""
-function db_query(filepath::String, sql::SQL)
-    db = DB(SQLiteInfo("temp", filepath))
-    query = db_query(db, sql)
-    db_close(db)
-    return query
-end
-
-"""
     db_query(db_info::SQLiteInfo, sql::SQL)
 
 Query the sqlite database provided in an SQLiteInfo instance with the sql (String) provided. Returns a DataFrame containing results.
@@ -64,27 +52,39 @@ function db_query(db_info::SQLiteInfo, sql::SQL)
     return query
 end
 
+function db_query(query_dbs::Vector{SQLiteInfo}, sql::SQL)
+    @assert !isempty(query_dbs) "query_dbs Vector is empty"                                                           
+    db = DB(first(query_dbs))
+    for query_db in query_dbs[2:end]
+        db_execute(db, "ATTACH DATABASE '$(query_db.filepath)' as $(query_db.name);")
+    end
+    query = db_query(db, sql)
+    db_close(db)
+    return query
+end
+
+"""
+    db_query(filepath::String, sql::SQL)
+
+Quick method to query an sqlite database file specified by filepath. Returns a DataFrame containing results.
+"""
+db_query(filepath::String, sql::SQL) = db_query(SQLiteInfo("temp", filepath), sql)
+
 """
     db_query(db_info::SQLiteInfo, qp::QueryParams)
 
 Query the sqlite database provided in an SQLiteInfo instance with the <:QueryParams instance provided. Returns a DataFrame containing results.
 """
-function db_query(db_info::SQLiteInfo, qp::QueryParams)                                                                    
-    db = DB(db_info)
-    query = db_query(db, sql(qp))
-    db_close(db)
-    return query
-end
+db_query(db_info::Union{SQLiteInfo, Vector{SQLiteInfo}}, qp::QueryParams) = db_query(db_info, sql(qp))
+
 
 """
     db_query(db_info::SQLiteInfo, qp::Query_simulations)
 
 Query the sqlite database provided in an SQLiteInfo instance with the Query_simulations instance provided. Will throw an error if the database contains insufficient samples for any requested models. Returns a DataFrame containing results.
 """
-function db_query(db_info::SQLiteInfo, qp::Query_simulations; ensure_samples::Bool=true)                                                                    
-    db = DB(db_info)
-    query = db_query(db, sql(qp))
-    db_close(db)
+function db_query(db_info::Union{SQLiteInfo, Vector{SQLiteInfo}}, qp::Query_simulations; ensure_samples::Bool=true)                                                                    
+    query = db_query(db_info, sql(qp))
     ensure_samples && _ensure_samples(query, qp)
     return query
 end
@@ -301,6 +301,30 @@ function execute_init_db_temp(db_info::SQLiteInfo)
     db_commit_transaction(db)
     db_close(db)
 end
+
+#NOTE: remove later
+#quick and dirty way to add graph type
+function add_graph_type(db_filepath)
+    graph_types = ["complete", "er", "sf", "sw", "sbm"]
+    db = SQLite.DB("$db_filepath")
+    SQLite.busy_timeout(db, 3000)
+    DBInterface.execute(db, "ALTER TABLE graphs
+                        RENAME COLUMN graph_type TO graph";)
+    DBInterface.execute(db, "ALTER TABLE graphs
+                        ADD graph_type TEXT NOT NULL DEFAULT ``";)
+    query = DBInterface.execute(db, "SELECT COUNT(*) FROM graphs";)
+    df = DataFrame(query)
+    for row in 1:df[1, "COUNT(*)"]
+        query = DBInterface.execute(db, "SELECT graph_params FROM graphs WHERE graph_id == $row";)
+        params = DataFrame(query)[1, "graph_params"]
+        for graph_type in graph_types
+            if occursin(graph_type, params)
+                DBInterface.execute(db, "UPDATE graphs SET graph_type = '$graph_type' WHERE graph_id = $row";)
+            end
+        end
+    end
+end
+
 
 
 function sql_insert_game(name::String, game_str::String, payoff_matrix_size::String)

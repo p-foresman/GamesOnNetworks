@@ -21,16 +21,21 @@ struct PostgresInfo <: DBInfo
 end
 
 struct SQLiteInfo <: DBInfo
-    name::String #NOTE: make this optional
+    name::String
     filepath::String
+
+    function SQLiteInfo(name::String, filepath::String)
+        @assert !isempty(name) "'name' cannot be empty"
+        @assert !isempty(filepath) "'filepath' cannot be empty" #actually want to ensure that filepath exists
+        return new(name, filepath)
+    end
 end
 
 type(database::SQLiteInfo) = "sqlite"
 type(database::PostgresInfo) = "postgres"
 name(database::DBInfo) = getfield(database, :name)
 
-DatabaseIdTuple = NamedTuple{(:game_id, :graph_id, :parameters_id, :starting_condition_id, :stopping_condition_id), NTuple{5, Int}}
-
+_nodb() = throw("no database is configured!")
 #include QueryParams types for SQL query generation
 include("queryparams.jl")
 
@@ -53,7 +58,15 @@ DB(;kwargs...) = DB(SETTINGS.database, kwargs...)
 
 Generate a SQL query for a QueryParams instance (based on configured database type).
 """
-sql(qp::QueryParams) = sql(GamesOnNetworks.SETTINGS.database, qp)
+function sql(qp::QueryParams)
+    if isempty(GamesOnNetworks.SETTINGS.query)
+        return sql(GamesOnNetworks.SETTINGS.database, qp)
+    else
+        return sql(GamesOnNetworks.SETTINGS.query, qp)
+    end
+end
+
+sql(::Nothing, ::QueryParams) = _nodb()
 
 
 """
@@ -63,13 +76,22 @@ Execute SQL (String) on the configured database.
 """
 db_execute(sql::SQL) = db_execute(GamesOnNetworks.SETTINGS.database, sql)
 
+db_execute(::Nothing, ::SQL) = _nodb()
 
 """
     db_query(sql::SQL)
 
 Query the configured database using the SQL (String) provided. Returns a DataFrame containing results.
 """
-db_query(sql::SQL) = db_query(GamesOnNetworks.SETTINGS.database, sql)
+function db_query(sql::SQL)
+    if isempty(GamesOnNetworks.SETTINGS.query)
+        return db_query(GamesOnNetworks.SETTINGS.database, sql)
+    else
+        return db_query(GamesOnNetworks.SETTINGS.query, sql)
+    end
+end
+
+db_query(::Nothing, ::SQL) = _nodb()
 
 """
     db_query(qp::QueryParams)
@@ -78,7 +100,11 @@ Query the configured database using the QueryParams provided. Returns a DataFram
 """
 db_query(qp::QueryParams) = db_query(sql(qp))
 
-db_query(qp::Query_simulations; ensure_samples::Bool=true) = db_query(GamesOnNetworks.SETTINGS.database, qp, ensure_samples=ensure_samples)
+function db_query(qp::Query_simulations; ensure_samples::Bool=false)
+    query = db_query(sql(qp))
+    ensure_samples && _ensure_samples(query, qp)
+    return query
+end
 
 # db_begin_transaction() = db_begin_transaction(GamesOnNetworks.SETTINGS.database)
 # db_close(db::SQLiteDB) = SQLite.close(db)

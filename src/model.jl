@@ -247,12 +247,13 @@ function generate_graph!(model::Model)
 end
 
 
-"""
-    number_hermits(model::Model)
+#NOTE: model might not have a graph
+# """
+#     number_hermits(model::Model)
 
-Get the number of hermits (vertecies with degree=0) in the graph of a Model instance.
-"""
-number_hermits(model::Model) = GraphsExt.number_hermits(graph(model))
+# Get the number of hermits (vertecies with degree=0) in the graph of a Model instance.
+# """
+# number_hermits(model::Model) = GraphsExt.number_hermits(graph(model))
 
 
 #Model constructor barriers (used to initialize state components from model)
@@ -293,13 +294,13 @@ end
 # end
 
 
-#moved to state
-"""
-    adjacency_matrix_str(model::Model)
+#NOTE: moved to state
+# """
+#     adjacency_matrix_str(model::Model)
 
-Get the adjacency matrix in a string for the graph of the given Model
-"""
-adjacency_matrix_str(model::Model) = GraphsExt.adjacency_matrix_str(graph(model))
+# Get the adjacency matrix in a string for the graph of the given Model
+# """
+# adjacency_matrix_str(model::Model) = GraphsExt.adjacency_matrix_str(graph(model))
 
 
 PreAllocatedArrays(model::Model) = PreAllocatedArrays(game(model))

@@ -36,11 +36,16 @@ struct Settings
     procs::Int
     timeout::Int
     database::Union{Database.DBInfo, Nothing} #if nothing, not using database
+    query::Vector{<:Database.DBInfo} #will be empty if no databse selected
     checkpoint::Bool
     checkpoint_exit_code::Int
     figure_dirpath::String
     # data_script::Union{Nothing, String}
 end
+
+# USE_DB() = !isnothing(GamesOnNetworks.SETTINGS.database)
+# PUSH_DB() = GamesOnNetworks.SETTINGS.database
+# QUERY_DB() = GamesOnNetworks.SETTINGS.query
 
 function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "use_seed") "config file must have a 'use_seed' variable"
@@ -76,6 +81,7 @@ function Settings(settings::Dict{String, Any})
     selected_db = databases["selected"]
     @assert selected_db isa String "the denoted default database must be a String (can be an empty string if not using a database)"
     
+    
     @assert haskey(databases, "checkpoint") "config file must have a 'checkpoint' boolean variable. This field's value only matters if a database is selected"
     checkpoint = databases["checkpoint"]
     @assert checkpoint isa Bool "'checkpoint' value must be a Bool"
@@ -94,13 +100,24 @@ function Settings(settings::Dict{String, Any})
     #     data_script = nothing
     # end
 
+    @assert haskey(databases, "query") "config file must have a 'query' variable containing an array of databases to query in the [databases] table using dot notation of the form \"db_type.db_name\". If array is empty, the 'selected' database will be queried"
+    query_dbs = databases["query"]
+    @assert query_dbs isa Vector "'the 'query' variable must be a Vector"
+    @assert all(q->q isa String, query_dbs) "the 'query' variable must be an array of Strings using dot notation of the form \"db_type.db_name\" OR an empty array to query selected database"
 
     #if selected_db exists, must validate selected database. Otherwise, not using database
     database = nothing #selected database
+    query = Vector{Database.DBInfo}()
     # checkpoint = nothing #checkpoint database
     if !isempty(selected_db)
         database = validate_database(databases, "selected", selected_db)
-
+        query = Vector{typeof(database)}()
+        # push!(query, database)
+        for query_db in query_dbs
+            # if query_db != selected_db
+            push!(query, validate_database(databases, "query", query_db))
+            # end
+        end
 
 
         # if databases["checkpoint"]
@@ -113,7 +130,7 @@ function Settings(settings::Dict{String, Any})
         # end
     end
 
-    return Settings(settings, use_seed, random_seed, procs, timeout, database, checkpoint, checkpoint_exit_code, figure_dirpath)
+    return Settings(settings, use_seed, random_seed, procs, timeout, database, query, checkpoint, checkpoint_exit_code, figure_dirpath)
 end
 
 function Settings(toml_path::String)
@@ -205,6 +222,21 @@ function configure(toml_path::String="")
                 println("SQLite database file initialized at $(SETTINGS.database.filepath)")
             else
                 println("PostgreSQL database initialized")
+            end
+
+            #NOTE: really should make sure that exist with the right setup, not initialize new ones
+            for query_db in SETTINGS.query
+                print("verifying query databse [$(Database.type(query_db)).$(query_db.name)]... ")
+                # out = stdout
+                # redirect_stdout(devnull)
+                Database.db_init(query_db) #;data_script=SETTINGS.data_script) #suppress the stdout stream
+                #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
+                # include()
+                if SETTINGS.database isa Database.SQLiteInfo
+                    println("SQLite database file verified at $(query_db)")
+                else
+                    println("PostgreSQL database verified")
+                end
             end
 
             # if !isnothing(SETTINGS.checkpoint) && SETTINGS.checkpoint.database != SETTINGS.database

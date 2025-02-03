@@ -80,8 +80,51 @@ end
 
 
 
+
+function two_parameter_sweep_heatmap(x_sweep_parameter::Symbol, y_sweep_parameter::Symbol, qp::Database.Query_simulations;
+                                     db_info::Database.DBInfo=SETTINGS.database,
+                                     statistic::Symbol=:mean,
+                                     x_sweep_parameter_label::String=make_label(x_sweep_parameter),
+                                     y_sweep_parameter_label::String=make_label(y_sweep_parameter),
+                                     bootstrap_samples::Integer=1000,
+                                     filename::String="",
+                                     plot_kwargs...)
+    sweep_options = (:error, :λ)
+    @assert x_sweep_parameter in sweep_options
+    @assert y_sweep_parameter in sweep_options
+    @assert x_sweep_parameter != y_sweep_parameter
+    @assert statistic in (:mean, :median) "statistic must be either :mean or :median"
+    #NOTE: needs more validation (currently no validation for 1 graphmodel (plot_grouping))
+
+    query::DataFrame = Database.db_query(db_info, qp)
+
+    x = string.(sort(getfield(Database, x_sweep_parameter)(qp)))
+    y = string.(sort(getfield(Database, y_sweep_parameter)(qp)))
+    average_transition_times = Vector{Float64}()
+    for sweep_group in groupby(query, [x_sweep_parameter, y_sweep_parameter], sort=true) #y_sweep_parameter rises first in the sort
+        # push!(average_transition_times, mean(straps(bootstrap(mean, sweep_group.period, BasicSampling(bootstrap_samples)), 1))) #Gives the mean of the bootstrapped samples #NOTE: do we want median or mean???
+        push!(average_transition_times, getfield(Statistics, statistic)(sweep_group.period))
+    end
+    z_data = reshape(average_transition_times, length(y), length(x)) #y rows, x columns
+
+    full_plot = heatmap(x, y, z_data;
+                        c=:viridis,
+                        clims=extrema(z_data),
+                        colorbar_scale=:log10,
+                        xlabel=x_sweep_parameter_label,
+                        ylabel=y_sweep_parameter_label,
+                        xticks=true, #could be a better default
+                        plot_kwargs...)
+
+    !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
+    return full_plot
+end
+
+
+
+
 """
-    function two_parameter_sweep_heatmap(db_info::Database.DBInfo=SETTINGS.database;
+    function multiple_two_parameter_sweep_heatmap(db_info::Database.DBInfo=SETTINGS.database;
             game_id::Integer,
             graphmodel_extra::Vector{<:Dict{Symbol, Any}},
             errors::Vector{<:AbstractFloat},

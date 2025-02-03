@@ -4,18 +4,18 @@ include("startingconditions.jl")
 include("stoppingconditions.jl")
 
 
-λs = collect(10:-0.5:1)
+λs = collect(95:-5:5)
 N100_m10_generator = ModelGenerator(
     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
     [100],
     [10],
-    collect(0.1:-0.01:0.02),
+    collect(0.3:-0.02:0.02),
     [("fractious_starting_condition", UserVariables())],
     [("partially_reinforced_equity_stopping_condition", UserVariables(:period_count=>0))],
     [
         ErdosRenyiModelGenerator(λs),
-        SmallWorldModelGenerator(λs, [0.0, 0.0001, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
-        ScaleFreeModelGenerator(λs, collect(2.0:0.1:10.0)),
-        StochasticBlockModelGenerator(λs, [2], [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], [0.01])
+        SmallWorldModelGenerator(λs, [0.0, 0.0001, 0.001, 0.01, 0.1, 0.5, 1.0]),
+        ScaleFreeModelGenerator(λs, collect(2.0:0.05:5.0)),
+        StochasticBlockModelGenerator(λs, [2], [0.01, 0.2, 0.4, 0.6, 0.8, 1.0], [0.01])
     ]
 )

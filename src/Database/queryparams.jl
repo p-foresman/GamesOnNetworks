@@ -115,6 +115,10 @@ struct Query_simulations <: QueryParams #NOTE: this might be overly complicated
         @assert sample_size >= 0 "sample_size must positive (0 for all samples)"
         return new(Query_models(games, parameters, graphmodels), complete, sample_size)
     end
+    function Query_simulations(qp_models::Query_models; complete::Union{Bool, Nothing}=nothing, sample_size::Integer=0)
+        @assert sample_size >= 0 "sample_size must positive (0 for all samples)"
+        return new(qp_models, complete, sample_size)
+    end
 end
 
 size(qp::Query_simulations) = size(qp.model) #NOTE: should probably just put this in

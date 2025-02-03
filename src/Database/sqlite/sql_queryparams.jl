@@ -29,6 +29,19 @@ function sql(db_info::SQLiteInfo, qp::QueryParams) #for games, parameters, and g
     return "SELECT * FROM $(table(qp))$filter_str"
 end
 
+function sql(db_info::Vector{SQLiteInfo}, qp::QueryParams) #for games, parameters, and graphmodels
+    @assert !isempty(db_info) "db_info Vector is empty"                                                           
+    filter_str = sql_filter(db_info[1], qp) #doesnt matter which db is passed, just used for multiple dispatch
+    if !isempty(filter_str)
+        filter_str = " WHERE " * filter_str
+    end
+    union_str = ""
+    for db in db_info[2:end]
+        union_str *= " UNION ALL SELECT * FROM $(db.name).$(table(qp))$filter_str"
+    end
+    return "SELECT DISTINCT * FROM (SELECT * FROM $(table(qp))$filter_str$union_str)" #removes duplicates when querying multiple databases
+end
+
 function sql_filter(::SQLiteInfo, qp::Query_games)
     filter_str = ""
     if length(qp.name) == 1
@@ -135,7 +148,7 @@ function sql_filter(db_info::SQLiteInfo, qp::Query_models) #NOTE: refactor
     return filter_str
 end
 
-function sql(db_info::SQLiteInfo, qp::Query_models)
+function sql(::SQLiteInfo, ::Query_models, filter_str::String, db_name::String)
     """
     SELECT
         models.id as model_id,
@@ -158,25 +171,44 @@ function sql(db_info::SQLiteInfo, qp::Query_models)
         graphmodels.α,
         graphmodels.blocks,
         graphmodels.p_in,
-        graphmodels.p_out
-    FROM models
-    INNER JOIN parameters ON models.parameters_id = parameters.id
-    INNER JOIN games ON models.game_id = games.id
-    INNER JOIN graphmodels ON models.graphmodel_id = graphmodels.id
-    $(sql_filter(db_info, qp))
+        graphmodels.p_out,
+        '$db_name' as db_name
+    FROM $db_name.models
+    INNER JOIN $db_name.parameters ON $db_name.models.parameters_id = $db_name.parameters.id
+    INNER JOIN $db_name.games ON $db_name.models.game_id = $db_name.games.id
+    INNER JOIN $db_name.graphmodels ON $db_name.models.graphmodel_id = $db_name.graphmodels.id
+    $filter_str
     """
 end
 
+# sql(db_info::SQLiteInfo, qp::Query_models) = sql(db_info, qp, sql_filter(db_info, qp))
 
-function sql(::SQLiteInfo, qp::Query_simulations)
+sql(db_info::SQLiteInfo, qp::Query_models, db_name::String="main") = sql(db_info, qp, sql_filter(db_info, qp), db_name) #NOTE: default db_name is main, but this could cause issues if used incorrectly
+
+function sql(db_info::Vector{SQLiteInfo}, qp::Query_models)
+    @assert !isempty(db_info) "db_info Vector is empty"                                                           
+    filter_str = sql_filter(db_info[1], qp)
+    union_str = ""
+    for db in db_info[2:end]
+        union_str *= " UNION ALL " * sql(db, qp, filter_str, db.name)
+    end
+    # distinct = "model_id, game_id, parameters_id, graphmodel_id, game, parameters, graphmodel"
+    println("SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")")
+    return "SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")"
+end
+
+
+function sql(db_info::SQLiteInfo, qp::Query_simulations, db_name::String="main") #NOTE: default db_name is main, but this could cause issues if used incorrectly
+    # WITH CTE_models AS (
+    #     $(sql(db_info, qp.model, db_name))
+    # )
+
+    #, CTE_models.db_name
     """
-    WITH CTE_models AS (
-            $(sql(qp.model))
-        )
     SELECT * FROM (
         SELECT
             ROW_NUMBER() OVER ( 
-                    PARTITION BY CTE_models.model_id
+                    PARTITION BY CTE_models.model_id, CTE_models.db_name
                     ORDER BY $(!iszero(qp.sample_size) ? "RANDOM()" : "(SELECT NULL)")
             ) RowNum,
             CTE_models.model_id,
@@ -196,15 +228,29 @@ function sql(::SQLiteInfo, qp::Query_simulations)
             CTE_models.blocks,
             CTE_models.p_in,
             CTE_models.p_out,
+            CTE_models.db_name,
             simulations.uuid as simulation_uuid,
             simulations.period,
             simulations.complete
-        FROM simulations
-        INNER JOIN CTE_models ON simulations.model_id = CTE_models.model_id
+        FROM $db_name.simulations
+        INNER JOIN CTE_models ON $db_name.simulations.model_id = CTE_models.model_id
         $(!isnothing(qp.complete) ? "WHERE complete = $(Int(qp.complete))" : "")
     )
     $(!iszero(qp.sample_size) ? "WHERE RowNum <= $(qp.sample_size)" : "");
     """
+end
+#NOTE: need to union all in the simulations sql, otherwise different models with the same id will cause issues!
+
+
+function sql(db_info::Vector{SQLiteInfo}, qp::Query_simulations)
+    @assert !isempty(db_info) "db_info Vector is empty"
+    cte_models_str = "WITH CTE_models AS (" * sql(db_info, qp.model) * ") "                                  
+    union_str = ""
+    for db in db_info[2:end]
+        union_str *= " UNION ALL " * sql(db, qp, db.name)
+    end
+    println(cte_models_str * sql(db_info[1], qp) * union_str)
+    return cte_models_str * sql(db_info[1], qp) * union_str
 end
 
 
