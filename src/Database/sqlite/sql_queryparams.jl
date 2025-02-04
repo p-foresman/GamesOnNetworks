@@ -3,23 +3,6 @@
 
 Generate a SQL query for a QueryParams instance (based on SQLite).
 """
-# function sql(::SQLiteInfo, qp::QueryParams) #NOTE: once postgres is implemented, will need db_info to discern
-#     where_str = ""
-#     for field in fieldnames(typeof(qp))
-#         vals = getfield(qp, field)
-#         if isempty(vals)
-#             continue
-#         elseif length(vals) == 1
-#             where_str *= "$(table(qp)).$(string(field)) = '$(vals[1])' AND "
-#         else
-#             where_str *= "$(table(qp)).$(string(field)) IN $(Tuple(vals)) AND "
-#         end
-#     end
-#     if !isempty(where_str)
-#         where_str = " WHERE " * chop(where_str, tail=5)
-#     end
-#     return "SELECT * FROM $(table(qp))$where_str"
-# end
 
 function sql(db_info::SQLiteInfo, qp::QueryParams) #for games, parameters, and graphmodels
     filter_str = sql_filter(db_info, qp)
@@ -37,6 +20,20 @@ function sql(db_info::Vector{SQLiteInfo}, qp::QueryParams) #for games, parameter
     end
     union_str = ""
     for db in db_info[2:end]
+        union_str *= " UNION ALL SELECT * FROM $(db.name).$(table(qp))$filter_str"
+    end
+    return "SELECT DISTINCT * FROM (SELECT * FROM $(table(qp))$filter_str$union_str)" #removes duplicates when querying multiple databases
+end
+
+#NOTE: fix to be like models
+function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::QueryParams) #for games, parameters, and graphmodels
+    @assert !isempty(db_info) "db_info Vector is empty"                                                           
+    filter_str = sql_filter(MAIN_DB(db_info), qp) #doesnt matter which db is passed, just used for multiple dispatch
+    if !isempty(filter_str)
+        filter_str = " WHERE " * filter_str
+    end
+    union_str = ""
+    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
         union_str *= " UNION ALL SELECT * FROM $(db.name).$(table(qp))$filter_str"
     end
     return "SELECT DISTINCT * FROM (SELECT * FROM $(table(qp))$filter_str$union_str)" #removes duplicates when querying multiple databases
@@ -183,7 +180,7 @@ end
 
 # sql(db_info::SQLiteInfo, qp::Query_models) = sql(db_info, qp, sql_filter(db_info, qp))
 
-sql(db_info::SQLiteInfo, qp::Query_models, db_name::String="main") = sql(db_info, qp, sql_filter(db_info, qp), db_name) #NOTE: default db_name is main, but this could cause issues if used incorrectly
+sql(db_info::SQLiteInfo, qp::Query_models) = sql(db_info, qp, sql_filter(db_info, qp), "main")
 
 function sql(db_info::Vector{SQLiteInfo}, qp::Query_models)
     @assert !isempty(db_info) "db_info Vector is empty"                                                           
@@ -193,12 +190,22 @@ function sql(db_info::Vector{SQLiteInfo}, qp::Query_models)
         union_str *= " UNION ALL " * sql(db, qp, filter_str, db.name)
     end
     # distinct = "model_id, game_id, parameters_id, graphmodel_id, game, parameters, graphmodel"
-    println("SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")")
+    # println("SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")")
     return "SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")"
 end
 
+function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::Query_models)
+    filter_str = sql_filter(db_info[1], qp)
+    union_str = ""
+    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
+        union_str *= " UNION ALL " * sql(db, qp, filter_str, db.name)
+    end
+    # println("SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")")
+    return "SELECT DISTINCT * FROM (" * sql(GamesOnNetworks.MAIN_DB(db_info), qp, filter_str, "main") * union_str * ")"
+end
 
-function sql(db_info::SQLiteInfo, qp::Query_simulations, db_name::String="main") #NOTE: default db_name is main, but this could cause issues if used incorrectly
+
+function sql(::SQLiteInfo, qp::Query_simulations, db_name::String) #NOTE: default db_name is main, but this could cause issues if used incorrectly
     # WITH CTE_models AS (
     #     $(sql(db_info, qp.model, db_name))
     # )
@@ -241,6 +248,10 @@ function sql(db_info::SQLiteInfo, qp::Query_simulations, db_name::String="main")
 end
 #NOTE: need to union all in the simulations sql, otherwise different models with the same id will cause issues!
 
+function sql(db_info::SQLiteInfo, qp::Query_simulations)
+    cte_models_str = "WITH CTE_models AS (" * sql(db_info, qp.model) * ") "                                  
+    return cte_models_str * sql(db_info, qp, "main")
+end
 
 function sql(db_info::Vector{SQLiteInfo}, qp::Query_simulations)
     @assert !isempty(db_info) "db_info Vector is empty"
@@ -253,71 +264,13 @@ function sql(db_info::Vector{SQLiteInfo}, qp::Query_simulations)
     return cte_models_str * sql(db_info[1], qp) * union_str
 end
 
-
-# OLD
-# function sql(::SQLiteInfo, qp::Query_models)
-#     """
-#     WITH CTE_games AS (
-#             $(sql(qp.game))
-#         ),
-#         CTE_parameters AS (
-#             $(sql(qp.parameters))
-#         ),
-#         CTE_graphmodels AS (
-#             $(sql(qp.graphmodel))
-#         )
-#     SELECT
-#         models.id as model_id,
-#         models.game_id,
-#         models.parameters_id,
-#         models.graphmodel_id,
-#         CTE_games.name,
-#         CTE_games.game,
-#         CTE_parameters.number_agents,
-#         CTE_parameters.memory_length,
-#         CTE_parameters.error,
-#         CTE_parameters.starting_condition,
-#         CTE_parameters.stopping_condition,
-#         CTE_parameters.parameters,
-#         CTE_graphmodels.type,
-#         CTE_graphmodels.graphmodel,
-#         CTE_graphmodels.λ,
-#         CTE_graphmodels.β,
-#         CTE_graphmodels.α,
-#         CTE_graphmodels.blocks,
-#         CTE_graphmodels.p_in,
-#         CTE_graphmodels.p_out
-#     FROM models
-#     INNER JOIN CTE_parameters ON models.parameters_id = CTE_parameters.id
-#     INNER JOIN CTE_games ON models.game_id = CTE_games.id
-#     INNER JOIN CTE_graphmodels ON models.graphmodel_id = CTE_graphmodels.id
-#     WHERE 
-#     """
-# end
-
-
-# function sql(::SQLiteInfo, qp::Query_simulations)
-#     """
-#     WITH CTE_models AS (
-#             $(sql(qp.model))
-#         )
-#     SELECT * FROM (
-#         SELECT
-#             ROW_NUMBER() OVER ( 
-#                     PARTITION BY CTE_models.model_id
-#                     ORDER BY $(!iszero(qp.sample_size) ? "RANDOM()" : "(SELECT NULL)")
-#             ) RowNum,
-#             CTE_models.model_id,
-#             CTE_models.game_id,
-#             CTE_models.parameters_id,
-#             CTE_models.graphmodel_id,
-#             simulations.uuid as simulation_uuid,
-#             simulations.period,
-#             simulations.complete
-#         FROM simulations
-#         INNER JOIN CTE_models ON simulations.model_id = CTE_models.model_id
-#         $(!isnothing(qp.complete) ? "WHERE complete = $(Int(qp.complete))" : "")
-#     )
-#     $(!iszero(qp.sample_size) ? "WHERE RowNum <= $(qp.sample_size)" : "");
-#     """
-# end
+function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::Query_simulations)
+    # @assert !isempty(db_info) "db_info Vector is empty"
+    cte_models_str = "WITH CTE_models AS (" * sql(db_info, qp.model) * ") "                                  
+    union_str = ""
+    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
+        union_str *= " UNION ALL " * sql(db, qp, db.name)
+    end
+    # println(cte_models_str * sql(db_info[1], qp) * union_str)
+    return cte_models_str * sql(GamesOnNetworks.MAIN_DB(db_info), qp, "main") * union_str
+end

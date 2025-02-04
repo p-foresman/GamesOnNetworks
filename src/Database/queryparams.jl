@@ -154,3 +154,20 @@ end
 
 
 
+function _ensure_samples(df::DataFrame, qp::Query_simulations)
+    #check to ensure all samples are present
+    model_counts_df = combine(groupby(df, :model_id), nrow=>:count)
+    insufficient_samples_str = ""
+    for row in eachrow(model_counts_df)
+        if row[:count] < qp.sample_size
+            insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
+        end
+    end
+    !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
+
+    #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
+    if nrow(model_counts_df) < Database.size(qp)
+        throw(ErrorException("At least one model selected has no simulations"))
+    end
+    return nothing
+end

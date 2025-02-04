@@ -23,7 +23,7 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
                             bootstrap_samples::Integer = 1000,
                             legend_labels::Vector = [],
                             colors::Vector = [],
-                            error_styles::Vector = [],
+                            filename::String="",
                             sim_plot::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
                             plot_kwargs...
     )
@@ -74,6 +74,7 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
             conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
         end
     end
+    !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
     return sim_plot
 end
 

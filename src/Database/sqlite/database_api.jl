@@ -312,7 +312,7 @@ function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Noth
 end
 
 
-function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing, prev_simulation_uuid::Union{String, Nothing} = nothing)
+function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing)
     #prepare simulation to be inserted
     seed = state.random_seed #NOTE: make an accessor for this?
     rng_state_json = state.rng_state_str
@@ -345,7 +345,7 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, prev_simulation_uuid, rng_state_json, seed, adj_matrix_str, period(state), complete_bool, state_user_variables, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, state.prev_simulation_uuid, rng_state_json, seed, adj_matrix_str, period(state), complete_bool, state_user_variables, agents_list)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e

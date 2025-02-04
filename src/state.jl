@@ -1,5 +1,4 @@
 
-
 mutable struct State{V, E, C}
     const agentgraph::AgentGraph{V, E, C}
     const preallocatedarrays::PreAllocatedArrays #NOTE: PreAllocatedArrays currently 2 players only
@@ -8,11 +7,13 @@ mutable struct State{V, E, C}
     const user_variables::UserVariables #allows for extra state variables if the user needs them
 
     const model_id::Union{Int, Nothing}
-    const prev_simulation_uuid::Union{String, Nothing}
+    prev_simulation_uuid::Union{String, Nothing} #needs to be updated when pushing to db periodically
     const random_seed::Union{Int, Nothing}
     
     rng_state_str::Union{String, Nothing} #NOTE: change to Xoshiro down the line? Updated before being pushed to db
 
+    # process_id::Int
+    timedout::Bool # used to determine whether a periodic push or a full exit is necessary
     # is_stopping_condition_test::Function
     # state::String # could update the state with something like "fractious", "equity", etc.. (would be too specific to this project)
 
@@ -32,12 +33,12 @@ mutable struct State{V, E, C}
 
         all_user_variables = merge(GamesOnNetworks.user_variables(parameters(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
         # is_stopping_condition_test = parameters(model).stoppingcondition(model)
-        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing, random_seed, nothing)
+        return new{V, E, C}(agentgraph, preallocatedarrays, Int128(0), false, all_user_variables, nothing, nothing, random_seed, nothing, false)
     end
     function State(model::Model, agentgraph::AgentGraph{V, E, C}, period::Integer, complete::Bool, user_variables::UserVariables, model_id::Int, prev_simulation_uuid::String, random_seed::Union{Int, Nothing}, rng_state_str::String) where {V, E, C}
         preallocatedarrays::PreAllocatedArrays = PreAllocatedArrays(model)
         all_user_variables = merge(GamesOnNetworks.user_variables(parameters(model)), user_variables) #user_variables defined here should go last so that values overwrite defaults if applicable!
-        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rng_state_str)
+        return new{V, E, C}(agentgraph, preallocatedarrays, period, complete, all_user_variables, model_id, prev_simulation_uuid, random_seed, rng_state_str, false)
     end
     # function Model(model::Model) #used to generate a new model with the same parameters (newly sampled random graph structure)
     #     return Model(game(model), parameters(model), graphmodel(model), startingcondition(model), stoppingcondition(model), id(model))
@@ -69,11 +70,11 @@ Increment the period of the simulation.
 increment_period!(state::State) = period!(state, period(state) + 1)
 
 """
-    complete(state::State)
+    complete!(state::State)
 
 Mark the state as 'completed'
 """
-complete(state::State) = setfield!(state, :complete, true)
+complete!(state::State) = setfield!(state, :complete, true)
 
 """
     iscomplete(state::State)
@@ -81,6 +82,13 @@ complete(state::State) = setfield!(state, :complete, true)
 Check if the state is 'completed'
 """
 iscomplete(state::State) = getfield(state, :complete)
+
+
+timedout!(state::State) = setfield(state, :timedout, true)
+istimedout(state::State) = getfield(state, :timedout)
+
+# prev_simulation_uuid(state::State) = getfield(state, :prev_simulation_uuid)
+prev_simulation_uuid!(state::State, uuid::String) = setfield!(state, :prev_simulation_uuid, uuid)
 
 
 # AgentGraph

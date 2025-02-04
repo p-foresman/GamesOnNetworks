@@ -6,8 +6,7 @@ module Simulate
 export simulate
 
 import
-    ..Database,
-    ..GamesOnNetworks.SETTINGS
+    ..Database
 
 using
     ..GamesOnNetworks,
@@ -23,9 +22,9 @@ include("simulation_functions.jl")
 Run a simulation using the model provided.
 """
 function simulate(model::Model; db_group_id::Union{Nothing, Integer} = nothing)
-    # if !isnothing(SETTINGS.checkpoint) SETTINGS.checkpoint.start_time = time() end #fine for now
-    return _simulate_model_barrier(model, SETTINGS.database, start_time=time())
-    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # if !isnothing(SETTINGS.checkpoint) GamesOnNetworks.SETTINGS.checkpoint.start_time = time() end #fine for now
+    return _simulate_model_barrier(model, GamesOnNetworks.DATABASE(), start_time=time())
+    # _simulate_distributed_barrier(model, GamesOnNetworks.DATABASE(), db_group_id=db_group_id)
 end
 
 
@@ -36,43 +35,43 @@ Run a simulation using a model stored in the configured database with the given 
 Note: a database must be configured to use this method and a model with the given model_id must exist in the configured database.
 """
 function simulate(model_id::Int; db_group_id::Union{Nothing, Integer} = nothing)
-    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    @assert !isnothing(GamesOnNetworks.DATABASE()) Database._nodb()
 
-    # timer = Timer(timeout(model, SETTINGS.database))
-    return _simulate_model_barrier(model_id, SETTINGS.database, start_time=time())
-    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # timer = Timer(timeout(model, GamesOnNetworks.DATABASE()))
+    return _simulate_model_barrier(model_id, GamesOnNetworks.DATABASE(), start_time=time())
+    # _simulate_distributed_barrier(model, GamesOnNetworks.DATABASE(), db_group_id=db_group_id)
 
     # if nworkers() > 1
-    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    #     return _simulate_distributed_barrier(model, GamesOnNetworks.DATABASE(), db_group_id=db_group_id)
     # else
-    #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
+    #     return _simulate(model, GamesOnNetworks.DATABASE(), periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
     # end
 end
 
 function simulate(model::Model, model_id::Int; db_group_id::Union{Nothing, Integer} = nothing) #NOTE: potentially dangerous method that could screw up database integrity
-    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model::Model, model_id::Int)' method without a database configured."
+    @assert !isnothing(GamesOnNetworks.DATABASE()) Database._nodb()
 
-    # timer = Timer(timeout(model, SETTINGS.database))
-    return _simulate_model_barrier(model, model_id, SETTINGS.database; db_group_id=db_group_id, start_time=time())
-    # _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    # timer = Timer(timeout(model, GamesOnNetworks.DATABASE()))
+    return _simulate_model_barrier(model, model_id, GamesOnNetworks.DATABASE(); db_group_id=db_group_id, start_time=time())
+    # _simulate_distributed_barrier(model, GamesOnNetworks.DATABASE(), db_group_id=db_group_id)
 
     # if nworkers() > 1
-    #     return _simulate_distributed_barrier(model, SETTINGS.database, db_group_id=db_group_id)
+    #     return _simulate_distributed_barrier(model, GamesOnNetworks.DATABASE(), db_group_id=db_group_id)
     # else
-    #     return _simulate(model, SETTINGS.database, periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
+    #     return _simulate(model, GamesOnNetworks.DATABASE(), periods_elapsed=periods_elapsed, db_group_id=db_group_id, prev_simulation_uuid=prev_simulation_uuid, distributed_uuid=distributed_uuid)
     # end
 end
 
 function simulate() #NOTE: probably don't want this method for simulation continuation
-    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate()' method without a database configured."
+    @assert !isnothing(GamesOnNetworks.DATABASE()) Database._nodb()
 
-    return _simulate_model_barrier(SETTINGS.database, start_time=time())
+    return _simulate_model_barrier(GamesOnNetworks.DATABASE(), start_time=time())
 end
 
 function simulate(simulation_uuid::String)
-    @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(simulation_uuid::String)' method without a database configured."
+    @assert !isnothing(GamesOnNetworks.DATABASE()) Database._nodb()
 
-    return _simulate_model_barrier(simulation_uuid, SETTINGS.database, start_time=time())
+    return _simulate_model_barrier(simulation_uuid, GamesOnNetworks.DATABASE(), start_time=time())
 end
 
 # function simulate(model_list::Vector{<:Model})
@@ -89,38 +88,38 @@ function _simulate_model_barrier(model::Model, ::Nothing; start_time::Float64, k
     return _simulate_distributed_barrier(model, start_time=start_time)
 end
 
-function _simulate_model_barrier(model::Model, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    model_id = Database.db_insert_model(db_info, model)
+function _simulate_model_barrier(model::Model, db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    model_id = Database.db_insert_model(Database.main(db_info), model)
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
-function _simulate_model_barrier(model_id::Int, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-    model = Database.db_reconstruct_model(db_info, model_id) #construct model associated with id
+function _simulate_model_barrier(model_id::Int, db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    # @assert !isnothing(GamesOnNetworks.DATABASE()) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    model = Database.db_reconstruct_model(Database.main(db_info), model_id) #construct model associated with id
     return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=start_time)
 end
 
 
-function _simulate_model_barrier(model::Model, model_id::Int, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    # @assert !isnothing(SETTINGS.database) "Cannot use 'simulate(model_id::Int)' method without a database configured."
-    Database.db_insert_model(db_info, model; model_id=model_id)
-    return _simulate_distributed_barrier(model, SETTINGS.database; model_id=model_id, db_group_id=db_group_id, start_time=time())
+function _simulate_model_barrier(model::Model, model_id::Int, db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    # @assert !isnothing(GamesOnNetworks.DATABASE()) "Cannot use 'simulate(model_id::Int)' method without a database configured."
+    Database.db_insert_model(Database.main(db_info), model; model_id=model_id)
+    return _simulate_distributed_barrier(model, db_info; model_id=model_id, db_group_id=db_group_id, start_time=time())
 end
 
 
-function _simulate_model_barrier(db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    simulation_uuids = Database.db_get_incomplete_simulation_uuids(SETTINGS.database)
+function _simulate_model_barrier(db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    simulation_uuids = Database.db_get_incomplete_simulation_uuids(Database.main(db_info))
     println(simulation_uuids)
     model_state_tuples = Vector{Tuple{Model, State}}()
     for simulation_uuid in simulation_uuids
-        push!(model_state_tuples, Database.db_reconstruct_simulation(SETTINGS.database, simulation_uuid))
+        push!(model_state_tuples, Database.db_reconstruct_simulation(Database.main(db_info), simulation_uuid))
     end
 
     return _simulate_distributed_barrier(model_state_tuples, db_info, start_time=start_time, db_group_id=db_group_id)
 end
 
-function _simulate_model_barrier(simulation_uuid::String, db_info::Database.DBInfo; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
-    model_state::Tuple{Model, State} = Database.db_reconstruct_simulation(SETTINGS.database, simulation_uuid)
+function _simulate_model_barrier(simulation_uuid::String, db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Nothing, Integer} = nothing)
+    model_state::Tuple{Model, State} = Database.db_reconstruct_simulation(Database.main(db_info), simulation_uuid)
 
     return _simulate_distributed_barrier(model_state, db_info, start_time=start_time, db_group_id=db_group_id)
 end
@@ -138,8 +137,8 @@ function _simulate_distributed_barrier(model::Model; start_time::Float64, kwargs
     #     # end
     #     [_simulate(model, start_time=start_time)]
     # end
-    num_procs = SETTINGS.procs #nworkers()
-    seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
+    num_procs = GamesOnNetworks.SETTINGS.procs #nworkers()
+    seed::Union{Int, Nothing} = GamesOnNetworks.SETTINGS.use_seed ? GamesOnNetworks.SETTINGS.random_seed : nothing
 
     stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s) from the user-defined closure
     result_channel = RemoteChannel(()->Channel{State}(num_procs))
@@ -153,7 +152,7 @@ function _simulate_distributed_barrier(model::Model; start_time::Float64, kwargs
         !isnothing(seed) && Random.seed!(seed)
 
 
-        _simulate(model, State(model, random_seed=seed), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        _simulate(model, State(model, random_seed=seed), nothing, stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
 
     num_received = 0
@@ -169,7 +168,7 @@ function _simulate_distributed_barrier(model::Model; start_time::Float64, kwargs
 
     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
         println("CHECKPOINT")
-        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+        !iszero(SETTINGS.timeout_exit_code) && exit(SETTINGS.timeout_exit_code)
     else
         println("DONE")
     end
@@ -178,7 +177,7 @@ function _simulate_distributed_barrier(model::Model; start_time::Float64, kwargs
 end
 
 
-function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInfo; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+function _simulate_distributed_barrier(model::Model, db_info::Database.DatabaseSettings; model_id::Int, start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # distributed_uuid = "$(displayname(game(model)))__$(displayname(graphmodel(model)))__$(displayname(parameters(model)))__Start=$(displayname(startingcondition(model)))__Stop=$(displayname(stoppingcondition(model)))__MODELID=$model_id"
 
     # db_info_list = [db_info]
@@ -199,15 +198,16 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInf
     #     # end
     #     [_simulate(model, State(model), db_info, model_id=model_id, db_group_id=db_group_id, distributed_uuid=distributed_uuid, start_time=start_time)] #db_id_tuple=db_id_tuple
     # end
-    seed::Union{Int, Nothing} = SETTINGS.use_seed ? SETTINGS.random_seed : nothing
-
+    seed::Union{Int, Nothing} = GamesOnNetworks.SETTINGS.use_seed ? GamesOnNetworks.SETTINGS.random_seed : nothing
+    db_push_period = db_info.push_period
 
     stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     
-    num_procs = SETTINGS.procs #nworkers()
+    num_procs = GamesOnNetworks.SETTINGS.procs #nworkers()
     println("num procs: $num_procs")
     result_channel = RemoteChannel(()->Channel{State}(num_procs))
 
+    #NOTE: try to get rid of this @distributed thing and utilize remote_do() like below?
     @distributed for process in 1:num_procs
         print("Process $process of $(num_procs)")
         flush(stdout)
@@ -217,7 +217,7 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInf
         # end
         !isnothing(seed) && Random.seed!(seed)
 
-        _simulate(model, State(model, random_seed=seed), stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        _simulate(model, State(model, random_seed=seed), db_push_period, stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
     num_received = 0
@@ -226,11 +226,20 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInf
     while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        Database.db_insert_simulation(db_info, result_state, model_id, db_group_id)
-        if GamesOnNetworks.iscomplete(result_state) num_completed += 1 end
-        push!(result_states, result_state)
-        num_received += 1
+        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        if GamesOnNetworks.iscomplete(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+            num_completed += 1
+        elseif GamesOnNetworks.istimedout(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+        else #if the state is not complete and it didn't time out, it'a a periodic push, so send back to simulate futher
+            GamesOnNetworks.prev_simulation_uuid!(result_state, simulation_uuid) #set the previously-pushed simulation_uuid to keep order
+            remote_do(_simulate, default_worker_pool(), model, result_state, db_push_period; stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        end
     end
+    
     # while received < nworkers()
     #     #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
     #     result_state = take!(result_channel)
@@ -247,8 +256,8 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInf
     # end
 
     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
-        println("CHECKPOINT")
-        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+        println("TIMED OUT AT $(GamesOnNetworks.SETTINGS.timeout)")
+        !iszero(GamesOnNetworks.SETTINGS.timeout_exit_code) && exit(GamesOnNetworks.SETTINGS.timeout_exit_code)
     else
         println("DONE")
     end
@@ -256,10 +265,11 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.SQLiteInf
     return result_states
 end
 
-function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{Model, State}}, db_info::Database.SQLiteInfo; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
+function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{Model, State}}, db_info::Database.DatabaseSettings; start_time::Float64, db_group_id::Union{Integer, Nothing} = nothing)
     # show(model)
     # flush(stdout) #flush buffer
 
+    db_push_period = db_info.push_period
 
     # stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
@@ -271,7 +281,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{Model, S
         #     state = State(model) #regenerate state so each process has a different graph
         # end
         stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
-        _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        _simulate(model_state[1], model_state[2], db_push_period, stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     end
     
 
@@ -279,18 +289,26 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{Model, S
     num_completed = 0
     result_states = Vector{State}()
     while num_received < num_incomplete
-        #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if GamesOnNetworks.iscomplete(result_state) num_completed += 1 end
-        push!(result_states, result_state)
-        num_received += 1
+        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        if GamesOnNetworks.iscomplete(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+            num_completed += 1
+        elseif GamesOnNetworks.istimedout(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+        else #if the state is not complete and it didn't time out, it'a a periodic push, so send back to simulate futher
+            GamesOnNetworks.prev_simulation_uuid!(result_state, simulation_uuid) #set the previously-pushed simulation_uuid to keep order
+            remote_do(_simulate, default_worker_pool(), model, result_state, db_push_period; stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        end
     end
 
 
     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
-        println("CHECKPOINT")
-        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+        println("TIMED OUT AT $(GamesOnNetworks.SETTINGS.timeout)")
+        !iszero(GamesOnNetworks.SETTINGS.timeout_exit_code) && exit(GamesOnNetworks.SETTINGS.timeout_exit_code)
     else
         println("DONE")
     end
@@ -304,7 +322,7 @@ function _simulate_distributed_barrier(model_state::Tuple{Model, State}, db_info
     # show(model)
     # flush(stdout) #flush buffer
 
-
+    db_push_period = db_info.push_period
     # stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model) #create the stopping condition function to be used in the simulation(s)
     result_channel = RemoteChannel(()->Channel{State}(nworkers()))
         # if !preserve_graph
@@ -312,25 +330,33 @@ function _simulate_distributed_barrier(model_state::Tuple{Model, State}, db_info
         # end
     stopping_condition_func = GamesOnNetworks.get_enclosed_stopping_condition_fn(model_state[1]) #create the stopping condition function to be used in the simulation(s)
 
-    _simulate(model_state[1], model_state[2], stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+    _simulate(model_state[1], model_state[2], db_push_period, stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
     
 
     num_received = 0
     num_completed = 0
     result_states = Vector{State}()
     while num_received < 1
-        #push to db if the simulation has num_completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
+        #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        Database.db_insert_simulation(db_info, result_state, result_state.model_id, db_group_id, result_state.prev_simulation_uuid)
-        if GamesOnNetworks.iscomplete(result_state) num_completed += 1 end
-        push!(result_states, result_state)
-        num_received += 1
+        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        if GamesOnNetworks.iscomplete(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+            num_completed += 1
+        elseif GamesOnNetworks.istimedout(result_state)
+            push!(result_states, result_state)
+            num_received += 1
+        else #if the state is not complete and it didn't time out, it'a a periodic push, so send back to simulate futher
+            GamesOnNetworks.prev_simulation_uuid!(result_state, simulation_uuid) #set the previously-pushed simulation_uuid to keep order
+            remote_do(_simulate, default_worker_pool(), model, result_state, db_push_period; stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
+        end
     end
 
 
     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
-        println("CHECKPOINT")
-        !iszero(SETTINGS.checkpoint_exit_code) && exit(SETTINGS.checkpoint_exit_code)
+        println("TIMED OUT AT $(GamesOnNetworks.SETTINGS.timeout)")
+        !iszero(GamesOnNetworks.SETTINGS.timeout_exit_code) && exit(GamesOnNetworks.SETTINGS.timeout_exit_code)
     else
         println("DONE")
     end
@@ -339,7 +365,7 @@ function _simulate_distributed_barrier(model_state::Tuple{Model, State}, db_info
 end
 
 
-function _simulate(model::Model, state::State; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+function _simulate(model::Model, state::State, ::Nothing; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
 
     #restore the rng state if the simulation is continued
     GamesOnNetworks.restore_rng_state(state)
@@ -356,13 +382,41 @@ function _simulate(model::Model, state::State; stopping_condition_reached::Funct
 
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer\
-    completed ? GamesOnNetworks.complete(state) : println("TIMED OUT AT $timeout")
+    completed && GamesOnNetworks.complete!(state)
     GamesOnNetworks.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
     return nothing
 end
 
+
+function _simulate(model::Model, state::State, db_push_period::Int; stopping_condition_reached::Function, channel::RemoteChannel{Channel{State}}, start_time::Float64, prev_simulation_uuid::Union{String, Nothing} = nothing)
+    @assert db_push_period > 0 "db_push_period must be > 0"
+    #restore the rng state if the simulation is continued
+    GamesOnNetworks.restore_rng_state(state)
+
+    timeout = GamesOnNetworks.SETTINGS.timeout
+    completed = true
+    while !stopping_condition_reached(state)
+        run_period!(model, state)
+        if (time() - start_time) > timeout
+            completed = false
+            GamesOnNetworks.timedout!(state)
+            break
+        elseif iszero(period(state) % db_push_period)
+            completed = false
+            break
+        end
+    end
+
+    println(" --> periods elapsed: $(period(state))")
+    flush(stdout) #flush buffer\
+    completed && GamesOnNetworks.complete!(state)
+    GamesOnNetworks.rng_state!(state) #update state's rng_state
+    put!(channel, state)
+
+    return nothing
+end
 
 
 

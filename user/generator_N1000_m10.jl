@@ -16,6 +16,6 @@ N1000_m10_generator = ModelGenerator(
         ErdosRenyiModelGenerator(λs),
         SmallWorldModelGenerator(λs, [0.0, 0.0001, 0.001, 0.01, 0.1, 0.5, 1.0]),
         ScaleFreeModelGenerator(λs, collect(2.0:0.05:5.0)),
-        StochasticBlockModelGenerator(λs, [2], [0.001, 0.01, 0.2, 0.4, 0.6, 0.8, 1.0], [0.01, 0.001])
+        StochasticBlockModelGenerator(λs, [2], [0.01, 0.2, 0.4, 0.6, 0.8, 1.0], [0.01])
     ]
 )

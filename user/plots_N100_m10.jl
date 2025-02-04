@@ -1,28 +1,49 @@
-using GamesOnNetworks, Plots, SQLite, DataFrames, ColorSchemes
-
-#quick and dirty way to add graph type
-function add_graph_type(db_filepath)
-    graph_types = ["complete", "er", "sf", "sw", "sbm"]
-    db = SQLite.DB("$db_filepath")
-    SQLite.busy_timeout(db, 3000)
-    DBInterface.execute(db, "ALTER TABLE graphs
-                        RENAME COLUMN graph_type TO graph";)
-    DBInterface.execute(db, "ALTER TABLE graphs
-                        ADD graph_type TEXT NOT NULL DEFAULT ``";)
-    query = DBInterface.execute(db, "SELECT COUNT(*) FROM graphs";)
-    df = DataFrame(query)
-    for row in 1:df[1, "COUNT(*)"]
-        query = DBInterface.execute(db, "SELECT graph_params FROM graphs WHERE graph_id == $row";)
-        params = DataFrame(query)[1, "graph_params"]
-        for graph_type in graph_types
-            if occursin(graph_type, params)
-                DBInterface.execute(db, "UPDATE graphs SET graph_type = '$graph_type' WHERE graph_id = $row";)
-            end
-        end
-    end
-end
+using GamesOnNetworks
 
 colors = [Analyze.palette(:default)[11] Analyze.palette(:default)[2] Analyze.palette(:default)[2] Analyze.palette(:default)[12] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[14]]
+
+
+
+
+#---------------------------------
+# AEY.sqlite plots
+#----------------------------------
+
+qp_games = Database.Query_games(["Bargaining Game"])
+qp_parameters_1 = Database.Query_parameters([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], [10], [0.1], ["fractious_starting_condition"], ["equity_stopping_condition"])
+qp_parameters_2 = Database.Query_parameters([10, 15, 20, 25, 30, 35, 40, 45, 50], [10], [0.05], ["fractious_starting_condition"], ["equity_stopping_condition"])
+qp_parameters_3 = Database.Query_parameters([10, 12, 14, 16, 18, 20], [10], [0.02], ["fractious_starting_condition"], ["equity_stopping_condition"])
+qp_graphmodels = Database.Query_graphmodels([Database.Query_graphmodels_CompleteModel()])
+qp_simulations_1 = Database.Query_simulations(qp_games, qp_parameters_1, qp_graphmodels, complete=true, sample_size=20)
+qp_simulations_2 = Database.Query_simulations(qp_games, qp_parameters_2, qp_graphmodels, complete=true, sample_size=20)
+qp_simulations_3 = Database.Query_simulations(qp_games, qp_parameters_3, qp_graphmodels, complete=true, sample_size=20)
+
+Analyze.single_parameter_sweep(:number_agents, qp_simulations_1, qp_simulations_2, qp_simulations_3, 
+                                conf_intervals=true,
+                                legend_labels=["ϵ = 10%", "ϵ = 5%", "ϵ = 2%"],
+                                # colors=[colors[1], colors[2], colors[7]],
+
+                                xlabel="Population",
+                                xlims = (0,110),
+                                xticks = 0:10:110,
+                                ylabel="Transition Time",
+                                yscale = :log10,
+                                legend_position = :topleft,
+                                size=(1300, 700),
+                                margin=10Analyze.Plots.mm,
+                                title="Transition Time vs Population",
+                                thickness_scaling=1.2,
+                                filename="aey_population_sweep_replication"
+)
+
+
+
+
+
+
+
+
+
 
 # main heatmap
 main_heatmap_plot = Analyze.noise_vs_structure_heatmap(;

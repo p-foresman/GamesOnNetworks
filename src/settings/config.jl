@@ -23,10 +23,7 @@ const user_toml_path() = joinpath(project_dirpath(), "GamesOnNetworks.toml")
 # db_type(database::Database.SQLiteInfo) = "sqlite"
 # db_type(database::Database.PostgresInfo) = "postgres"
 
-struct Checkpoint
-    database::Database.DBInfo #if SETTINGS.database is nothing, this doesn't matter. otherwise, this is used to set an optional alternative database to checkpoint into
-    # timeout::Int
-end
+
 
 struct Settings
     data::Dict{String, Any} #Base.ImmutableDict #contains the whole parsed .toml config
@@ -35,17 +32,26 @@ struct Settings
     # use_distributed::Bool
     procs::Int
     timeout::Int
-    database::Union{Database.DBInfo, Nothing} #if nothing, not using database
-    query::Vector{<:Database.DBInfo} #will be empty if no databse selected
-    checkpoint::Bool
-    checkpoint_exit_code::Int
+    timeout_exit_code::Int
+    database::Union{Database.DatabaseSettings, Nothing} #if nothing, not using database
+    # database::Union{Database.DBInfo, Nothing} #if nothing, not using database
+    # push_period::Union{Int, Nothing}
+    # query::Vector{<:Database.DBInfo} #will be empty if no databse selected
+    # checkpoint::Bool
     figure_dirpath::String
     # data_script::Union{Nothing, String}
 end
 
-# USE_DB() = !isnothing(GamesOnNetworks.SETTINGS.database)
-# PUSH_DB() = GamesOnNetworks.SETTINGS.database
-# QUERY_DB() = GamesOnNetworks.SETTINGS.query
+DATABASE(settings::Settings) = getfield(settings, :database)
+DATABASE() = DATABASE(GamesOnNetworks.SETTINGS)
+USE_DB(settings::Settings) = !isnothing(DATABASE(settings))
+USE_DB() = USE_DB(GamesOnNetworks.SETTINGS)
+MAIN_DB(settings::Settings) = Database.main(DATABASE(settings))
+MAIN_DB() = MAIN_DB(GamesOnNetworks.SETTINGS)
+ATTACHED_DBS(settings::Settings) = Database.attached(DATABASE(settings))
+ATTACHED_DBS() = ATTACHED_DBS(GamesOnNetworks.SETTINGS)
+DB_TYPE(settings::Settings) = Database.type(DATABASE(settings))
+DB_TYPE() = DB_TYPE(GamesOnNetworks.SETTINGS)
 
 function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "use_seed") "config file must have a 'use_seed' variable"
@@ -68,6 +74,9 @@ function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "timeout") "config file must have a 'timeout' variable"
     timeout = settings["timeout"]
     @assert timeout isa Int && timeout >= 0 "'timeout' value must be a positive Int (>=1) OR 0 (denoting no timeout)"
+    @assert haskey(settings, "timeout_exit_code") "config file must have a 'timeout_exit_code' positive integer variable"
+    timeout_exit_code = settings["timeout_exit_code"]
+    @assert timeout_exit_code isa Int && timeout_exit_code >= 0 "'timeout_exit_code' value must be a positive Int (>=1) OR 0 (denoting no exit)"
 
     @assert haskey(settings, "figure_dirpath") "config file must have a 'figure_dirpath' variable"
     figure_dirpath = settings["figure_dirpath"]
@@ -81,13 +90,15 @@ function Settings(settings::Dict{String, Any})
     selected_db = databases["selected"]
     @assert selected_db isa String "the denoted default database must be a String (can be an empty string if not using a database)"
     
+    @assert haskey(databases, "push_period") "config file must have a 'push_period' variable in the [databases] table set to an Integer (can be 0 for no periodic push)"
+    push_period = databases["push_period"]
+    @assert push_period isa Int "'push_period' must be an Integer (can be 0 for no periodic push)"
     
+    #NOTE: should these be under 'databases'? (exit_code probably shouldn't!)
     @assert haskey(databases, "checkpoint") "config file must have a 'checkpoint' boolean variable. This field's value only matters if a database is selected"
     checkpoint = databases["checkpoint"]
     @assert checkpoint isa Bool "'checkpoint' value must be a Bool"
-    @assert haskey(databases, "checkpoint_exit_code") "config file must have a 'checkpoint_exit_code' positive integer variable"
-    checkpoint_exit_code = databases["checkpoint_exit_code"]
-    @assert checkpoint_exit_code isa Int && checkpoint_exit_code >= 0 "'checkpoint_exit_code' value must be a positive Int (>=1) OR 0 (denoting no exit)"
+
     # @assert haskey(databases, "checkpoint_database") "config file must have a 'checkpoint_database' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string to use main selected database"
 
     # @assert haskey(databases, "data_script") "config file must have a 'data_script' variable in the [databases] table specifying the path to a data loading script to be loaded on database initialization OR an empty string if no data loading is required"
@@ -100,26 +111,25 @@ function Settings(settings::Dict{String, Any})
     #     data_script = nothing
     # end
 
-    @assert haskey(databases, "query") "config file must have a 'query' variable containing an array of databases to query in the [databases] table using dot notation of the form \"db_type.db_name\". If array is empty, the 'selected' database will be queried"
-    query_dbs = databases["query"]
-    @assert query_dbs isa Vector "'the 'query' variable must be a Vector"
-    @assert all(q->q isa String, query_dbs) "the 'query' variable must be an array of Strings using dot notation of the form \"db_type.db_name\" OR an empty array to query selected database"
+    #NOTE: change error message
+    @assert haskey(databases, "attached") "config file must have an 'attached' variable containing an array of databases to attach to the selected database while performing queries in the [databases] table using dot notation of the form \"db_type.db_name\". If array is empty, the 'selected' database will be queried"
+    attached_dbs = databases["attached"]
+    @assert attached_dbs isa Vector "'the 'attached' variable must be a Vector"
+    @assert all(q->q isa String, attached_dbs) "the 'attached' variable must be an array of Strings using dot notation of the form \"db_type.db_name\" OR an empty array"
 
     #if selected_db exists, must validate selected database. Otherwise, not using database
     database = nothing #selected database
-    query = Vector{Database.DBInfo}()
     # checkpoint = nothing #checkpoint database
     if !isempty(selected_db)
-        database = validate_database(databases, "selected", selected_db)
-        query = Vector{typeof(database)}()
-        # push!(query, database)
-        for query_db in query_dbs
-            # if query_db != selected_db
-            push!(query, validate_database(databases, "query", query_db))
+        selected = validate_database(databases, "selected", selected_db)
+        attached = Vector{typeof(selected)}() #will ensure that all dbs in query are the same type
+        for attached_db in attached_dbs
+            # if attach_db != selected_db
+            push!(attach, validate_database(databases, "attached", attached_db))
             # end
         end
 
-
+        database = Database.DatabaseSettings{typeof(selected)}(selected, attached, iszero(push_period) ? nothing : push_period, checkpoint)
         # if databases["checkpoint"]
         #     checkpoint_db = databases["checkpoint_database"]
         #     if isempty(checkpoint_db)
@@ -130,7 +140,7 @@ function Settings(settings::Dict{String, Any})
         # end
     end
 
-    return Settings(settings, use_seed, random_seed, procs, timeout, database, query, checkpoint, checkpoint_exit_code, figure_dirpath)
+    return Settings(settings, use_seed, random_seed, procs, timeout, timeout_exit_code, database, figure_dirpath)
 end
 
 function Settings(toml_path::String)
@@ -210,30 +220,28 @@ function configure(toml_path::String="")
 
 
     if myid() == 1
-        if !isnothing(SETTINGS.database)
+        if USE_DB()
             #initialize the database
-            print("initializing databse [$(Database.type(SETTINGS.database)).$(SETTINGS.database.name)]... ")
+            print("initializing databse [$(DB_TYPE()).$(MAIN_DB().name)]... ")
             # out = stdout
             # redirect_stdout(devnull)
-            Database.db_init(SETTINGS.database) #;data_script=SETTINGS.data_script) #suppress the stdout stream
+            Database.db_init(MAIN_DB()) #;data_script=SETTINGS.data_script) #suppress the stdout stream
             #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
-            # include()
-            if SETTINGS.database isa Database.SQLiteInfo
-                println("SQLite database file initialized at $(SETTINGS.database.filepath)")
+            if MAIN_DB() isa Database.SQLiteInfo
+                println("SQLite database file initialized at $(MAIN_DB().filepath)")
             else
                 println("PostgreSQL database initialized")
             end
 
             #NOTE: really should make sure that exist with the right setup, not initialize new ones
-            for query_db in SETTINGS.query
-                print("verifying query databse [$(Database.type(query_db)).$(query_db.name)]... ")
+            for attached_db in ATTACHED_DBS()
+                print("verifying attached databse [$(Database.type(attached_db)).$(attached_db.name)]... ")
                 # out = stdout
                 # redirect_stdout(devnull)
-                Database.db_init(query_db) #;data_script=SETTINGS.data_script) #suppress the stdout stream
+                Database.db_init(attached_db) #;data_script=SETTINGS.data_script) #suppress the stdout stream
                 #NOTE: add a "state" database table which stores db info like 'initialized' (if initialized is true, dont need to rerun initialization)
-                # include()
-                if SETTINGS.database isa Database.SQLiteInfo
-                    println("SQLite database file verified at $(query_db)")
+                if MAIN_DB() isa Database.SQLiteInfo #NOTE: is this necessary?
+                    println("SQLite database file verified at $(attached_db)")
                 else
                     println("PostgreSQL database verified")
                 end
