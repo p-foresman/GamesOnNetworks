@@ -1,5 +1,5 @@
 using GamesOnNetworks
-
+# GamesOnNetworks.configure("plotting.toml")
 colors = [Analyze.palette(:default)[11] Analyze.palette(:default)[2] Analyze.palette(:default)[2] Analyze.palette(:default)[12] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[14]]
 
 
@@ -9,14 +9,24 @@ colors = [Analyze.palette(:default)[11] Analyze.palette(:default)[2] Analyze.pal
 # AEY.sqlite plots
 #----------------------------------
 
+
 qp_games = Database.Query_games(["Bargaining Game"])
-qp_parameters_1 = Database.Query_parameters([10, 20, 30, 40, 50, 60, 70, 80, 90, 100], [10], [0.1], ["fractious_starting_condition"], ["equity_stopping_condition"])
+qp_parameters_1 = Database.Query_parameters([10], [10], [0.1], ["fractious_starting_condition"], ["partially_reinforced_equity_stopping_condition"])
 qp_parameters_2 = Database.Query_parameters([10, 15, 20, 25, 30, 35, 40, 45, 50], [10], [0.05], ["fractious_starting_condition"], ["equity_stopping_condition"])
 qp_parameters_3 = Database.Query_parameters([10, 12, 14, 16, 18, 20], [10], [0.02], ["fractious_starting_condition"], ["equity_stopping_condition"])
-qp_graphmodels = Database.Query_graphmodels([Database.Query_graphmodels_CompleteModel()])
+qp_graphmodels = Database.Query_graphmodels([Database.Query_graphmodels_CompleteModel(), Database.Query_graphmodels_ErdosRenyiModel([10])])
 qp_simulations_1 = Database.Query_simulations(qp_games, qp_parameters_1, qp_graphmodels, complete=true, sample_size=20)
 qp_simulations_2 = Database.Query_simulations(qp_games, qp_parameters_2, qp_graphmodels, complete=true, sample_size=20)
 qp_simulations_3 = Database.Query_simulations(qp_games, qp_parameters_3, qp_graphmodels, complete=true, sample_size=20)
+
+qp_parameters = Database.Query_parameters([10], [10], [0.1], ["fractious_starting_condition"], ["equity_stopping_condition"])
+qp_graphmodels = Database.Query_graphmodels([Database.Query_graphmodels_CompleteModel()])
+qp_models = Database.Query_models(Database.Query_games(["Bargaining Game"]),
+                                  Database.Query_parameters([10], [10], [0.1], ["fractious_starting_condition"], ["equity_stopping_condition"]),
+                                  Database.Query_graphmodels([Database.Query_graphmodels_CompleteModel()]))
+q = Database.db_query(qp_models)
+q = Database.db_query(Database.Query_simulations(qp_models, complete=true, sample_size=1))
+
 
 Analyze.single_parameter_sweep(:number_agents, qp_simulations_1, qp_simulations_2, qp_simulations_3, 
                                 conf_intervals=true,

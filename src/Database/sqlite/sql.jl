@@ -65,12 +65,13 @@ end
 
 function db_query(db_info::DatabaseSettings{SQLiteInfo}, sql::SQL)
     # @assert !isempty(query_dbs) "query_dbs Vector is empty"                                                           
-    main = DB(main(db_info))
-    for db in attached(db_info)
-        db_execute(main, "ATTACH DATABASE '$(db.filepath)' as $(db.name);")
+    main_db = DB(main(db_info))
+    for attached_db in attached(db_info)
+        db_execute(main_db, "ATTACH DATABASE '$(attached_db.filepath)' as $(attached_db.name);")
     end
-    query = db_query(main, sql)
-    db_close(main)
+    println(sql)
+    query = db_query(main_db, sql)
+    db_close(main_db)
     return query
 end
 
@@ -94,7 +95,7 @@ db_query(db_info::Union{SQLiteInfo, Vector{SQLiteInfo}, DatabaseSettings{SQLiteI
 
 Query the sqlite database provided in an SQLiteInfo instance with the Query_simulations instance provided. Will throw an error if the database contains insufficient samples for any requested models. Returns a DataFrame containing results.
 """
-function db_query(db_info::Union{SQLiteInfo, Vector{SQLiteInfo}, DatabaseSettings{SQLiteInfo}}, qp::Query_simulations; ensure_samples::Bool=true)                                                                    
+function db_query(db_info::Union{SQLiteInfo, Vector{SQLiteInfo}, DatabaseSettings{SQLiteInfo}}, qp::Query_simulations; ensure_samples::Bool=true)      
     query = db_query(db_info, sql(db_info, qp))
     ensure_samples && _ensure_samples(query, qp)
     return query

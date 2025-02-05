@@ -17,7 +17,7 @@ Plot the transition time vs a single parameter.
 sweep_parameter options - :number_agents, :memory_length, :error
 """
 function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_simulations...;
-                            db_info::Database.DBInfo=SETTINGS.database,
+                            db_info::Union{Database.DatabaseSettings, Database.DBInfo}=DATABASE(),
                             conf_intervals::Bool = false,
                             conf_level::AbstractFloat = 0.95,
                             bootstrap_samples::Integer = 1000,

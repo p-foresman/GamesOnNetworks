@@ -27,13 +27,12 @@ end
 
 #NOTE: fix to be like models
 function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::QueryParams) #for games, parameters, and graphmodels
-    @assert !isempty(db_info) "db_info Vector is empty"                                                           
-    filter_str = sql_filter(MAIN_DB(db_info), qp) #doesnt matter which db is passed, just used for multiple dispatch
+    filter_str = sql_filter(main(db_info), qp) #doesnt matter which db is passed, just used for multiple dispatch
     if !isempty(filter_str)
         filter_str = " WHERE " * filter_str
     end
     union_str = ""
-    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
+    for db in attached(db_info)
         union_str *= " UNION ALL SELECT * FROM $(db.name).$(table(qp))$filter_str"
     end
     return "SELECT DISTINCT * FROM (SELECT * FROM $(table(qp))$filter_str$union_str)" #removes duplicates when querying multiple databases
@@ -195,13 +194,13 @@ function sql(db_info::Vector{SQLiteInfo}, qp::Query_models)
 end
 
 function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::Query_models)
-    filter_str = sql_filter(db_info[1], qp)
+    filter_str = sql_filter(main(db_info), qp)
     union_str = ""
-    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
+    for db in attached(db_info)
         union_str *= " UNION ALL " * sql(db, qp, filter_str, db.name)
     end
-    # println("SELECT DISTINCT * FROM (" * sql(db_info[1], qp, filter_str, "main") * union_str * ")")
-    return "SELECT DISTINCT * FROM (" * sql(GamesOnNetworks.MAIN_DB(db_info), qp, filter_str, "main") * union_str * ")"
+    # return "SELECT DISTINCT * FROM (" * sql(main(db_info), qp, filter_str, "main") * union_str * ")" #NOTE: this causes massive slowdown with big datasets, hopefully it's not needed
+    return sql(main(db_info), qp, filter_str, "main") * union_str #* ")" #"SELECT DISTINCT * FROM (" * 
 end
 
 
@@ -241,9 +240,10 @@ function sql(::SQLiteInfo, qp::Query_simulations, db_name::String) #NOTE: defaul
             simulations.complete
         FROM $db_name.simulations
         INNER JOIN CTE_models ON $db_name.simulations.model_id = CTE_models.model_id
-        $(!isnothing(qp.complete) ? "WHERE complete = $(Int(qp.complete))" : "")
+        WHERE CTE_models.db_name = '$db_name'
+        $(!isnothing(qp.complete) ? "AND complete = $(Int(qp.complete))" : "")
     )
-    $(!iszero(qp.sample_size) ? "WHERE RowNum <= $(qp.sample_size)" : "");
+    $(!iszero(qp.sample_size) ? "WHERE RowNum <= $(qp.sample_size)" : "")
     """
 end
 #NOTE: need to union all in the simulations sql, otherwise different models with the same id will cause issues!
@@ -260,7 +260,7 @@ function sql(db_info::Vector{SQLiteInfo}, qp::Query_simulations)
     for db in db_info[2:end]
         union_str *= " UNION ALL " * sql(db, qp, db.name)
     end
-    println(cte_models_str * sql(db_info[1], qp) * union_str)
+    # println(cte_models_str * sql(db_info[1], qp) * union_str)
     return cte_models_str * sql(db_info[1], qp) * union_str
 end
 
@@ -268,9 +268,8 @@ function sql(db_info::DatabaseSettings{SQLiteInfo}, qp::Query_simulations)
     # @assert !isempty(db_info) "db_info Vector is empty"
     cte_models_str = "WITH CTE_models AS (" * sql(db_info, qp.model) * ") "                                  
     union_str = ""
-    for db in GamesOnNetworks.ATTACHED_DBS(db_info)
+    for db in attached(db_info)
         union_str *= " UNION ALL " * sql(db, qp, db.name)
     end
-    # println(cte_models_str * sql(db_info[1], qp) * union_str)
-    return cte_models_str * sql(GamesOnNetworks.MAIN_DB(db_info), qp, "main") * union_str
+    return cte_models_str * sql(main(db_info), qp, "main") * union_str
 end

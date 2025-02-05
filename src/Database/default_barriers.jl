@@ -50,13 +50,10 @@ db_query(::Nothing, ::SQL) = _nodb()
 
 Query the configured database using the QueryParams provided. Returns a DataFrame containing results.
 """
-db_query(qp::QueryParams) = db_query(sql(qp))
+db_query(qp::QueryParams; kwargs...) = db_query(GamesOnNetworks.DATABASE(), qp; kwargs...)
+db_query(::Nothing, ::QueryParams) = _nodb()
 
-function db_query(qp::Query_simulations; ensure_samples::Bool=false)
-    query = db_query(sql(qp))
-    ensure_samples && _ensure_samples(query, qp)
-    return query
-end
+#db_query(qp::Query_simulations; ensure_samples::Bool=false) = db_query(GamesOnNetworks.DATABASE(), qp; ensure_samples=ensure_samples)
 
 # db_begin_transaction() = db_begin_transaction(GamesOnNetworks.SETTINGS.database)
 # db_close(db::SQLiteDB) = SQLite.close(db)

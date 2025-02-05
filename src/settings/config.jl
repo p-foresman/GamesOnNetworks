@@ -125,7 +125,7 @@ function Settings(settings::Dict{String, Any})
         attached = Vector{typeof(selected)}() #will ensure that all dbs in query are the same type
         for attached_db in attached_dbs
             # if attach_db != selected_db
-            push!(attach, validate_database(databases, "attached", attached_db))
+            push!(attached, validate_database(databases, "attached", attached_db))
             # end
         end
 
