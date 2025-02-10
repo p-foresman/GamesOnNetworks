@@ -9,10 +9,10 @@ abstract type QueryParams end
 
 struct Query_games <: QueryParams
     name::Vector{String}
-
-    Query_games(name::Vector{String}) = new(name) #doesnt work
 end
 Query_games() = Query_games(Vector{String}())
+Query_games(name::String, others::String...) = new(Vector{String}([name, others...]))
+
 size(qp::Query_games) = length(qp.name) #NOTE: rename to qsize?
 
 
@@ -24,13 +24,16 @@ struct Query_parameters <: QueryParams
     stopping_condition::Vector{String}
 end
 
-function Query_parameters(number_agents::Vector{<:Integer}=[],
-    memory_length::Vector{<:Integer}=[],
-    error::Vector{<:Real}=[],
-    starting_condition::Vector{String}=[],
-    stopping_condition::Vector{String}=[]
-) 
-    Query_parameters(number_agents, memory_length, error, starting_condition, stopping_condition)
+function Query_parameters(number_agents::Union{Integer, Vector{<:Integer}}=Vector{Int}(),
+    memory_length::Union{Integer, Vector{<:Integer}}=Vector{Int}(),
+    error::Union{Real, Vector{<:Real}}=Vector{Float64}(),
+    starting_condition::Union{String, Vector{String}}=Vector{String}(),
+    stopping_condition::Union{String, Vector{String}}=Vector{String}()
+)
+    if starting_condition isa String starting_condition = Vector{String}([starting_condition]) end
+    if stopping_condition isa String stopping_condition = Vector{String}([stopping_condition]) end
+
+    return Query_parameters([number_agents...], [memory_length...], [error...], starting_condition, stopping_condition)
 end
 
 size(qp::Query_parameters) = GamesOnNetworks.volume(GamesOnNetworks.fieldvals(qp)...)
@@ -43,21 +46,46 @@ size(::Query_graphmodels_CompleteModel) = 1
 struct Query_graphmodels_ErdosRenyiModel <: Query_GraphModel
     λ::Vector{Float64}
 end
+Query_graphmodels_ErdosRenyiModel() = Query_graphmodels_ErdosRenyiModel(Vector{Float64}())
+Query_graphmodels_ErdosRenyiModel(λ::Real, others::Real...) = Query_graphmodels_ErdosRenyiModel(Vector{Float64}([λ, others...]))
 
 struct Query_graphmodels_SmallWorldModel <: Query_GraphModel
     λ::Vector{Float64}
     β::Vector{Float64}
+
+    function Query_graphmodels_SmallWorldModel(λ::Union{Real, Vector{<:Real}}=Vector{Float64}(),
+                                               β::Union{Real, Vector{<:Real}}=Vector{Float64}())
+
+        return new([λ...], [β...])
+    end
 end
+
 struct Query_graphmodels_ScaleFreeModel <: Query_GraphModel
     λ::Vector{Float64}
     α::Vector{Float64}
+
+    function Query_graphmodels_ScaleFreeModel(λ::Union{Real, Vector{<:Real}}=Vector{Float64}(),
+                                              α::Union{Real, Vector{<:Real}}=Vector{Float64}())
+
+        return new([λ...], [α...])
+    end
 end
+
 struct Query_graphmodels_StochasticBlockModel <: Query_GraphModel
     λ::Vector{Float64}
     blocks::Vector{Int}
     p_in::Vector{Float64}
     p_out::Vector{Float64}
+
+    function Query_graphmodels_StochasticBlockModel(λ::Union{Real, Vector{<:Real}}=Vector{Float64}(),
+                                                    blocks::Union{Integer, Vector{<:Integer}}=Vector{Int}(),
+                                                    p_in::Union{Real, Vector{<:Real}}=Vector{Float64}(),
+                                                    p_out::Union{Real, Vector{<:Real}}=Vector{Float64}())
+
+        return new([λ...], [blocks...], [p_in...], [p_out...])
+    end
 end
+
 
 type(::T) where {T<:Query_GraphModel} = split(string(T), "_")[3]
 size(qp::Query_GraphModel) = GamesOnNetworks.volume(GamesOnNetworks.fieldvals(qp)...)
@@ -66,6 +94,7 @@ size(qp::Query_GraphModel) = GamesOnNetworks.volume(GamesOnNetworks.fieldvals(qp
 struct Query_graphmodels <: QueryParams
     graphmodels::Vector{<:Query_GraphModel}
 end
+Query_graphmodels(graphmodel::Query_GraphModel, others::Query_GraphModel...) = Query_graphmodels(Vector([graphmodel, others...]))
 
 size(qp::Query_graphmodels) = sum([size(gm) for gm in qp.graphmodels])
 
@@ -156,14 +185,21 @@ end
 
 function _ensure_samples(df::DataFrame, qp::Query_simulations)
     #check to ensure all samples are present
-    model_counts_df = combine(groupby(df, :model_id), nrow=>:count)
-    insufficient_samples_str = ""
-    for row in eachrow(model_counts_df)
-        if row[:count] < qp.sample_size
-            insufficient_samples_str *= "only $(row[:count]) samples for model $(row[:model_id])\n"
-        end
-    end
-    !isempty(insufficient_samples_str) && throw(ErrorException("Insufficient samples for the following:\n" * insufficient_samples_str))
+    model_counts_df = combine(groupby(df, [:number_agents,
+                                          :memory_length,
+                                          :error,
+                                          :starting_condition,
+                                          :stopping_condition,
+                                          :graphmodel_type,
+                                          :λ,
+                                          :β,
+                                          :α,
+                                          :blocks,
+                                          :p_in,
+                                          :p_out]), nrow=>:count)
+
+    insufficient_samples_models = filter(:count => count -> count < qp.sample_size, model_counts_df)
+    !isempty(insufficient_samples_models) && throw(ErrorException("Insufficient samples for the following:\n" * string(insufficient_samples_models)))
 
     #if a model has 0 samples, it won't show up in dataframe (it wasn't simulated)
     if nrow(model_counts_df) < Database.size(qp)

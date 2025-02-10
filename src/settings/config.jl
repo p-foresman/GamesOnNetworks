@@ -42,16 +42,32 @@ struct Settings
     # data_script::Union{Nothing, String}
 end
 
+_nosettings() = throw("GamesOnNetworks.SETTINGS is not congigured!") #this should never really happen
+
 DATABASE(settings::Settings) = getfield(settings, :database)
+DATABASE(::Nothing) = _nosettings()
 DATABASE() = DATABASE(GamesOnNetworks.SETTINGS)
+
 USE_DB(settings::Settings) = !isnothing(DATABASE(settings))
+USE_DB(::Nothing) = _nosettings()
 USE_DB() = USE_DB(GamesOnNetworks.SETTINGS)
+
 MAIN_DB(settings::Settings) = Database.main(DATABASE(settings))
+MAIN_DB(::Nothing) = _nosettings()
 MAIN_DB() = MAIN_DB(GamesOnNetworks.SETTINGS)
+
 ATTACHED_DBS(settings::Settings) = Database.attached(DATABASE(settings))
+ATTACHED_DBS(::Nothing) = _nosettings()
 ATTACHED_DBS() = ATTACHED_DBS(GamesOnNetworks.SETTINGS)
+
 DB_TYPE(settings::Settings) = Database.type(DATABASE(settings))
+DB_TYPE(::Nothing) = _nosettings()
 DB_TYPE() = DB_TYPE(GamesOnNetworks.SETTINGS)
+
+FIGURE_DIRPATH(settings::Settings) = getfield(settings, :figure_dirpath)
+FIGURE_DIRPATH(::Nothing) = _nosettings()
+FIGURE_DIRPATH() = FIGURE_DIRPATH(GamesOnNetworks.SETTINGS)
+
 
 function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "use_seed") "config file must have a 'use_seed' variable"

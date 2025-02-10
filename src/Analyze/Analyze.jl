@@ -6,7 +6,7 @@ export
 
 import
     ..Database,
-    ..GamesOnNetworks.DATABASE,
+    ..GamesOnNetworks,
     ..GraphsExt
 
 using

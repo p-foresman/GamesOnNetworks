@@ -1,5 +1,6 @@
 make_label(val) = join(uppercasefirst.(split(string(val), "_")), " ")
 
+make_figure(plt::Plots.Plot, filename::String, figure_dirpath::String=GamesOnNetworks.FIGURE_DIRPATH()) = png(plt, normpath(joinpath(figure_dirpath, filename)))
 
 """
     single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_simulations...;
@@ -17,20 +18,22 @@ Plot the transition time vs a single parameter.
 sweep_parameter options - :number_agents, :memory_length, :error
 """
 function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_simulations...;
-                            db_info::Union{Database.DatabaseSettings, Database.DBInfo}=DATABASE(),
+                            db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
+                            statistic::Symbol=:mean,
                             conf_intervals::Bool = false,
                             conf_level::AbstractFloat = 0.95,
                             bootstrap_samples::Integer = 1000,
                             legend_labels::Vector = [],
                             colors::Vector = [],
                             filename::String="",
-                            sim_plot::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
+                            figure_dirpath::String="",
+                            plt::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
                             plot_kwargs...
     )
 
     #validation
     @assert sweep_parameter in (:number_agents, :memory_length, :error) "sweep_parameter must be :number_agents, :memory_length, :error"
-    all_params = [:graphmodel_id, :number_agents, :memory_length, :error, :starting_condition, :stopping_condition] #NOTE: might need to be :graphmodel_type here instead?
+    all_params = [:graphmodel_display, :number_agents, :memory_length, :error, :starting_condition, :stopping_condition] #NOTE: might need to be :graphmodel_type here instead?
 
     !isempty(legend_labels) && @assert length(legend_labels) == length(qps) "legend_labels must have one entry for each QueryParams instance" #NOTE: vague
     if !isempty(colors)
@@ -41,8 +44,8 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
     end
 
     #create plot
-    if isnothing(sim_plot)
-        sim_plot = plot(;xlabel=make_label(sweep_parameter),
+    if isnothing(plt)
+        plt = plot(;xlabel=make_label(sweep_parameter),
                         ylabel="Transition Time",
                         plot_kwargs...
         )
@@ -60,11 +63,19 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
             average_transition_time = Vector{Float64}([])
 
             conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-            for population_group in groupby(query_group, sweep_parameter, sort=true)
-                confidence_interval = confint(bootstrap(mean, population_group.period, BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+            for sweep_group in groupby(query_group, sweep_parameter, sort=true)
+                periods = sweep_group.period
+                # N = sweep_group.number_agents[1]
+                # λ = sweep_group.λ[1]
+                # println(λ)
+                # println(sweep_group.period)
+                # if !ismissing(λ)
+                #     periods = sweep_group.period .* GraphsExt.edge_density(N, λ) .* N ./ 2
+                # end
+                confidence_interval = confint(bootstrap(getfield(Statistics, statistic), periods , BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
 
                 push!(average_transition_time, confidence_interval[1]) #first element is the mean
-                println(conf_interval_vals)
+                # println(conf_interval_vals)
                 push!(conf_interval_vals[1], confidence_interval[2])
                 push!(conf_interval_vals[2], confidence_interval[3])
             end
@@ -74,8 +85,8 @@ function single_parameter_sweep(sweep_parameter::Symbol, qps::Database.Query_sim
             conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
         end
     end
-    !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
-    return sim_plot
+    !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
+    return plt
 end
 
 
@@ -83,12 +94,13 @@ end
 
 
 function two_parameter_sweep_heatmap(x_sweep_parameter::Symbol, y_sweep_parameter::Symbol, qp::Database.Query_simulations;
-                                     db_info::Database.DBInfo=SETTINGS.database,
+                                     db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
                                      statistic::Symbol=:mean,
                                      x_sweep_parameter_label::String=make_label(x_sweep_parameter),
                                      y_sweep_parameter_label::String=make_label(y_sweep_parameter),
                                      bootstrap_samples::Integer=1000,
                                      filename::String="",
+                                     figure_dirpath::String="",
                                      plot_kwargs...)
     sweep_options = (:error, :λ)
     @assert x_sweep_parameter in sweep_options
@@ -108,7 +120,7 @@ function two_parameter_sweep_heatmap(x_sweep_parameter::Symbol, y_sweep_paramete
     end
     z_data = reshape(average_transition_times, length(y), length(x)) #y rows, x columns
 
-    full_plot = heatmap(x, y, z_data;
+    plt = heatmap(x, y, z_data;
                         c=:viridis,
                         clims=extrema(z_data),
                         colorbar_scale=:log10,
@@ -117,8 +129,8 @@ function two_parameter_sweep_heatmap(x_sweep_parameter::Symbol, y_sweep_paramete
                         xticks=true, #could be a better default
                         plot_kwargs...)
 
-    !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
-    return full_plot
+    !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
+    return plt
 end
 
 
@@ -144,7 +156,7 @@ end
 If no positional argument given, configured database is used.
 """
 function multiple_two_parameter_sweep_heatmap(plot_grouping::Union{Symbol, Vector{Symbol}}, x_sweep_parameter::Symbol, y_sweep_parameter::Symbol, qp::Database.Query_simulations;
-                                db_info::Database.DBInfo=SETTINGS.database,
+                                db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
                                 statistic::Symbol=:mean,
                                 x_sweep_parameter_label::String=make_label(x_sweep_parameter),
                                 y_sweep_parameter_label::String=make_label(y_sweep_parameter),
@@ -154,6 +166,7 @@ function multiple_two_parameter_sweep_heatmap(plot_grouping::Union{Symbol, Vecto
                                 # plot_title::String="", 
                                 bootstrap_samples::Integer=1000,
                                 filename::String="",
+                                figure_dirpath::String="",
                                 plot_kwargs...
 )
 
@@ -202,10 +215,10 @@ function multiple_two_parameter_sweep_heatmap(plot_grouping::Union{Symbol, Vecto
 
     push!(plots, scatter([0,0], [0,1], zcolor=[0,3], clims=clims_colorbar, xlims=(1,1.1), xshowaxis=false, yshowaxis=false, label="", c=:viridis, colorbar_scale=:log10, colorbar_title="Periods Elapsed", grid=false))
 
-    full_plot = plot(plots..., layout=l, link=:all; plot_kwargs...)
+    plt = plot(plots..., layout=l, link=:all; plot_kwargs...)
 
-    !isempty(filename) && png(full_plot, normpath(joinpath(SETTINGS.figure_dirpath, filename)))
-    return full_plot
+    !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
+    return plt
 end
 
 

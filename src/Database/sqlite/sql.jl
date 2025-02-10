@@ -59,21 +59,15 @@ function db_query(query_dbs::Vector{SQLiteInfo}, sql::SQL)
         db_execute(db, "ATTACH DATABASE '$(query_db.filepath)' as $(query_db.name);")
     end
     query = db_query(db, sql)
+    for query_db in query_dbs[2:end]
+        db_execute(db, "DETACH DATABASE $(query_db.name);")
+    end
     db_close(db)
     return query
 end
 
-function db_query(db_info::DatabaseSettings{SQLiteInfo}, sql::SQL)
-    # @assert !isempty(query_dbs) "query_dbs Vector is empty"                                                           
-    main_db = DB(main(db_info))
-    for attached_db in attached(db_info)
-        db_execute(main_db, "ATTACH DATABASE '$(attached_db.filepath)' as $(attached_db.name);")
-    end
-    println(sql)
-    query = db_query(main_db, sql)
-    db_close(main_db)
-    return query
-end
+db_query(db_info::DatabaseSettings{SQLiteInfo}, sql::SQL) = db_query([main(db_info), attached(db_info)...], sql)
+
 
 """
     db_query(filepath::String, sql::SQL)

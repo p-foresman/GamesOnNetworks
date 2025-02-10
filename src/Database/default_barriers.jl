@@ -48,7 +48,7 @@ db_query(::Nothing, ::SQL) = _nodb()
 """
     db_query(qp::QueryParams)
 
-Query the configured database using the QueryParams provided. Returns a DataFrame containing results.
+Query the configured database and attached databases using the QueryParams provided. Returns a DataFrame containing results.
 """
 db_query(qp::QueryParams; kwargs...) = db_query(GamesOnNetworks.DATABASE(), qp; kwargs...)
 db_query(::Nothing, ::QueryParams) = _nodb()
