@@ -1,5 +1,5 @@
 using GamesOnNetworks
-# GamesOnNetworks.configure("plotting.toml")
+GamesOnNetworks.configure("plotting.toml")
 colors = [Analyze.palette(:default)[11] Analyze.palette(:default)[2] Analyze.palette(:default)[2] Analyze.palette(:default)[12] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[9] Analyze.palette(:default)[14]]
 
 
@@ -34,7 +34,7 @@ Analyze.single_parameter_sweep(:number_agents, qp_simulations_1, qp_simulations_
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
                                 filename="aey_population_sweep_replication"
 )
@@ -61,7 +61,7 @@ Analyze.single_parameter_sweep(:memory_length,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Memory Length",
+                                # title="Transition Time vs Memory Length",
                                 thickness_scaling=1.2,
                                 filename="aey_memory_sweep_replication"
 )
@@ -88,7 +88,7 @@ Analyze.single_parameter_sweep(:memory_length,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Memory Length",
+                                # title="Transition Time vs Memory Length",
                                 thickness_scaling=1.2,
                                 filename="aey_memory_sweep_volatility"
 )
@@ -119,7 +119,7 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
                                 filename="aey_population_sweep_stopping_condition_comparison"
 )
@@ -146,7 +146,7 @@ Analyze.single_parameter_sweep(:memory_length,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Memory Length",
+                                # title="Transition Time vs Memory Length",
                                 thickness_scaling=1.2,
                                 filename="aey_memory_sweep_stopping_condition_comparison"
 )
@@ -270,7 +270,7 @@ qp_params = Database.Query_parameters(collect(100:100:1000), 10, 0.1, "fractious
 
 Analyze.single_parameter_sweep(:number_agents,
                                 Database.Query_simulations(qp_games,
-                                                            qp_params,
+                                                            Database.Query_parameters(append!([10, 40], collect(100:100:1000)), 10, 0.1, "fractious_starting_condition", "partially_reinforced_equity_stopping_condition"),
                                                             Database.Query_graphmodels(Database.Query_graphmodels_CompleteModel())
                                                             ; complete=true, sample_size=40),
                                 # Database.Query_simulations(qp_games,
@@ -285,13 +285,14 @@ Analyze.single_parameter_sweep(:number_agents,
                                 xlims = (0,1010),
                                 xticks = 0:100:1000,
                                 ylabel="Transition Time",
-                                yscale = :log10,
+                                # yscale = :log10,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_lambda20"
+                                bootstrap_samples=1000000,
+                                filename="aey_population_sweep_comparison_complete"
 )
 
 
@@ -336,9 +337,9 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_lambda20"
+                                filename="random_graph_population_sweep_comparison_lambda20"
 )
 
 
@@ -389,9 +390,9 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_er"
+                                filename="erdos_renyi_population_sweep_comparison"
 )
 
 
@@ -440,9 +441,9 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_sf"
+                                filename="scale_free_population_sweep_comparison"
 )
 
 
@@ -493,9 +494,9 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_sw"
+                                filename="small_world_population_sweep_comparison"
 )
 
 
@@ -547,7 +548,12 @@ Analyze.single_parameter_sweep(:number_agents,
                                 legend_position = :topleft,
                                 size=(1300, 700),
                                 margin=10Analyze.Plots.mm,
-                                title="Transition Time vs Population",
+                                # title="Transition Time vs Population",
                                 thickness_scaling=1.2,
-                                filename="aey_population_sweep_comparison_sbm"
+                                filename="sbm_population_sweep_comparison"
 )
+
+
+
+
+

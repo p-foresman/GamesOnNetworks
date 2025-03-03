@@ -2,8 +2,10 @@
     for (vertex, agent) in enumerate(agents(agentgraph))
         if vertex % 2 == 0
             recollection = strategies(model, 1)[1] #MADE THESE ALL STRATEGY 1 FOR NOW (symmetric games dont matter)
+            GamesOnNetworks.rational_choice!(agent, strategies(model, 1)[3])
         else
             recollection = strategies(model, 1)[3]
+            GamesOnNetworks.rational_choice!(agent, strategies(model, 1)[1])
         end
         for _ in 1:memory_length(model)
             push!(GamesOnNetworks.memory(agent), recollection)

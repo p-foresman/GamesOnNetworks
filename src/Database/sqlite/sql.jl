@@ -636,103 +636,6 @@ function execute_insert_simulation(db_info::SQLiteInfo,
 end
 
 
-function execute_query_games(db_info::SQLiteInfo, game_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM games
-                                        WHERE game_id = $game_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
-function execute_query_graphmodels(db_info::SQLiteInfo, graph_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM graphmodels
-                                        WHERE graph_id = $graph_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
-function execute_query_parameters(db_info::SQLiteInfo, parameters_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM parameters
-                                        WHERE parameters_id = $parameters_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
-# function execute_query_starting_conditions(db_info::SQLiteInfo, starting_condition_id::Integer)
-#     db = DB(db_info; busy_timeout=3000)
-#     query = DBInterface.execute(db, "
-#                                         SELECT *
-#                                         FROM starting_conditions
-#                                         WHERE starting_condition_id = $starting_condition_id;
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     db_close(db)
-#     return df
-# end
-
-# function execute_query_stopping_conditions(db_info::SQLiteInfo, stopping_condition_id::Integer)
-#     db = DB(db_info; busy_timeout=3000)
-#     query = DBInterface.execute(db, "
-#                                         SELECT *
-#                                         FROM stopping_conditions
-#                                         WHERE stopping_condition_id = $stopping_condition_id;
-#                                 ")
-#     df = DataFrame(query) #must create a DataFrame to acces query data
-#     db_close(db)
-#     return df
-# end
-
-function execute_query_sim_groups(db_info::SQLiteInfo, group_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM sim_groups
-                                        WHERE group_id = $group_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
-function execute_query_simulations(db_info::SQLiteInfo, simulation_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM simulations
-                                        WHERE simulation_id = $simulation_id;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
-function execute_query_agents(db_info::SQLiteInfo, simulation_id::Integer)
-    db = DB(db_info; busy_timeout=3000)
-    query = DBInterface.execute(db, "
-                                        SELECT *
-                                        FROM agents
-                                        WHERE simulation_id = $simulation_id
-                                        ORDER BY agent_id ASC;
-                                ")
-    df = DataFrame(query) #must create a DataFrame to acces query data
-    db_close(db)
-    return df
-end
-
 function sql_query_models(model_id::Integer)
     """
     SELECT
@@ -820,6 +723,39 @@ function execute_query_incomplete_simulations(db_info::SQLiteInfo)
     db_close(db)
     return query
 end
+
+
+function sql_query_timeseries(simulation_uuid::String)
+    """
+    WITH RECURSIVE
+        timeseries(uuid, prev_simulation_uuid, period, complete) AS (
+            SELECT simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+            FROM simulations
+            WHERE simulations.uuid = '$simulation_uuid'
+            UNION ALL
+            SELECT simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+            FROM simulations, timeseries
+            WHERE simulations.uuid = timeseries.prev_simulation_uuid
+        )
+    SELECT *
+    FROM timeseries
+    ORDER BY period ASC
+    """
+end
+
+db_query_timeseries(simulation_uuid::String) = db_query_timeseries(GamesOnNetworks.DATABASE(), simulation_uuid)
+db_query_timeseries(db_info::SQLiteInfo, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
+db_query_timeseries(db_info::Vector{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
+db_query_timeseries(db_info::DatabaseSettings{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
+
+
+
+db_query_agents(simulation_uuid::String) = db_query_agents(GamesOnNetworks.DATABASE(), simulation_uuid)
+db_query_agents(db_info::SQLiteInfo, simulation_uuid::String) = db_query(db_info, sql_query_agents(simulation_uuid))
+db_query_agents(db_info::Vector{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_agents(simulation_uuid))
+db_query_agents(db_info::DatabaseSettings{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_agents(simulation_uuid))
+
+
 
 # function execute_query_agents_for_restore(db_info::SQLiteInfo, simulation_uuid::String)
 #     db = DB(db_info; busy_timeout=3000)

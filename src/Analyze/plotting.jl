@@ -271,59 +271,92 @@ end
 
 
 #NOTE: CORRECT FOR HERMITS!! AND CUT OFF BEGINNING (period 0 isn't stored, but should be)!
-function multiple_time_series_plot(db_filepath::String; sim_group_ids::Vector{<:Integer}, labels::Union{Vector{String}, Nothing} = nothing, plot_title::String = "")
-time_series_plot = plot(
-ylims=(0.0, 1.0),
-layout=(3, 1),
-legend=[true false false],
-title=[plot_title "" ""], 
-xlabel=["" "" "Periods Elapsed"],
-xticks=[:none :none :auto],
-ylabel=["Proportion H" "Proportion M" "Proportion L"],
-size=(1000, 1500))
-for (i, sim_group_id) in enumerate(sim_group_ids)
-sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
-payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
-payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
-# reproduced_game = JSON3.read(sim_info_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
-agent_dict = OrderedDict()
-hermit_count = 0
-for (row_num, row) in enumerate(eachrow(agent_df))
-if !haskey(agent_dict, row.periods_elapsed)
-agent_dict[row.periods_elapsed] = []
-end
-agent = JSON3.read(row.agent, Agent)
-# agent_memory = agent.memory
-# agent_behavior = determineAgentBehavior(reproduced_game, agent_memory) #old
-if !ishermit(agent) #if the agent is a hermit, it shouldn't count in the population
-push!(agent_dict[row.periods_elapsed], rational_choice(agent))
-else
-if row_num == 1
-hermit_count += 1
-end
-end
-end
-period_counts = Vector()
-fraction_L = Vector()
-fraction_M = Vector()
-fraction_H = Vector()
-# fractions = Vector()
-for (periods_elapsed, agent_behaviors) in agent_dict
-push!(period_counts, periods_elapsed)
-# subfractions = Vector()
-push!(fraction_L, count(action->(action==3), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
-push!(fraction_M, count(action->(action==2), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
-push!(fraction_H, count(action->(action==1), agent_behaviors) / (sim_info_df[1, :number_agents] - hermit_count))
-# println("$periods_elapsed: $subfractions")
-# push!(fractions, subfractions)
-end
-label = labels !== nothing ? labels[i] : nothing
-time_series_plot = plot!(period_counts,
-    [fraction_H fraction_M fraction_L],
-    label=label,
-    linewidth=2)
-end
-return time_series_plot
+function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_simulations...;
+                                    db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
+                                    statistic::Symbol=:mean,
+                                    conf_intervals::Bool = false,
+                                    conf_level::AbstractFloat = 0.95,
+                                    bootstrap_samples::Integer = 1000,
+                                    legend_labels::Vector = [],
+                                    colors::Vector = [],
+                                    filename::String="",
+                                    figure_dirpath::String="",
+                                    plt::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
+                                    plot_kwargs...)
+    plt = plot(
+            ylims=(0.0, 1.0),
+            layout=(3, 1),
+            legend=[true false false],
+            title=["hahaha" "" ""], 
+            xlabel=["" "" "Periods Elapsed"],
+            xticks=[:none :none :auto],
+            ylabel=["Proportion H" "Proportion M" "Proportion L"],
+            size=(1000, 1500)
+    )
+
+    # for (i, qp) in enumerate(qps)
+    #     #NOTE: ADD Query_simulations VALIDATION HERE! 
+
+    #     query::DataFrame = Database.db_query(db_info, qp)
+
+    #     for sim in eachrow(query)
+            timeseries = Database.db_query_timeseries(db_info, simulation_uuid)#sim[1, :uuid])
+            
+            period_counts = Vector()
+            fraction_L = Vector()
+            fraction_M = Vector()
+            fraction_H = Vector()
+            for row in eachrow(timeseries)
+                agents_df = Database.db_query_agents(row.uuid)
+                # return agents_df
+                HML = [0, 0, 0]
+                for agent_json in eachrow(agents_df)
+                    agent = Database.JSON3.read(agent_json.agent, GamesOnNetworks.Agent) #NOTE: make function to encapsulate this
+                    if !GamesOnNetworks.ishermit(agent)
+                        HML[GamesOnNetworks.rational_choice(agent)] += 1
+                    end
+                end
+                total_agents = sum(HML)
+                push!(period_counts, row.period)
+                push!(fraction_H, HML[1] / total_agents)
+                push!(fraction_M, HML[2] / total_agents)
+                push!(fraction_L, HML[3] / total_agents)
+            end
+
+            plot!(period_counts,
+                [fraction_H fraction_M fraction_L],
+                # label=label,
+                linewidth=2)
+
+        # for query_group in groupby(query, filter!(param->param!=sweep_parameter, all_params)) #NOTE: ALL OF THESE GROUPS MUST HAVE THE SAME NUMBER OF POPULATION SUB-GROUPS!!! i.e. cant create graphs with different population ranges like AEY in one go. Figure out how?
+        #     average_transition_time = Vector{Float64}([])
+
+        #     conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        #     for sweep_group in groupby(query_group, sweep_parameter, sort=true)
+        #         periods = sweep_group.period
+        #         # N = sweep_group.number_agents[1]
+        #         # λ = sweep_group.λ[1]
+        #         # println(λ)
+        #         # println(sweep_group.period)
+        #         # if !ismissing(λ)
+        #         #     periods = sweep_group.period .* GraphsExt.edge_density(N, λ) .* N ./ 2
+        #         # end
+        #         confidence_interval = confint(bootstrap(getfield(Statistics, statistic), periods , BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+
+        #         push!(average_transition_time, confidence_interval[1]) #first element is the mean
+        #         # println(conf_interval_vals)
+        #         push!(conf_interval_vals[1], confidence_interval[2])
+        #         push!(conf_interval_vals[2], confidence_interval[3])
+        #     end
+
+        #     #NOTE: could sort at beginning
+        #     plot!(sort(sweep_param_vals), average_transition_time, markershape=:circle, linewidth=2, label=!isempty(legend_labels) && legend_labels[i], markercolor=colors[i], linecolor=colors[i])#, linestyle=linestyles[i])
+        #     conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
+        # end
+    # end
+
+    !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
+    return plt
 end
 
 

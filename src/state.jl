@@ -84,7 +84,7 @@ Check if the state is 'completed'
 iscomplete(state::State) = getfield(state, :complete)
 
 
-timedout!(state::State) = setfield(state, :timedout, true)
+timedout!(state::State) = setfield!(state, :timedout, true)
 istimedout(state::State) = getfield(state, :timedout)
 
 # prev_simulation_uuid(state::State) = getfield(state, :prev_simulation_uuid)

@@ -6,7 +6,7 @@ include("stoppingconditions.jl")
 
 model_generator = ModelGenerator(
     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-    [100],
+    [1000],
     [10],
     [0.0],
     [("fractious_starting_condition", UserVariables())],

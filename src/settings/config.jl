@@ -31,7 +31,7 @@ struct Settings
     random_seed::Int
     # use_distributed::Bool
     procs::Int
-    timeout::Int
+    timeout::Union{Int, Nothing}
     timeout_exit_code::Int
     database::Union{Database.DatabaseSettings, Nothing} #if nothing, not using database
     # database::Union{Database.DBInfo, Nothing} #if nothing, not using database
@@ -90,6 +90,10 @@ function Settings(settings::Dict{String, Any})
     @assert haskey(settings, "timeout") "config file must have a 'timeout' variable"
     timeout = settings["timeout"]
     @assert timeout isa Int && timeout >= 0 "'timeout' value must be a positive Int (>=1) OR 0 (denoting no timeout)"
+    if timeout == 0
+        timeout = nothing
+    end
+    
     @assert haskey(settings, "timeout_exit_code") "config file must have a 'timeout_exit_code' positive integer variable"
     timeout_exit_code = settings["timeout_exit_code"]
     @assert timeout_exit_code isa Int && timeout_exit_code >= 0 "'timeout_exit_code' value must be a positive Int (>=1) OR 0 (denoting no exit)"

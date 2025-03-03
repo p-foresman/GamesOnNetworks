@@ -6,4 +6,5 @@ checkpoint.sqlite
 /sqlite/
 /config/
 plots/
+plotting.toml
 

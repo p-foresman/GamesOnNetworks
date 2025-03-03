@@ -16,7 +16,7 @@
 end
 
 @stoppingcondition function partially_reinforced_equity_stopping_condition(model::Model) #game only needed for behavioral stopping conditions. could formulate a cleaner method for stopping condition selection!!
-    sufficient_transitioned = (1 - error_rate(model)) * (number_agents(model)) # - number_hermits(model))
+    sufficient_transitioned = (1 - error_rate(model)) * number_agents(model) # - number_hermits(model))
     period_cutoff = memory_length(model)
 
     return (state::State) -> begin
