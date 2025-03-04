@@ -271,8 +271,9 @@ end
 
 
 #NOTE: CORRECT FOR HERMITS!! AND CUT OFF BEGINNING (period 0 isn't stored, but should be)!
-function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_simulations...;
+function multiple_time_series_plot(qps::Database.Query_simulations...;
                                     db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
+                                    periods_from_end::Int=50,
                                     statistic::Symbol=:mean,
                                     conf_intervals::Bool = false,
                                     conf_level::AbstractFloat = 0.95,
@@ -283,6 +284,16 @@ function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_
                                     figure_dirpath::String="",
                                     plt::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
                                     plot_kwargs...)
+    
+    if !isempty(colors)
+        @assert length(colors) == length(qps) "colors must have one entry for each QueryParams instance" #NOTE: vague
+    else
+        @assert length(qps) <= 16 "cannot add more than 16 lines unless colors are specified" #NOTE: stupid limit, but will break since palette only has 16 colors
+        colors = palette(:default)[1:length(qps)]
+    end
+
+
+
     plt = plot(
             ylims=(0.0, 1.0),
             layout=(3, 1),
@@ -294,20 +305,27 @@ function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_
             size=(1000, 1500)
     )
 
-    # for (i, qp) in enumerate(qps)
+    for (i, qp) in enumerate(qps)
     #     #NOTE: ADD Query_simulations VALIDATION HERE! 
 
-    #     query::DataFrame = Database.db_query(db_info, qp)
+        query::DataFrame = Database.db_query(db_info, qp)
+        H_fraction = [Vector{Float64}() for _ in 0:periods_from_end]
+        M_fraction = [Vector{Float64}() for _ in 0:periods_from_end]
+        L_fraction = [Vector{Float64}() for _ in 0:periods_from_end]
+        # H_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        # M_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        # L_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
 
-    #     for sim in eachrow(query)
-            timeseries = Database.db_query_timeseries(db_info, simulation_uuid)#sim[1, :uuid])
-            
-            period_counts = Vector()
-            fraction_L = Vector()
-            fraction_M = Vector()
-            fraction_H = Vector()
-            for row in eachrow(timeseries)
-                agents_df = Database.db_query_agents(row.uuid)
+        
+        for sample in eachrow(query)
+            timeseries = Database.db_query_timeseries(db_info, sample.simulation_uuid, periods_from_end + 1) # add 1 because we're including the end period as well
+            return timeseries
+            # period_counts = Vector()
+            # L_fraction = Vector()
+            # M_fraction = Vector()
+            # H_fraction = Vector()
+            for sim in eachrow(timeseries)
+                agents_df = Database.db_query_agents(sim.uuid)
                 # return agents_df
                 HML = [0, 0, 0]
                 for agent_json in eachrow(agents_df)
@@ -317,17 +335,37 @@ function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_
                     end
                 end
                 total_agents = sum(HML)
-                push!(period_counts, row.period)
-                push!(fraction_H, HML[1] / total_agents)
-                push!(fraction_M, HML[2] / total_agents)
-                push!(fraction_L, HML[3] / total_agents)
+                # push!(period_counts, row.period)
+                push!(H_fraction[sim.i], HML[1] / total_agents)
+                push!(M_fraction[sim.i], HML[2] / total_agents)
+                push!(L_fraction[sim.i], HML[3] / total_agents)
             end
+        end
+        H_stat = Vector{Float64}()
+        M_stat = Vector{Float64}()
+        L_stat = Vector{Float64}()
+        H_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        M_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        L_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+        for timestep in 1:periods_from_end + 1
+            H_confint = confint(bootstrap(getfield(Statistics, statistic), H_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+            push!(H_stat, H_confint[1])
+            push!(H_conf_interval_vals[1], H_confint[2])
+            push!(H_conf_interval_vals[2], H_confint[3])
 
-            plot!(period_counts,
-                [fraction_H fraction_M fraction_L],
-                # label=label,
-                linewidth=2)
+            M_confint = confint(bootstrap(getfield(Statistics, statistic), M_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+            push!(M_stat, M_confint[1])
+            push!(M_conf_interval_vals[1], M_confint[2])
+            push!(M_conf_interval_vals[2], M_confint[3])
 
+            L_confint = confint(bootstrap(getfield(Statistics, statistic), L_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+            push!(L_stat, L_confint[1])
+            push!(L_conf_interval_vals[1], L_confint[2])
+            push!(L_conf_interval_vals[2], L_confint[3])
+        end
+
+        plot!(collect(-periods_from_end:0), [H_stat M_stat L_stat], linewidth=2) # label=label,
+        conf_intervals && plot!(collect(-periods_from_end:0), [H_conf_interval_vals[1] M_conf_interval_vals[1] L_conf_interval_vals[1]], fillrange=[H_conf_interval_vals[2] M_conf_interval_vals[2] L_conf_interval_vals[2]], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
         # for query_group in groupby(query, filter!(param->param!=sweep_parameter, all_params)) #NOTE: ALL OF THESE GROUPS MUST HAVE THE SAME NUMBER OF POPULATION SUB-GROUPS!!! i.e. cant create graphs with different population ranges like AEY in one go. Figure out how?
         #     average_transition_time = Vector{Float64}([])
 
@@ -353,7 +391,7 @@ function multiple_time_series_plot(simulation_uuid::String;#qps::Database.Query_
         #     plot!(sort(sweep_param_vals), average_transition_time, markershape=:circle, linewidth=2, label=!isempty(legend_labels) && legend_labels[i], markercolor=colors[i], linecolor=colors[i])#, linestyle=linestyles[i])
         #     conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
         # end
-    # end
+    end
 
     !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
     return plt

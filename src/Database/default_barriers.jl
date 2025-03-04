@@ -76,7 +76,7 @@ db_insert_parameters(params::Parameters, use_seed::Bool) = db_insert_parameters(
 db_insert_parameters(::Nothing, ::Parameters, ::Bool) = _nodb()
 
 
-db_insert_model(model::Model; model_id::Union{Nothing, Integer}=_nodb()) = db_insert_model(GamesOnNetworks.MAIN_DB(), model, model_id=model_id)
+db_insert_model(model::Model; model_id::Union{Nothing, Integer}) = db_insert_model(GamesOnNetworks.MAIN_DB(), model, model_id=model_id)
 db_insert_model(::Nothing, ::Model) = _nodb()
 
 db_has_incomplete_simulations() = db_has_incomplete_simulations(GamesOnNetworks.MAIN_DB())

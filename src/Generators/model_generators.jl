@@ -90,6 +90,7 @@ struct ModelGeneratorSet <: Generator
     end
 end
 
+#NOTE: implement getindex for these generators as well!
 function generate_model(generator_set::ModelGeneratorSet, index::Integer)
     prev = 0
     cutoff = 0

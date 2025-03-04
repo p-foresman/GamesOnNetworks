@@ -388,14 +388,22 @@ function _simulate(model::Model, state::State, ::Nothing, ::Nothing; stopping_co
     #restore the rng state if the simulation is continued
     GamesOnNetworks.restore_rng_state(state)
 
-    # timeout = GamesOnNetworks.SETTINGS.timeout
-    while !stopping_condition_reached(state)
-        run_period!(model, state)
+
+    while true
+        run_period!(model, state) #NOTE: could put the stopping condition reached function in run_period! and change the state internally
+        if stopping_condition_reached(state)
+            GamesOnNetworks.complete!(state)
+            break
+        end
     end
+    # timeout = GamesOnNetworks.SETTINGS.timeout
+    # while !stopping_condition_reached(state)
+    #     run_period!(model, state)
+    # end
 
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer\
-    GamesOnNetworks.complete!(state)
+    # GamesOnNetworks.complete!(state)
     GamesOnNetworks.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
@@ -408,20 +416,31 @@ function _simulate(model::Model, state::State, timeout::Int, ::Nothing; stopping
     #restore the rng state if the simulation is continued
     GamesOnNetworks.restore_rng_state(state)
 
-    # timeout = GamesOnNetworks.SETTINGS.timeout
-    completed = true
-    while !stopping_condition_reached(state)
+    while true
         run_period!(model, state)
-        if (time() - start_time) > timeout
-            completed = false
+        if stopping_condition_reached(state)
+            GamesOnNetworks.complete!(state)
+            break
+        elseif (time() - start_time) > timeout
             GamesOnNetworks.timedout!(state)
             break
         end
     end
 
+    # timeout = GamesOnNetworks.SETTINGS.timeout
+    # completed = true
+    # while !stopping_condition_reached(state)
+    #     run_period!(model, state)
+    #     if (time() - start_time) > timeout
+    #         completed = false
+    #         GamesOnNetworks.timedout!(state)
+    #         break
+    #     end
+    # end
+
     println(" --> periods elapsed: $(period(state))")
     flush(stdout) #flush buffer\
-    completed && GamesOnNetworks.complete!(state)
+    # completed && GamesOnNetworks.complete!(state)
     GamesOnNetworks.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
@@ -433,21 +452,33 @@ function _simulate(model::Model, state::State, ::Nothing, db_push_period::Int; s
     #restore the rng state if the simulation is continued
     GamesOnNetworks.restore_rng_state(state)
 
-    # timeout = GamesOnNetworks.SETTINGS.timeout
-    completed = true
-    while !stopping_condition_reached(state)
+
+    while true
         run_period!(model, state)
-        if iszero(period(state) % db_push_period)
-            completed = false
+        if stopping_condition_reached(state)
+            GamesOnNetworks.complete!(state)
+            break
+        elseif iszero(period(state) % db_push_period)
             break
         end
     end
 
-    if completed
+
+    # timeout = GamesOnNetworks.SETTINGS.timeout
+    # completed = true
+    # while !stopping_condition_reached(state)
+    #     run_period!(model, state)
+    #     if iszero(period(state) % db_push_period)
+    #         completed = false
+    #         break
+    #     end
+    # end
+
+    if GamesOnNetworks.iscomplete(state)
         println(" --> periods elapsed: $(period(state))")
         flush(stdout) #flush buffer
     end
-    completed && GamesOnNetworks.complete!(state)
+    # completed && GamesOnNetworks.complete!(state)
     GamesOnNetworks.rng_state!(state) #update state's rng_state
     put!(channel, state)
 
@@ -459,25 +490,38 @@ function _simulate(model::Model, state::State, timeout::Int, db_push_period::Int
     #restore the rng state if the simulation is continued
     GamesOnNetworks.restore_rng_state(state)
 
-    # timeout = GamesOnNetworks.SETTINGS.timeout
-    completed = true
-    while !stopping_condition_reached(state)
+    while true
         run_period!(model, state)
-        if (time() - start_time) > timeout
-            completed = false
+        if stopping_condition_reached(state)
+            GamesOnNetworks.complete!(state)
+            break
+        elseif (time() - start_time) > timeout
             GamesOnNetworks.timedout!(state)
             break
         elseif iszero(period(state) % db_push_period)
-            completed = false
             break
         end
     end
 
-    if completed || timedout(state)
+    # timeout = GamesOnNetworks.SETTINGS.timeout
+    # completed = true
+    # while !stopping_condition_reached(state) #NOTE: this currently doesn't push at period 0 and pushes twice at the end when db_push_period is 1!
+    #     run_period!(model, state)
+    #     if (time() - start_time) > timeout
+    #         completed = false
+    #         GamesOnNetworks.timedout!(state)
+    #         break
+    #     elseif iszero(period(state) % db_push_period)
+    #         completed = false
+    #         break
+    #     end
+    # end
+
+    if GamesOnNetworks.iscomplete(state) || GamesOnNetworks.istimedout(state)
         println(" --> periods elapsed: $(period(state))")
         flush(stdout) #flush buffer
     end
-    completed && GamesOnNetworks.complete!(state)
+    # completed && GamesOnNetworks.complete!(state)
     GamesOnNetworks.rng_state!(state) #update state's rng_state
     put!(channel, state)
 

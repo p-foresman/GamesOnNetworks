@@ -725,28 +725,29 @@ function execute_query_incomplete_simulations(db_info::SQLiteInfo)
 end
 
 
-function sql_query_timeseries(simulation_uuid::String)
+function sql_query_timeseries(simulation_uuid::String, limit::Int)
     """
     WITH RECURSIVE
-        timeseries(uuid, prev_simulation_uuid, period, complete) AS (
-            SELECT simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+        timeseries(i, uuid, prev_simulation_uuid, period, complete) AS (
+            SELECT $limit, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
             FROM simulations
             WHERE simulations.uuid = '$simulation_uuid'
             UNION ALL
-            SELECT simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+            SELECT i - 1, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
             FROM simulations, timeseries
             WHERE simulations.uuid = timeseries.prev_simulation_uuid
+            AND i > 0
         )
     SELECT *
     FROM timeseries
-    ORDER BY period ASC
+    ORDER BY i ASC
     """
 end
 
-db_query_timeseries(simulation_uuid::String) = db_query_timeseries(GamesOnNetworks.DATABASE(), simulation_uuid)
-db_query_timeseries(db_info::SQLiteInfo, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
-db_query_timeseries(db_info::Vector{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
-db_query_timeseries(db_info::DatabaseSettings{SQLiteInfo}, simulation_uuid::String) = db_query(db_info, sql_query_timeseries(simulation_uuid))
+db_query_timeseries(simulation_uuid::String, limit::Int) = db_query_timeseries(GamesOnNetworks.DATABASE(), simulation_uuid, limit)
+db_query_timeseries(db_info::SQLiteInfo, simulation_uuid::String, limit::Int) = db_query(db_info, sql_query_timeseries(simulation_uuid, limit))
+db_query_timeseries(db_info::Vector{SQLiteInfo}, simulation_uuid::String, limit::Int) = db_query(db_info, sql_query_timeseries(simulation_uuid, limit))
+db_query_timeseries(db_info::DatabaseSettings{SQLiteInfo}, simulation_uuid::String, limit::Int) = db_query(db_info, sql_query_timeseries(simulation_uuid, limit))
 
 
 
