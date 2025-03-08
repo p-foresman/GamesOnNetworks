@@ -4,12 +4,12 @@ include("startingconditions.jl")
 include("stoppingconditions.jl")
 
 
-λs = collect(95:-5:5)
+λs = collect(30:-1:5)
 N100_m10_generator = ModelGenerator(
     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
     [100],
     [10],
-    collect(0.4:-0.05:0.05),
+    collect(0.15:-0.01:0.05),
     [("fractious_starting_condition", UserVariables())],
     [("partially_reinforced_equity_stopping_condition", UserVariables(:period_count=>0))],
     [

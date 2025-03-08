@@ -226,10 +226,11 @@ function sql_create_simulations_table(::SQLiteInfo)
         model_id INTEGER NOT NULL,
         rng_state TEXT NOT NULL,
         random_seed INTEGER DEFAULT NULL,
-        graph_adj_matrix TEXT NOT NULL,
+        graph_adj_matrix TEXT DEFAULT NULL,
         period INTEGER NOT NULL,
         complete BOOLEAN NOT NULL,
         user_variables TEXT NOT NULL,
+        data TEXT DEFAULT '{}' NOT NULL,
         FOREIGN KEY (group_id)
             REFERENCES groups (id)
             ON DELETE CASCADE,
@@ -552,7 +553,7 @@ function execute_insert_group(db_info::SQLiteInfo, description::String)
 end
 
 
-function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, random_seed::String, graph_adj_matrix_str::String, period::Integer, complete::Integer, user_variables::String)
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, random_seed::String, graph_adj_matrix_str::String, period::Integer, complete::Integer, user_variables::String, data::String)
     """
     INSERT INTO simulations
     (
@@ -565,7 +566,8 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         graph_adj_matrix,
         period,
         complete,
-        user_variables
+        user_variables,
+        data
     )
     VALUES
     (
@@ -578,7 +580,8 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
         '$graph_adj_matrix_str',
         $period,
         $complete,
-        '$user_variables'
+        '$user_variables',
+        '$data'
 
     );
     ON CONFLICT () DO UPDATE
@@ -586,7 +589,6 @@ function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_u
     RETURNING uuid
     """
 end
-
 
 function sql_insert_agents(agent_values_string::String) #kind of a cop-out parameter but fine for now
     """
@@ -610,6 +612,7 @@ function execute_insert_simulation(db_info::SQLiteInfo,
                                     period::Integer,
                                     complete::Integer,
                                     user_variables::String,
+                                    data::String,
                                     agent_list::Vector{String})
                                     
     uuid = "$(uuid4())"
@@ -628,8 +631,71 @@ function execute_insert_simulation(db_info::SQLiteInfo,
 
     db = DB(db_info)
     db_begin_transaction(db)
-    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix_str, period, complete, user_variables))
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix_str, period, complete, user_variables, data))
     db_execute(db, sql_insert_agents(agent_values_string))
+    db_commit_transaction(db)
+    db_close(db)
+    return uuid
+end
+
+
+#for partial insert
+function sql_insert_simulation(uuid::String, group_id::String, prev_simulation_uuid::String, model_id::Integer, rng_state::String, random_seed::String, period::Integer, complete::Integer, user_variables::String, data::String)
+    """
+    INSERT INTO simulations
+    (
+        uuid,
+        group_id,
+        prev_simulation_uuid,
+        model_id,
+        rng_state,
+        random_seed,
+        period,
+        complete,
+        user_variables,
+        data
+    )
+    VALUES
+    (
+        '$uuid',
+        $group_id,
+        $(prev_simulation_uuid == "NULL" ? prev_simulation_uuid : "'$prev_simulation_uuid'"),
+        $model_id,
+        '$rng_state',
+        $random_seed,
+        $period,
+        $complete,
+        '$user_variables',
+        '$data'
+
+    );
+    ON CONFLICT () DO UPDATE
+        SET group_id = simulations.group_id
+    RETURNING uuid
+    """
+end
+
+function execute_insert_simulation(db_info::SQLiteInfo,
+                                    model_id::Integer,
+                                    group_id::Union{Integer, Nothing},
+                                    prev_simulation_uuid::Union{String, Nothing},
+                                    rng_state::String,
+                                    random_seed::Union{Integer, Nothing},
+                                    period::Integer,
+                                    complete::Integer,
+                                    user_variables::String,
+                                    data::String)
+                                    
+    uuid = "$(uuid4())"
+    
+    #prepare simulation SQL
+    group_id = isnothing(group_id) ? "NULL" : string(group_id)
+    isnothing(prev_simulation_uuid) ?  prev_simulation_uuid = "NULL" : nothing
+    random_seed = isnothing(random_seed) ? "NULL" : string(random_seed)
+
+    db = DB(db_info)
+    db_begin_transaction(db)
+    db_execute(db, sql_insert_simulation(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables, data))
     db_commit_transaction(db)
     db_close(db)
     return uuid
@@ -728,15 +794,15 @@ end
 function sql_query_timeseries(simulation_uuid::String, limit::Int)
     """
     WITH RECURSIVE
-        timeseries(i, uuid, prev_simulation_uuid, period, complete) AS (
-            SELECT $limit, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+        timeseries(i, uuid, prev_simulation_uuid, period, complete, data) AS (
+            SELECT $limit, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete, simulations.data
             FROM simulations
             WHERE simulations.uuid = '$simulation_uuid'
             UNION ALL
-            SELECT i - 1, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete
+            SELECT i - 1, simulations.uuid, simulations.prev_simulation_uuid, simulations.period, simulations.complete, simulations.data
             FROM simulations, timeseries
             WHERE simulations.uuid = timeseries.prev_simulation_uuid
-            AND i > 0
+            AND i - 1 > 0
         )
     SELECT *
     FROM timeseries

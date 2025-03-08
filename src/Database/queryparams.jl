@@ -154,6 +154,7 @@ size(qp::Query_simulations) = size(qp.model) #NOTE: should probably just put thi
 
 table(::T) where {T<:QueryParams} = split(string(T), "_")[2]
 
+sample_size(qp::Query_simulations) = getfield(qp, :sample_size)
 #need the following for plotting (getting values for different sweep parameters)
 number_agents(qp::Query_simulations) = qp.model.parameters.number_agents
 memory_length(qp::Query_simulations) = qp.model.parameters.memory_length

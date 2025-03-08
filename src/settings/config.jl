@@ -119,6 +119,10 @@ function Settings(settings::Dict{String, Any})
     checkpoint = databases["checkpoint"]
     @assert checkpoint isa Bool "'checkpoint' value must be a Bool"
 
+    @assert haskey(databases, "full_store") "config file must have a 'full_store' boolean variable. This field's value only matters if a database is selected"
+    full_store = databases["full_store"]
+    @assert full_store isa Bool "'full_store' value must be a Bool"
+
     # @assert haskey(databases, "checkpoint_database") "config file must have a 'checkpoint_database' database path in the [databases] table using dot notation of the form \"db_type.db_name\" OR an empty string to use main selected database"
 
     # @assert haskey(databases, "data_script") "config file must have a 'data_script' variable in the [databases] table specifying the path to a data loading script to be loaded on database initialization OR an empty string if no data loading is required"
@@ -149,7 +153,7 @@ function Settings(settings::Dict{String, Any})
             # end
         end
 
-        database = Database.DatabaseSettings{typeof(selected)}(selected, attached, iszero(push_period) ? nothing : push_period, checkpoint)
+        database = Database.DatabaseSettings{typeof(selected)}(selected, attached, iszero(push_period) ? nothing : push_period, checkpoint, full_store)
         # if databases["checkpoint"]
         #     checkpoint_db = databases["checkpoint_database"]
         #     if isempty(checkpoint_db)

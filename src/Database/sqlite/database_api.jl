@@ -308,15 +308,12 @@ function db_insert_model(db_info::SQLiteInfo, model::Model; model_id::Union{Noth
     return model_id
 end
 
-
-function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing)
-    #prepare simulation to be inserted
-    seed = state.random_seed #NOTE: make an accessor for this?
-    rng_state_json = state.rng_state_str
-    # rng_state = copy(Random.default_rng())
-    # rng_state_json = JSON3.write(rng_state)
-
-    adj_matrix_str = GamesOnNetworks.adjacency_matrix_str(state)
+function _insert_simulation_get_args_full(state::State)
+    data_json = "{}"
+    if isdefined(Main, :get_data) #NOTE: this is the quick and dirty way to do this. Ideally need to validate that the get_data function takes State and returns Dict{String, Any}(). (probably should pass the function to state)
+                                 # this also doesnt allow for multiple get_data functions to be defined! need to make more robust
+        data_json = JSON3.write(getfield(Main, :get_data)(state))
+    end
 
     #prepare agents to be inserted
     agents_list = Vector{String}([])
@@ -324,25 +321,49 @@ function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integ
         agent_json_str = JSON3.write(agent) #StructTypes.StructType(::Type{Agent}) = StructTypes.Mutable() defined after struct is defined
         push!(agents_list, agent_json_str)
     end
+    return [
+        state.prev_simulation_uuid,
+        state.rng_state_str,
+        state.random_seed,
+        GamesOnNetworks.adjacency_matrix_str(state),
+        GamesOnNetworks.period(state),
+        Int(GamesOnNetworks.iscomplete(state)),
+        JSON3.write(user_variables(state)),
+        data_json,
+        agents_list
+    ]
+end
 
-    #this should no longer be needed (now created in db_init_distributed())
-    # if nworkers() > 1 #if the simulation is distributed, push to temp sqlite file to be collected later
-    #     # temp_dirpath = tempdirpath(db_filepath)
-    #     temp_dirpath = distributed_uuid * "/"
-    #     # db_filepath = temp_dirpath * "$(myid()).sqlite" #get the current process's ID
-    #     db_info = SQLiteInfo("temp$(myid())", temp_dirpath * "$(myid()).sqlite")
-    # end
+function _insert_simulation_get_args_partial(state::State)
+    data_json = "{}"
+    if isdefined(Main, :get_data) #NOTE: this is the quick and dirty way to do this. Ideally need to validate that the get_data function takes State and returns Dict{String, Any}(). (probably should pass the function to state)
+                                 # this also doesnt allow for multiple get_data functions to be defined! need to make more robust
+        data_json = JSON3.write(getfield(Main, :get_data)(state))
+    end
 
-    complete_bool = Int(GamesOnNetworks.iscomplete(state))
+    return [
+        state.prev_simulation_uuid,
+        state.rng_state_str,
+        state.random_seed,
+        GamesOnNetworks.period(state),
+        Int(GamesOnNetworks.iscomplete(state)),
+        JSON3.write(user_variables(state)),
+        data_json
+    ]
+end
 
+function db_insert_simulation(db_info::SQLiteInfo, state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing; full_store::Bool=true)
+
+    if full_store
+        args = _insert_simulation_get_args_full(state)
+    else
+        args = _insert_simulation_get_args_partial(state)
+    end
     
-    state_user_variables = JSON3.write(user_variables(state)) #store these explicitly because their values may be different from defaults if they were updated by a user function
-
-
     simulation_uuid = nothing
     while isnothing(simulation_uuid)
         try
-            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, state.prev_simulation_uuid, rng_state_json, seed, adj_matrix_str, period(state), complete_bool, state_user_variables, agents_list)
+            simulation_uuid = execute_insert_simulation(db_info, model_id, sim_group_id, args...)
             #simulation_status = simulation_insert_result.status_message
             # simulation_uuid = simulation_insert_result.simulation_uuid
         catch e
@@ -378,7 +399,9 @@ end
 
 function db_reconstruct_simulation(db_info::SQLiteInfo, simulation_uuid::String)
     simulation_df, agents_df = execute_query_simulations_for_restore(db_info, simulation_uuid)
-    
+
+    @assert !ismissing(simulation_df[1, :graph_adj_matrix]) "this simulation is not reproducable. 'full_store' was set to 'false' in the config file"
+
     params = JSON3.read(simulation_df[1, :parameters], Parameters)
     payoff_matrix_size = JSON3.read(simulation_df[1, :payoff_matrix_size], Tuple)
     game = JSON3.read(simulation_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], prod(payoff_matrix_size)})
@@ -411,4 +434,27 @@ end
 
 function db_has_incomplete_simulations(db_info::SQLiteInfo)
     return !isempty(db_get_incomplete_simulation_uuids(db_info))
+end
+
+
+function update_temp()
+    sims = db_query("select * from simulations")
+    for sim in eachrow(sims)
+        data = Dict{String, Float64}()
+        agents = db_query_agents(sim.uuid)
+        HML = [0, 0, 0]
+        for agent_json in eachrow(agents)
+            agent = Database.JSON3.read(agent_json.agent, GamesOnNetworks.Agent) #NOTE: make function to encapsulate this
+            if !GamesOnNetworks.ishermit(agent)
+                HML[GamesOnNetworks.rational_choice(agent)] += 1
+            end
+        end
+        total_agents = sum(HML)
+        data["H"] = HML[1] / total_agents
+        data["M"] = HML[2] / total_agents
+        data["L"] = HML[3] / total_agents
+
+        data_json = JSON3.write(data)
+        db_execute("update simulations set data = '$data_json' where uuid = '$(sim.uuid)'")
+    end
 end

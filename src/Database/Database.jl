@@ -40,6 +40,7 @@ struct DatabaseSettings{T<:DBInfo}
     attached::Vector{<:T} #databases to attach during queries
     push_period::Union{Int, Nothing}
     checkpoint::Bool
+    full_store::Bool #NOTE: do we want to handle this this way?
 end
 
 main(db_settings::DatabaseSettings) = getfield(db_settings, :main)
@@ -51,7 +52,12 @@ type(::Nothing) = nothing
 
 
 
+
+
 _nodb() = throw("no database is configured!")
+
+#include JSON parsing helper functions
+include("json.jl")
 
 #include QueryParams types for SQL query generation
 include("queryparams.jl")

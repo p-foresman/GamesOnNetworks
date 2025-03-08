@@ -79,6 +79,9 @@ db_insert_parameters(::Nothing, ::Parameters, ::Bool) = _nodb()
 db_insert_model(model::Model; model_id::Union{Nothing, Integer}=nothing) = db_insert_model(GamesOnNetworks.MAIN_DB(), model, model_id=model_id)
 db_insert_model(::Nothing, ::Model) = _nodb()
 
+db_insert_simulation(state::State, model_id::Integer, sim_group_id::Union{Integer, Nothing} = nothing) = db_insert_simulation(GamesOnNetworks.MAIN_DB(), state, model_id, sim_group_id; full_store=GamesOnNetworks.DATABASE().full_store)
+db_insert_simulation(::Nothing, args...) = _nodb()
+
 db_has_incomplete_simulations() = db_has_incomplete_simulations(GamesOnNetworks.MAIN_DB())
 db_has_incomplete_simulations(::Nothing) = _nodb()
 

@@ -255,10 +255,15 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.DatabaseS
     num_received = 0
     num_completed = 0
     result_states = Vector{State}()
+    # to_push = Vector{State}()
     while num_received < num_procs
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        # if length(to_push) == 2000
+        #     popfirst!(to_push)
+        # end
+        # push!(to_push, result_state)
+        simulation_uuid = Database.db_insert_simulation(result_state, model_id, db_group_id)
         if GamesOnNetworks.iscomplete(result_state)
             push!(result_states, result_state)
             num_received += 1
@@ -271,6 +276,12 @@ function _simulate_distributed_barrier(model::Model, db_info::Database.DatabaseS
             remote_do(_simulate, default_worker_pool(), model, result_state, timeout, db_push_period; stopping_condition_reached=stopping_condition_func, channel=result_channel, start_time=start_time)
         end
     end
+
+    # simulation_uuid = ""
+    # for sim in to_push
+    #     !isempty(simulation_uuid) && GamesOnNetworks.prev_simulation_uuid!(sim, simulation_uuid)
+    #     simulation_uuid = Database.db_insert_simulation(sim, model_id, db_group_id)
+    # end
 
     if num_completed < num_received #if all simulations aren't completed, exit with checkpoint exit code
         println("TIMED OUT AT $(GamesOnNetworks.SETTINGS.timeout)")
@@ -308,7 +319,7 @@ function _simulate_distributed_barrier(model_state_tuples::Vector{Tuple{Model, S
     while num_received < num_incomplete
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        simulation_uuid = Database.db_insert_simulation(result_state, model_id, db_group_id)
         if GamesOnNetworks.iscomplete(result_state)
             push!(result_states, result_state)
             num_received += 1
@@ -356,7 +367,7 @@ function _simulate_distributed_barrier(model_state::Tuple{Model, State}, db_info
     while num_received < 1
         #push to db if the simulation has completed OR if checkpoint is active in settings. For timeout with checkpoint disabled, data is NOT pushed to a database (currently)
         result_state = take!(result_channel)
-        simulation_uuid = Database.db_insert_simulation(Database.main(db_info), result_state, model_id, db_group_id)
+        simulation_uuid = Database.db_insert_simulation(result_state, model_id, db_group_id)
         if GamesOnNetworks.iscomplete(result_state)
             push!(result_states, result_state)
             num_received += 1

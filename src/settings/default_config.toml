@@ -19,6 +19,7 @@ selected = "sqlite.default" #push results to
 attached = []
 push_period = 0
 checkpoint = true #set true to push the simulation state to the database in the case of a timeout
+full_store = true #set to false to save partial information for storage efficiency. If false, simulations stored in the database will not be reproducable/continuable
 # checkpoint_database = "" #if a main selected database exists and checkpoint is set to true, this database will be used as an alternate for checkpoints (leave empty to use the selected database)
 # data_script = "" #supply to initialize database with specific data
 

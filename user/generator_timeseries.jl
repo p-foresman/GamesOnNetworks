@@ -2,12 +2,13 @@ using GamesOnNetworks
 
 include("startingconditions.jl")
 include("stoppingconditions.jl")
+include("data_functions.jl")
 
 
 λ = [5, 10, 20, 30, 40, 50, 60]
 timeseries = ModelGenerator(
     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-    [100],
+    [1000],
     [10],
     [0.1],
     [("fractious_starting_condition", UserVariables())],
@@ -23,7 +24,7 @@ timeseries = ModelGenerator(
 
 
 for model in timeseries
-    for _ in 1:20
+    for _ in 1:1
         simulate(model)
     end
 end
