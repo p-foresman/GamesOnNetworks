@@ -44,3 +44,44 @@ model_generator = ModelGeneratorSet(gen1, gen2)
 for model in gen2
     simulate(model)
 end
+
+
+
+# using GamesOnNetworks
+# GamesOnNetworks.configure("sweep.toml")
+
+# include("startingconditions.jl")
+# include("stoppingconditions.jl")
+
+
+# gen1 = ModelGenerator(
+#     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+#     collect(10:10:90),
+#     [10],
+#     [0.05],
+#     [("fractious_starting_condition", UserVariables())],
+#     [("partially_reinforced_equity_stopping_condition", UserVariables(:period_count=>0))],
+#     [
+#         CompleteModelGenerator(),
+#     ]
+# )
+
+# gen2 = ModelGenerator(
+#     Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
+#     [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+#     [10],
+#     [0.05],
+#     [("fractious_starting_condition", UserVariables())],
+#     [("partially_reinforced_equity_stopping_condition", UserVariables(:period_count=>0))],
+#     [
+#         CompleteModelGenerator(),
+#     ]
+# )
+
+
+# model_generator = ModelGeneratorSet(gen1, gen2)
+
+
+# for model in model_generator
+#     simulate(model)
+# end

@@ -32,6 +32,7 @@ end
         for _ in 1:memory_length(model)
             push!(memory(agent), random_strategy(model, 1))
         end
+        GamesOnNetworks.rational_choice!(agent, random_strategy(model, 1))
     end
     return nothing
 end

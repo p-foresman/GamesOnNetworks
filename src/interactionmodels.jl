@@ -117,12 +117,13 @@ struct StochasticBlockModel <: GraphModel
 end
 
 
-# struct LatticeModel <: GraphModel
-#     graph_type::Symbol
+# struct GridModel <: GraphModel
+#     type::String
 #     dimensions::Int
-#     dim_lengths::Vector{Int}
-#     function LatticeModel(dim_lengths::Vector{Int})
-#         return new(:lattice, length(dim_lengths), dim_lengths)
+#     periodic::Bool
+
+#     function GridModel(dimensions::Int, periodic::Bool=true)
+#         return new("GridModel", dimensions, periodic)
 #     end
 # end
 

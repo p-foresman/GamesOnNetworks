@@ -224,53 +224,6 @@ end
 
 
 
-
-
-
-function time_series_plot(db_filepath::String; sim_group_id::Integer, plot_title::String = "")
-sim_info_df, agent_df = querySimulationsForTimeSeries(db_filepath, sim_group_id=sim_group_id)
-payoff_matrix_size = JSON3.read(sim_info_df[1, :payoff_matrix_size], Tuple)
-payoff_matrix_length = payoff_matrix_size[1] * payoff_matrix_size[2]
-reproduced_game = JSON3.read(sim_info_df[1, :game], Game{payoff_matrix_size[1], payoff_matrix_size[2], payoff_matrix_length})
-agent_dict = OrderedDict()
-for row in eachrow(agent_df)
-if !haskey(agent_dict, row.periods_elapsed)
-agent_dict[row.periods_elapsed] = []
-end
-agent = JSON3.read(row.agent, Agent)
-# agent_memory = agent.memory
-# agent_behavior = determineAgentBehavior(reproduced_game, agent_memory) #old
-push!(agent_dict[row.periods_elapsed], rational_choice(agent))
-end
-period_counts = Vector()
-fraction_L = Vector()
-fraction_M = Vector()
-fraction_H = Vector()
-# fractions = Vector()
-for (periods_elapsed, agent_behaviors) in agent_dict
-push!(period_counts, periods_elapsed)
-# subfractions = Vector()
-push!(fraction_L, count(action->(action==3), agent_behaviors) / sim_info_df[1, :number_agents])
-push!(fraction_M, count(action->(action==2), agent_behaviors) / sim_info_df[1, :number_agents])
-push!(fraction_H, count(action->(action==1), agent_behaviors) / sim_info_df[1, :number_agents])
-# println("$periods_elapsed: $subfractions")
-# push!(fractions, subfractions)
-end
-time_series_plot = plot(period_counts,
-[fraction_H fraction_M fraction_L],
-ylims=(0.0, 1.0),
-layout=(3, 1),
-legend=false,
-title=[plot_title "" ""], 
-xlabel=["" "" "Periods Elapsed"],
-xticks=[:none :none :auto],
-ylabel=["Proportion H" "Proportion M" "Proportion L"],
-size=(700, 700))
-return time_series_plot
-end
-
-
-
 function multiple_time_series_plot(qps::Database.Query_simulations...;
                                     db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
                                     periods_from_end::Int=100,
@@ -421,139 +374,140 @@ end
 
 
 
-function multiple_time_series_plot_old(qps::Database.Query_simulations...;
-                                    db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
-                                    periods_from_end::Int=100,
-                                    statistic::Symbol=:mean,
-                                    conf_intervals::Bool = false,
-                                    conf_level::AbstractFloat = 0.95,
-                                    bootstrap_samples::Integer = 1000,
-                                    legend_labels::Vector = [],
-                                    title::String="",
-                                    colors::Vector = [],
-                                    filename::String="",
-                                    figure_dirpath::String="",
-                                    plt::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
-                                    plot_kwargs...)
+# function time_series_plot(qp::Database.Query_simulations;
+#                                     db_info::Union{Database.DatabaseSettings, Database.DBInfo}=GamesOnNetworks.DATABASE(),
+#                                     # periods_from_end::Int=100,
+#                                     statistic::Symbol=:mean,
+#                                     conf_intervals::Bool = false,
+#                                     conf_level::AbstractFloat = 0.95,
+#                                     bootstrap_samples::Integer = 1000,
+#                                     legend_label::String = "",
+#                                     title::String="",
+#                                     color::String = "",
+#                                     filename::String="",
+#                                     figure_dirpath::String="",
+#                                     plt::Union{Plots.Plot, Nothing}=nothing, #to add on to a previous plot
+#                                     plot_kwargs...)
     
-    !isempty(legend_labels) && @assert length(legend_labels) == length(qps) "legend_labels must have one entry for each QueryParams instance" #NOTE: vague
-    if !isempty(colors)
-        @assert length(colors) == length(qps) "colors must have one entry for each QueryParams instance" #NOTE: vague
-    else
-        @assert length(qps) <= 16 "cannot add more than 16 lines unless colors are specified" #NOTE: stupid limit, but will break since palette only has 16 colors
-        colors = palette(:default)[1:length(qps)]
-    end
 
-    timesteps = periods_from_end + 1 # add 1 because we're including the end period as well
-
-
-    if isnothing(plt)
-        plt = plot(;layout=(3, 1),
-                    ylims=(0.0, 1.0),
-                    ylabel=["Proportion H" "Proportion M" "Proportion L"],
-                    xlabel=["" "" "Periods Until Transition"],
-                    xticks=[:none :none :auto],
-                    xflip=true,
-                    legend=[true false false],
-                    title=[title "" ""],
-                    left_margin=10Analyze.Plots.mm,
-                    plot_kwargs...
-        )
-    end
+#     if isnothing(plt)
+#         plt = plot(;layout=(3, 1),
+#                     ylims=(0.0, 1.0),
+#                     ylabel=["Proportion H" "Proportion M" "Proportion L"],
+#                     xlabel=["" "" "Periods Elapsed"],
+#                     xticks=[:none :none :auto],
+#                     xflip=true,
+#                     legend=[true false false],
+#                     title=[title "" ""],
+#                     left_margin=10Analyze.Plots.mm,
+#                     plot_kwargs...
+#         )
+#     end
 
 
-    for (i, qp) in enumerate(qps)
-    #     #NOTE: ADD Query_simulations VALIDATION HERE! 
 
-        query::DataFrame = Database.db_query(db_info, qp)
+#     query::DataFrame = Database.db_query(db_info, qp)
 
-        H_fraction = [Vector{Float64}() for _ in 1:timesteps]
-        M_fraction = [Vector{Float64}() for _ in 1:timesteps]
-        L_fraction = [Vector{Float64}() for _ in 1:timesteps]
-        # H_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        # M_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        # L_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+#     H_fraction = Vector{Float64}()
+#     M_fraction = Vector{Float64}()
+#     L_fraction = Vector{Float64}()
+#     # H_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+#     # M_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+#     # L_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
 
-        
-        for sample in eachrow(query)
-            timeseries = Database.db_query_timeseries(db_info, sample.simulation_uuid, timesteps) # add 1 because we're including the end period as well
-            # return timeseries
-            # period_counts = Vector()
-            # L_fraction = Vector{Float64}()
-            # M_fraction = Vector{Float64}()
-            # H_fraction = Vector{Float64}()
-            for sim in eachrow(timeseries)
-                agents_df = Database.db_query_agents(sim.uuid)
-                # return agents_df
-                HML = [0, 0, 0]
-                for agent_json in eachrow(agents_df)
-                    agent = Database.JSON3.read(agent_json.agent, GamesOnNetworks.Agent) #NOTE: make function to encapsulate this
-                    if !GamesOnNetworks.ishermit(agent)
-                        HML[GamesOnNetworks.rational_choice(agent)] += 1
-                    end
-                end
-                total_agents = sum(HML)
-                # push!(period_counts, row.period)
-                push!(H_fraction[sim.i], HML[1] / total_agents)
-                push!(M_fraction[sim.i], HML[2] / total_agents)
-                push!(L_fraction[sim.i], HML[3] / total_agents)
-            end
-        end
-        H_stat = Vector{Float64}()
-        M_stat = Vector{Float64}()
-        L_stat = Vector{Float64}()
-        H_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        M_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        L_conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        for timestep in 1:timesteps
-            H_confint = confint(bootstrap(getfield(Statistics, statistic), H_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
-            push!(H_stat, H_confint[1])
-            push!(H_conf_interval_vals[1], H_confint[2])
-            push!(H_conf_interval_vals[2], H_confint[3])
+    
+#     for sample in eachrow(query)
+#         timeseries = Database.db_query_timeseries(db_info, sample.simulation_uuid, timesteps) # add 1 because we're including the end period as well
+#         # return timeseries
+#         # period_counts = Vector()
+#         # L_fraction = Vector{Float64}()
+#         # M_fraction = Vector{Float64}()
+#         # H_fraction = Vector{Float64}()
+#         for sim in eachrow(timeseries)
+#             data = Database.parse_simulation_data(sim.data)
+#             push!(H_fraction[sim.i], data["H"])
+#             push!(M_fraction[sim.i], data["M"])
+#             push!(L_fraction[sim.i], data["L"])
+#         end
+#     end
+#     H_stat = Vector{Union{Float64, Missing}}()
+#     M_stat = Vector{Union{Float64, Missing}}()
+#     L_stat = Vector{Union{Float64, Missing}}()
+#     H_conf_interval_vals = Vector{Vector{Union{Float64, Missing}}}([[], []]) #[lower, upper]
+#     M_conf_interval_vals = Vector{Vector{Union{Float64, Missing}}}([[], []]) #[lower, upper]
+#     L_conf_interval_vals = Vector{Vector{Union{Float64, Missing}}}([[], []]) #[lower, upper]
+#     for timestep in 1:timesteps
+#         if length(H_fraction[timestep]) < Database.sample_size(qp)# / 2
+#             push!(H_stat, NaN)
+#             push!(H_conf_interval_vals[1], NaN)
+#             push!(H_conf_interval_vals[2], NaN)
+#         else
+#             H_confint = confint(bootstrap(getfield(Statistics, statistic), H_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+#             push!(H_stat, H_confint[1])
+#             push!(H_conf_interval_vals[1], H_confint[2])
+#             push!(H_conf_interval_vals[2], H_confint[3])
+#         end
 
-            M_confint = confint(bootstrap(getfield(Statistics, statistic), M_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
-            push!(M_stat, M_confint[1])
-            push!(M_conf_interval_vals[1], M_confint[2])
-            push!(M_conf_interval_vals[2], M_confint[3])
+#         if length(M_fraction[timestep]) < Database.sample_size(qp)# / 2
+#             push!(M_stat, NaN)
+#             push!(M_conf_interval_vals[1], NaN)
+#             push!(M_conf_interval_vals[2], NaN)
+#         else
+#             M_confint = confint(bootstrap(getfield(Statistics, statistic), M_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+#             push!(M_stat, M_confint[1])
+#             push!(M_conf_interval_vals[1], M_confint[2])
+#             push!(M_conf_interval_vals[2], M_confint[3])
+#         end
 
-            L_confint = confint(bootstrap(getfield(Statistics, statistic), L_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
-            push!(L_stat, L_confint[1])
-            push!(L_conf_interval_vals[1], L_confint[2])
-            push!(L_conf_interval_vals[2], L_confint[3])
-        end
+#         if length(L_fraction[timestep]) < Database.sample_size(qp)# / 2
+#             push!(L_stat, NaN)
+#             push!(L_conf_interval_vals[1], NaN)
+#             push!(L_conf_interval_vals[2], NaN)
+#         else
+#             L_confint = confint(bootstrap(getfield(Statistics, statistic), L_fraction[timestep], BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1]
+#             push!(L_stat, L_confint[1])
+#             push!(L_conf_interval_vals[1], L_confint[2])
+#             push!(L_conf_interval_vals[2], L_confint[3])
+#         end
+#     end
 
-        plot!(collect(periods_from_end:-1:0), [H_stat M_stat L_stat], linewidth=2, label=!isempty(legend_labels) && legend_labels[i], linecolor=colors[i])
-        conf_intervals && plot!(collect(periods_from_end:-1:0), [H_conf_interval_vals[1] M_conf_interval_vals[1] L_conf_interval_vals[1]], fillrange=[H_conf_interval_vals[2] M_conf_interval_vals[2] L_conf_interval_vals[2]], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
-        # for query_group in groupby(query, filter!(param->param!=sweep_parameter, all_params)) #NOTE: ALL OF THESE GROUPS MUST HAVE THE SAME NUMBER OF POPULATION SUB-GROUPS!!! i.e. cant create graphs with different population ranges like AEY in one go. Figure out how?
-        #     average_transition_time = Vector{Float64}([])
+#     # for _ in timesteps - length(H_stat)
+#     #     push!(H_stat, 0.5)
+#     #     push!(M_stat, 0.0)
+#     #     push!(L_stat, 0.5)
+#     # end
 
-        #     conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
-        #     for sweep_group in groupby(query_group, sweep_parameter, sort=true)
-        #         periods = sweep_group.period
-        #         # N = sweep_group.number_agents[1]
-        #         # λ = sweep_group.λ[1]
-        #         # println(λ)
-        #         # println(sweep_group.period)
-        #         # if !ismissing(λ)
-        #         #     periods = sweep_group.period .* GraphsExt.edge_density(N, λ) .* N ./ 2
-        #         # end
-        #         confidence_interval = confint(bootstrap(getfield(Statistics, statistic), periods , BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
+#     plot!(collect(periods_from_end:-1:0), [H_stat M_stat L_stat], linewidth=2, label=!isempty(legend_labels) && legend_labels[i], linecolor=colors[i])
+#     conf_intervals && plot!(collect(periods_from_end:-1:0), [H_conf_interval_vals[1] M_conf_interval_vals[1] L_conf_interval_vals[1]], fillrange=[H_conf_interval_vals[2] M_conf_interval_vals[2] L_conf_interval_vals[2]], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
+#     # for query_group in groupby(query, filter!(param->param!=sweep_parameter, all_params)) #NOTE: ALL OF THESE GROUPS MUST HAVE THE SAME NUMBER OF POPULATION SUB-GROUPS!!! i.e. cant create graphs with different population ranges like AEY in one go. Figure out how?
+#     #     average_transition_time = Vector{Float64}([])
 
-        #         push!(average_transition_time, confidence_interval[1]) #first element is the mean
-        #         # println(conf_interval_vals)
-        #         push!(conf_interval_vals[1], confidence_interval[2])
-        #         push!(conf_interval_vals[2], confidence_interval[3])
-        #     end
+#     #     conf_interval_vals = Vector{Vector{Float64}}([[], []]) #[lower, upper]
+#     #     for sweep_group in groupby(query_group, sweep_parameter, sort=true)
+#     #         periods = sweep_group.period
+#     #         # N = sweep_group.number_agents[1]
+#     #         # λ = sweep_group.λ[1]
+#     #         # println(λ)
+#     #         # println(sweep_group.period)
+#     #         # if !ismissing(λ)
+#     #         #     periods = sweep_group.period .* GraphsExt.edge_density(N, λ) .* N ./ 2
+#     #         # end
+#     #         confidence_interval = confint(bootstrap(getfield(Statistics, statistic), periods , BasicSampling(bootstrap_samples)), PercentileConfInt(conf_level))[1] #the first element contains the CI tuple
 
-        #     #NOTE: could sort at beginning
-        #     plot!(sort(sweep_param_vals), average_transition_time, markershape=:circle, linewidth=2, label=!isempty(legend_labels) && legend_labels[i], markercolor=colors[i], linecolor=colors[i])#, linestyle=linestyles[i])
-        #     conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
-        # end
-    end
+#     #         push!(average_transition_time, confidence_interval[1]) #first element is the mean
+#     #         # println(conf_interval_vals)
+#     #         push!(conf_interval_vals[1], confidence_interval[2])
+#     #         push!(conf_interval_vals[2], confidence_interval[3])
+#     #     end
 
-    !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
-    return plt
-end
+#     #     #NOTE: could sort at beginning
+#     #     plot!(sort(sweep_param_vals), average_transition_time, markershape=:circle, linewidth=2, label=!isempty(legend_labels) && legend_labels[i], markercolor=colors[i], linecolor=colors[i])#, linestyle=linestyles[i])
+#     #     conf_intervals && plot!(sort(sweep_param_vals), conf_interval_vals[1], fillrange=conf_interval_vals[2], linealpha=0, fillalpha=0.2, label=nothing, fillcolor=colors[i])#, fillstyle=fillstyles[i])
+#     # end
+
+#     !isempty(filename) && make_figure(plt, filename, isempty(figure_dirpath) ? GamesOnNetworks.FIGURE_DIRPATH() : figure_dirpath)
+#     return plt
+# end
 
 
 

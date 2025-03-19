@@ -1,0 +1,49 @@
+# settings config for GamesOnNetworks
+
+use_seed = false
+random_seed = 1111
+processes = 20
+timeout = 0
+timeout_exit_code = 0 #0 to not exit?
+figure_dirpath = "plots/N100_m10/"
+
+
+[databases]
+selected = "sqlite.sweeps"
+attached = []
+push_period = 0
+checkpoint = false
+full_store = true
+
+
+[databases.sqlite.default]
+path = "GamesOnNetworks.sqlite"
+
+[databases.sqlite.N100_m10]
+path = "sqlite/N100_m10.sqlite"
+
+[databases.sqlite.AEY]
+path = "sqlite/AEY.sqlite"
+
+[databases.sqlite.sweeps]
+path = "sqlite/sweeps.sqlite"
+
+[databases.sqlite.timeseries]
+path = "sqlite/timeseries.sqlite"
+
+[databases.sqlite.timeseries_N1000]
+path = "sqlite/timeseries_N1000.sqlite"
+
+[databases.sqlite.timeseries_popsweep]
+path = "sqlite/timeseries_popsweep.sqlite"
+
+# add more sqlite databases below. For example:
+# [databases.sqlite.my_sqlite_db]
+# path = "my/sqlite/database/path.sqlite"
+
+
+# postgres database must be configured by the user
+# [databases.postgres.my_postgres_db]
+
+# configure your own postgres databases below. For example:
+# [databases.postgres.my_postgres_db]

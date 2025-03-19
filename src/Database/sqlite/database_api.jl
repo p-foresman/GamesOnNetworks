@@ -437,7 +437,8 @@ function db_has_incomplete_simulations(db_info::SQLiteInfo)
 end
 
 
-function update_temp()
+update_temp() = db_execute("ALTER TABLE simulations ADD data TEXT DEFAULT '{}' NOT NULL")
+function update_data()
     sims = db_query("select * from simulations")
     for sim in eachrow(sims)
         data = Dict{String, Float64}()
