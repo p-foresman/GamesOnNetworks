@@ -25,8 +25,8 @@ include("stoppingconditions.jl")
 #                     CompleteModel())
 
 const m = Model(Game("Bargaining Game", [(0, 0) (0, 0) (70, 30); (0, 0) (50, 50) (50, 30); (30, 70) (30, 50) (30, 30)]),
-                    Parameters(1000, 10, 0.1, "fractious_starting_condition", "partially_reinforced_equity_stopping_condition", user_variables=UserVariables(:period_count=>0)),
-                    ErdosRenyiModel(50.0))
+                    Parameters(100, 10, 0.1, "fractious_starting_condition", "period_cutoff_stopping_condition", user_variables=UserVariables(:period_cutoff=>5000000)),
+                    CompleteModel())
 # const g = generate_graph(m)
 # GamesOnNetworks.graph!(m, g)
                     
