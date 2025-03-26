@@ -907,13 +907,27 @@ function execute_merge_full(db_info_master::SQLiteInfo, db_info_merger::SQLiteIn
     return nothing
 end
 
+
+
+function _execute_merge_temp_full_collect(db)
+    db_execute(db, "INSERT OR IGNORE INTO simulations(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix, period, complete, user_variables) SELECT uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix, period, complete, user_variables FROM merge_db.simulations;")
+    db_execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
+end
+
+function _execute_merge_temp_partial_collect(db)
+    db_execute(db, "INSERT OR IGNORE INTO simulations(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables) SELECT uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, period, complete, user_variables FROM merge_db.simulations;")
+end
+
 # Merge temp distributed DBs into master DB.
-function execute_merge_temp(db_info_master::SQLiteInfo, db_info_merger::SQLiteInfo)
+function execute_merge_temp(db_info_master::SQLiteInfo, db_info_merger::SQLiteInfo; full_collect::Bool=true)
     db = DB(db_info_master)
     # db = DB(db_info; busy_timeout=rand(1:5000)) #this caused issues on cluster (.nfsXXXX files were being created. Does this stop the database connection from being closed?) NOTE: are all of these executes separate writes? can we put them all into one???
     db_execute(db, "ATTACH DATABASE '$(db_info_merger.filepath)' as merge_db;")
-    db_execute(db, "INSERT OR IGNORE INTO simulations(uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix, period, complete, user_variables) SELECT uuid, group_id, prev_simulation_uuid, model_id, rng_state, random_seed, graph_adj_matrix, period, complete, user_variables FROM merge_db.simulations;")
-    db_execute(db, "INSERT OR IGNORE INTO agents(simulation_uuid, agent) SELECT simulation_uuid, agent from merge_db.agents;")
+    if full_collect
+        _execute_merge_temp_full_collect(db)
+    else
+        _execute_merge_temp_partial_collect(db)
+    end
     db_execute(db, "DETACH DATABASE merge_db;")
     db_close(db)
     return nothing

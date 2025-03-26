@@ -286,3 +286,10 @@ Notes 1/30
 Two ways I could go about transfering starting and stopping functions to remote workers:
 1. On demand within functions (define them on remote workers only when needed)
 2. define all such functions on all workers during config
+
+
+
+
+
+
+redo 145482, 145483

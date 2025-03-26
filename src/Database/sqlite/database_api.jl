@@ -64,7 +64,7 @@ end
 # end
 
 
-function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cleanup_directory::Bool = false)
+function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cleanup_directory::Bool = false, full_collect::Bool=true)
     contents = readdir(directory_path)
     for item in contents
         item_path = normpath(joinpath(directory_path, item))
@@ -73,7 +73,7 @@ function db_collect_temp(db_info_master::SQLiteInfo, directory_path::String; cle
             success = false
             while !success
                 try
-                    execute_merge_temp(db_info_master, db_info_merger)
+                    execute_merge_temp(db_info_master, db_info_merger, full_collect=full_collect)
                     success = true
                 catch e
                     if e isa SQLiteException
